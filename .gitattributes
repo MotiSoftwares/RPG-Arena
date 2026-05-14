@@ -1,0 +1,134 @@
+###############################################################################
+# Unity-friendly .gitattributes
+# - YAML-based Unity assets (Scenes/Prefabs/etc.) stay as text for diff/merge.
+# - Large binary assets go through Git LFS.
+# - Reasonable line-ending normalization for cross-platform teams.
+###############################################################################
+
+# Default: let Git auto-detect text, normalize to LF in the repo
+* text=auto eol=lf
+
+# Shell / batch scripts: enforce expected EOL
+*.sh   text eol=lf
+*.bash text eol=lf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+###############################################################################
+# Unity TEXT assets (keep as text for readable diffs/merges)
+###############################################################################
+# Unity YAML asset types
+*.meta           text
+*.unity          text
+*.prefab         text
+*.variant        text
+*.mat            text
+*.anim           text
+*.controller     text
+*.overrideController text
+*.timeline       text
+*.playable       text
+*.physicMaterial text
+*.spriteatlas    text
+*.asmdef         text
+*.asmref         text
+*.shader         text
+*.compute        text
+*.cginc          text
+*.hlsl           text
+*.glsl           text
+*.uxml           text
+*.uss            text
+*.json           text
+*.xml            text
+*.yaml           text
+*.yml            text
+*.txt            text
+*.cs             text
+*.cpp            text
+*.c              text
+*.h              text
+*.hpp            text
+*.py             text
+*.js             text
+*.ts             text
+*.md             text
+*.csv            text
+*.tsv            text
+
+###############################################################################
+# Git LFS: Large binary types (recommend committing at least one placeholder)
+###############################################################################
+
+# Textures / Images
+*.png  filter=lfs diff=lfs merge=lfs -text
+*.jpg  filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.tga  filter=lfs diff=lfs merge=lfs -text
+*.psd  filter=lfs diff=lfs merge=lfs -text
+*.tif  filter=lfs diff=lfs merge=lfs -text
+*.tiff filter=lfs diff=lfs merge=lfs -text
+*.exr  filter=lfs diff=lfs merge=lfs -text
+*.hdr  filter=lfs diff=lfs merge=lfs -text
+*.dds  filter=lfs diff=lfs merge=lfs -text
+*.ktx  filter=lfs diff=lfs merge=lfs -text
+*.ktx2 filter=lfs diff=lfs merge=lfs -text
+*.basis filter=lfs diff=lfs merge=lfs -text
+*.heic filter=lfs diff=lfs merge=lfs -text
+*.webp filter=lfs diff=lfs merge=lfs -text
+
+# Audio
+*.wav  filter=lfs diff=lfs merge=lfs -text
+*.aiff filter=lfs diff=lfs merge=lfs -text
+*.aif  filter=lfs diff=lfs merge=lfs -text
+*.mp3  filter=lfs diff=lfs merge=lfs -text
+*.ogg  filter=lfs diff=lfs merge=lfs -text
+*.flac filter=lfs diff=lfs merge=lfs -text
+
+# 3D Models / Geometry
+*.fbx  filter=lfs diff=lfs merge=lfs -text
+*.obj  filter=lfs diff=lfs merge=lfs -text
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.dae  filter=lfs diff=lfs merge=lfs -text
+*.3ds  filter=lfs diff=lfs merge=lfs -text
+*.ply  filter=lfs diff=lfs merge=lfs -text
+*.stl  filter=lfs diff=lfs merge=lfs -text
+*.gltf filter=lfs diff=lfs merge=lfs -text
+*.glb  filter=lfs diff=lfs merge=lfs -text
+
+# Video
+*.mp4  filter=lfs diff=lfs merge=lfs -text
+*.mov  filter=lfs diff=lfs merge=lfs -text
+*.avi  filter=lfs diff=lfs merge=lfs -text
+*.webm filter=lfs diff=lfs merge=lfs -text
+
+# Fonts
+*.ttf  filter=lfs diff=lfs merge=lfs -text
+*.otf  filter=lfs diff=lfs merge=lfs -text
+*.woff filter=lfs diff=lfs merge=lfs -text
+*.woff2 filter=lfs diff=lfs merge=lfs -text
+
+# Native plugins / Libraries (if you must commit them)
+*.dll   filter=lfs diff=lfs merge=lfs -text
+*.so    filter=lfs diff=lfs merge=lfs -text
+*.dylib filter=lfs diff=lfs merge=lfs -text
+*.a     filter=lfs diff=lfs merge=lfs -text
+
+# Archives / Packages / Large binary blobs
+*.unitypackage filter=lfs diff=lfs merge=lfs -text
+*.zip  filter=lfs diff=lfs merge=lfs -text
+*.7z   filter=lfs diff=lfs merge=lfs -text
+*.rar  filter=lfs diff=lfs merge=lfs -text
+*.tar  filter=lfs diff=lfs merge=lfs -text
+*.gz   filter=lfs diff=lfs merge=lfs -text
+
+# AssetBundles / Addressables (discourage committing; if you do, store via LFS)
+*.bundle    filter=lfs diff=lfs merge=lfs -text
+*.unity3d   filter=lfs diff=lfs merge=lfs -text
+*.addressable  filter=lfs diff=lfs merge=lfs -text
+*.content    filter=lfs diff=lfs merge=lfs -text
+
+# ML / data weights (optional)
+*.onnx filter=lfs diff=lfs merge=lfs -text
+*.bytes filter=lfs diff=lfs merge=lfs -text
