@@ -13,6 +13,7 @@ namespace RPGArena.Characters
         public string className = "Hero";
         [TextArea] public string classFlavor;
         public Sprite portrait;
+        public Sprite stageSprite;          // full-body cutout billboarded on the arena (2.5D)
         public GameObject modelPrefab;
         public PrimaryStat primaryStat = PrimaryStat.STR;
 

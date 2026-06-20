@@ -19,6 +19,7 @@ namespace RPGArena.Combat
             e.isBoss = false;
             e.primaryStat = def.primaryStat;
             e.staggerThreshold = float.MaxValue;   // heroes don't stagger
+            e.stageSprite = def.stageSprite;
             e.Initialize(def.baseStats, cfg, def.elementProfile, def.abilities, brain);
             return e;
         }
@@ -33,6 +34,7 @@ namespace RPGArena.Combat
             e.isBoss = true;
             e.primaryStat = def.primaryStat;
             e.staggerThreshold = def.staggerThreshold;
+            e.stageSprite = def.stageSprite;
             e.Initialize(def.baseStats, cfg, def.elementProfile, def.abilities, def.aiBehavior);
             return e;
         }

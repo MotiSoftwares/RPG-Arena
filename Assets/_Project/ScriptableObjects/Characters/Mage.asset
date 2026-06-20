@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Characters.CharacterDefinition
   className: Mage
   classFlavor: 
-  portrait: {fileID: 0}
+  portrait: {fileID: 21300000, guid: ce7c1dc33856b1c4cad1b6356ad160c8, type: 3}
+  stageSprite: {fileID: 21300000, guid: ce7c1dc33856b1c4cad1b6356ad160c8, type: 3}
   modelPrefab: {fileID: 0}
   primaryStat: 2
   baseStats:

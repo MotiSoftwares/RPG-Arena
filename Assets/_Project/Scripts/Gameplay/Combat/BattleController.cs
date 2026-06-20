@@ -199,19 +199,38 @@ namespace RPGArena.Combat
                 var h = Context.heroes[i];
                 h.transform.position = new Vector3(-5f + i * 1.7f, 0f, i * 0.4f);
                 h.transform.rotation = Quaternion.Euler(0, 90, 0);
-                AttachBody(h.gameObject, HeroPalette[i % HeroPalette.Length], 1f, 1.9f);
+                AttachBody(h.gameObject, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i);
             }
             if (Context.boss != null)
             {
                 Context.boss.transform.position = new Vector3(4.5f, 0f, 0.6f);
                 Context.boss.transform.rotation = Quaternion.Euler(0, -90, 0);
-                AttachBody(Context.boss.gameObject, new Color(0.5f, 0.12f, 0.12f), 2.3f, 3.4f);
+                AttachBody(Context.boss.gameObject, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.3f, 3.4f, 0);
             }
         }
 
-        private static void AttachBody(GameObject host, Color color, float width, float height)
+        // Give a combatant a visible "body". If it has a stageSprite, billboard that full-body art
+        // facing the camera (the 2.5D MapleStory look); otherwise fall back to a coloured capsule.
+        private static void AttachBody(GameObject host, Sprite sprite, Color color, float width, float height, int order)
         {
             if (host.transform.Find("Body") != null) return;
+
+            if (sprite != null)
+            {
+                var bb = new GameObject("Body");
+                bb.transform.SetParent(host.transform, false);
+                var sr = bb.AddComponent<SpriteRenderer>();
+                sr.sprite = sprite;
+                sr.sortingOrder = order;
+                // Face the camera (cancel the host's facing rotation) and scale to the target height.
+                bb.transform.localRotation = Quaternion.Inverse(host.transform.rotation);
+                float spriteH = sprite.bounds.size.y;
+                float s = spriteH > 0f ? height / spriteH : 1f;
+                bb.transform.localScale = Vector3.one * s;
+                bb.transform.localPosition = new Vector3(0, height * 0.5f, 0);   // feet on the ground
+                return;
+            }
+
             var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             body.name = "Body";
             var col = body.GetComponent<Collider>(); if (col) Destroy(col);

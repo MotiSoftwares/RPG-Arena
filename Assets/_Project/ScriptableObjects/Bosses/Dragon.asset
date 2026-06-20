@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.BossDefinition
   bossName: The Dragon
   intro: 
-  portrait: {fileID: 0}
+  portrait: {fileID: 21300000, guid: ba594585f0b7b614588e918bd17a7c09, type: 3}
+  stageSprite: {fileID: 21300000, guid: ba594585f0b7b614588e918bd17a7c09, type: 3}
   modelPrefab: {fileID: 0}
   primaryStat: 0
   baseStats:

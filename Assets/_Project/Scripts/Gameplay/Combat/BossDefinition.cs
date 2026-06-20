@@ -25,6 +25,7 @@ namespace RPGArena.Combat
         public string bossName = "Boss";
         [TextArea] public string intro;
         public Sprite portrait;
+        public Sprite stageSprite;          // full-body cutout billboarded on the arena (2.5D)
         public GameObject modelPrefab;
         public PrimaryStat primaryStat = PrimaryStat.STR;
 
