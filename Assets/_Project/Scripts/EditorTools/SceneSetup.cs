@@ -134,6 +134,12 @@ namespace RPGArena.EditorTools
             menu.backgroundSprite = AssetDatabase.LoadAssetAtPath<Sprite>(bgPath);
             if (menu.backgroundSprite == null) Debug.LogWarning("[SceneSetup] TitleScreen sprite not found/loaded.");
 
+            // Hero art for the Character Select cards (cutouts, in the Classes order).
+            string[] heroes = { "Warrior", "Mage", "Thief", "Archer" };
+            menu.classPortraits = new Sprite[heroes.Length];
+            for (int i = 0; i < heroes.Length; i++)
+                menu.classPortraits[i] = AssetDatabase.LoadAssetAtPath<Sprite>($"Assets/_Project/Art/Sprites/Combatants/cutout/{heroes[i]}.png");
+
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             Debug.Log("[SceneSetup] MainMenu wired with MainMenuUI + title background.");

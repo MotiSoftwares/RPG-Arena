@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &1078751841
+--- !u!1 &886015409
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,8 +127,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1078751843}
-  - component: {fileID: 1078751842}
+  - component: {fileID: 886015411}
+  - component: {fileID: 886015410}
   m_Layer: 0
   m_Name: MainMenu
   m_TagString: Untagged
@@ -136,26 +136,31 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1078751842
+--- !u!114 &886015410
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1078751841}
+  m_GameObject: {fileID: 886015409}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9abd97b9328d3bb479bdc0abf3977490, type: 3}
   m_Name: 
   m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.MainMenuUI
   backgroundSprite: {fileID: 21300000, guid: 8ee70d54dec5cc34d93d0f3e32fa521b, type: 3}
---- !u!4 &1078751843
+  classPortraits:
+  - {fileID: 21300000, guid: 9deaf404a20622a48b64201f4aafe7b6, type: 3}
+  - {fileID: 21300000, guid: ce7c1dc33856b1c4cad1b6356ad160c8, type: 3}
+  - {fileID: 21300000, guid: 01f5a1c13173cb74ba4df28a40359b13, type: 3}
+  - {fileID: 21300000, guid: f3083ff2a3fdcca42a0062df2eed1501, type: 3}
+--- !u!4 &886015411
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1078751841}
+  m_GameObject: {fileID: 886015409}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -430,4 +435,4 @@ SceneRoots:
   - {fileID: 1186364821}
   - {fileID: 1182381143}
   - {fileID: 1175541149}
-  - {fileID: 1078751843}
+  - {fileID: 886015411}

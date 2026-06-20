@@ -22,6 +22,7 @@ namespace RPGArena.UI
 
         [Header("Art")]
         public Sprite backgroundSprite;     // title-screen background (assigned by SceneSetup)
+        public Sprite[] classPortraits = new Sprite[4];   // Warrior/Mage/Thief/Archer (select cards)
 
         private Font font;
         private GameObject mainPanel, selectPanel, infoPanel, settingsPanel;
@@ -132,8 +133,9 @@ namespace RPGArena.UI
             for (int i = 0; i < Classes.Length; i++)
             {
                 var c = Classes[i];
-                float y = 0.66f - i * 0.13f;
-                var card = Card(sp, c.name, c.blurb, y, () => TogglePick(c.name));
+                float y = 0.66f - i * 0.135f;
+                var portrait = i < classPortraits.Length ? classPortraits[i] : null;
+                var card = Card(sp, c.name, c.blurb, portrait, y, () => TogglePick(c.name));
                 cardImages[c.name] = card;
             }
             confirmBtn = MenuButton(sp, "Confirm & Fight", 0.10f, Confirm); confirmBtn.interactable = false;
@@ -230,15 +232,29 @@ namespace RPGArena.UI
             return btn;
         }
 
-        private Image Card(RectTransform parent, string name, string blurb, float anchorY, UnityEngine.Events.UnityAction onClick)
+        private Image Card(RectTransform parent, string name, string blurb, Sprite portrait, float anchorY, UnityEngine.Events.UnityAction onClick)
         {
             var go = new GameObject("Card_" + name); go.transform.SetParent(parent, false);
-            var img = go.AddComponent<Image>(); img.color = new Color(0.16f, 0.18f, 0.28f, 0.95f);
-            var rt = img.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(0.5f, anchorY); rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = new Vector2(1100, 90);
-            var btn = go.AddComponent<Button>(); btn.targetGraphic = img; btn.onClick.AddListener(onClick);
-            var nameT = Label(rt, name, new Vector2(0.5f, 0.72f), 26, TextAnchor.MiddleCenter, 1080);
-            nameT.color = new Color(1f, 0.9f, 0.5f);
-            Label(rt, blurb, new Vector2(0.5f, 0.32f), 18, TextAnchor.MiddleCenter, 1060);
+            var img = go.AddComponent<Image>(); img.color = new Color(0.1f, 0.12f, 0.2f, 0.85f);
+            var rt = img.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(0.5f, anchorY); rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = new Vector2(960, 115);
+            var btn = go.AddComponent<Button>(); btn.targetGraphic = img;
+            btn.onClick.AddListener(() => { Audio?.PlaySfx("ui_click"); onClick(); });
+
+            // Hero art on the left of the card.
+            if (portrait != null)
+            {
+                var pg = new GameObject("Portrait"); pg.transform.SetParent(rt, false);
+                var pimg = pg.AddComponent<Image>(); pimg.sprite = portrait; pimg.preserveAspect = true; pimg.raycastTarget = false;
+                var prt = pimg.rectTransform;
+                prt.anchorMin = new Vector2(0, 0.5f); prt.anchorMax = new Vector2(0, 0.5f); prt.pivot = new Vector2(0, 0.5f);
+                prt.anchoredPosition = new Vector2(18, 4); prt.sizeDelta = new Vector2(150, 150);
+            }
+
+            var nameT = Label(rt, name, new Vector2(0.5f, 0.74f), 30, TextAnchor.MiddleLeft, 760);
+            nameT.color = new Color(1f, 0.9f, 0.5f); nameT.fontStyle = FontStyle.Bold;
+            nameT.rectTransform.anchoredPosition = new Vector2(95, nameT.rectTransform.anchoredPosition.y);
+            var blurbT = Label(rt, blurb, new Vector2(0.5f, 0.3f), 18, TextAnchor.MiddleLeft, 740);
+            blurbT.rectTransform.anchoredPosition = new Vector2(105, blurbT.rectTransform.anchoredPosition.y);
             return img;
         }
 
