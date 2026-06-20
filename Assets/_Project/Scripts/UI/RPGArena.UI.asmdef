@@ -2,7 +2,8 @@
     "name": "RPGArena.UI",
     "rootNamespace": "RPGArena.UI",
     "references": [
-        "RPGArena.Core"
+        "RPGArena.Core",
+        "RPGArena.Gameplay"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
