@@ -3,7 +3,8 @@
     "rootNamespace": "RPGArena.UI",
     "references": [
         "RPGArena.Core",
-        "RPGArena.Gameplay"
+        "RPGArena.Gameplay",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

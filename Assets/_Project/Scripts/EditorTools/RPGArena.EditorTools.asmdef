@@ -3,7 +3,8 @@
     "rootNamespace": "RPGArena.EditorTools",
     "references": [
         "RPGArena.Core",
-        "RPGArena.Gameplay"
+        "RPGArena.Gameplay",
+        "RPGArena.UI"
     ],
     "includePlatforms": [
         "Editor"

@@ -189,6 +189,14 @@ namespace RPGArena.UI
         // ============================ UI construction ================================
         private void BuildUI()
         {
+            // Ensure an EventSystem exists so the buttons are clickable (new Input System).
+            if (FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+            {
+                var es = new GameObject("EventSystem");
+                es.AddComponent<UnityEngine.EventSystems.EventSystem>();
+                es.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+            }
+
             var canvasGo = new GameObject("BattleHUD_Canvas");
             canvasGo.transform.SetParent(transform, false);
             var canvas = canvasGo.AddComponent<Canvas>();
