@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using RPGArena.Core;
 using RPGArena.Core.Events;
 using RPGArena.Characters;
@@ -111,8 +113,44 @@ namespace RPGArena.EditorTools
             {
                 cam.transform.position = new Vector3(-0.2f, 1.5f, -10f);
                 var c = cam.GetComponent<Camera>();
-                if (c) { c.orthographic = true; c.orthographicSize = 4.7f; }
+                if (c)
+                {
+                    c.orthographic = true; c.orthographicSize = 4.7f; c.allowHDR = true;
+                    // GetUniversalAdditionalCameraData() adds the component if missing, so the
+                    // post-processing flag actually persists on the camera.
+                    c.GetUniversalAdditionalCameraData().renderPostProcessing = true;
+                }
             }
+
+            SetupPostFX();
+        }
+
+        // Global post-processing Volume (§10.6 / §12.5): Bloom for the lava/VFX glow, a warm
+        // colour grade, and a vignette to focus the stage.
+        private static void SetupPostFX()
+        {
+            const string dir = "Assets/_Project/Settings";
+            if (!AssetDatabase.IsValidFolder(dir)) AssetDatabase.CreateFolder("Assets/_Project", "Settings");
+            const string path = dir + "/BattlePostFX.asset";
+
+            var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(path);
+            if (profile == null) { profile = ScriptableObject.CreateInstance<VolumeProfile>(); AssetDatabase.CreateAsset(profile, path); }
+
+            if (!profile.TryGet<Bloom>(out var bloom)) bloom = profile.Add<Bloom>(true);
+            bloom.active = true; bloom.intensity.Override(0.9f); bloom.threshold.Override(0.85f);
+            bloom.scatter.Override(0.7f); bloom.tint.Override(new Color(1f, 0.75f, 0.5f));
+
+            if (!profile.TryGet<ColorAdjustments>(out var ca)) ca = profile.Add<ColorAdjustments>(true);
+            ca.active = true; ca.postExposure.Override(0.1f); ca.contrast.Override(14f); ca.saturation.Override(8f);
+
+            if (!profile.TryGet<Vignette>(out var vig)) vig = profile.Add<Vignette>(true);
+            vig.active = true; vig.intensity.Override(0.34f); vig.smoothness.Override(0.45f);
+
+            EditorUtility.SetDirty(profile);
+
+            DestroyIfExists("PostFXVolume");
+            var volGo = new GameObject("PostFXVolume");
+            var vol = volGo.AddComponent<Volume>(); vol.isGlobal = true; vol.priority = 1; vol.sharedProfile = profile;
         }
 
         // Creates (or reuses) a URP/Lit material asset so scene objects keep a valid reference.

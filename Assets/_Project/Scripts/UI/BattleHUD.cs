@@ -138,7 +138,7 @@ namespace RPGArena.UI
                 if (ab.cooldown > 0 && hero.IsOnCooldown(ab)) label += $"  (CD {hero.CooldownRemaining(ab)})";
                 if (IsDamaging(ab)) label += $"   {Mathf.RoundToInt(EstimateHit(hero, ab, ctx.boss) * 100)}%";
 
-                var btn = MakeButton(actionPanel, label, new Vector2(0, -y), affordable);
+                var btn = MakeButton(actionPanel, label, new Vector2(0, -y), affordable, ab.icon);
                 if (affordable)
                     btn.onClick.AddListener(() => controller.SubmitAction(ab, PickTarget(hero, ab)));
                 y += 30f;
@@ -273,16 +273,27 @@ namespace RPGArena.UI
             return go;
         }
 
-        private Button MakeButton(RectTransform parent, string label, Vector2 pos, bool enabled)
+        private Button MakeButton(RectTransform parent, string label, Vector2 pos, bool enabled, Sprite icon = null)
         {
             var go = new GameObject("Button"); go.transform.SetParent(parent, false);
             var img = go.AddComponent<Image>(); img.color = enabled ? new Color(0.16f, 0.3f, 0.5f, 0.9f) : new Color(0.25f, 0.25f, 0.25f, 0.7f);
             var rt = img.rectTransform; rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(0, 1);
             rt.anchoredPosition = pos; rt.sizeDelta = new Vector2(0, 28); rt.offsetMin = new Vector2(6, rt.offsetMin.y); rt.offsetMax = new Vector2(-6, rt.offsetMax.y);
             var btn = go.AddComponent<Button>(); btn.targetGraphic = img; btn.interactable = enabled;
-            var t = MakeText(rt, label, new Vector2(0, 0.5f), new Vector2(10, 0), new Vector2(340, 26), 15, TextAnchor.MiddleLeft);
+
+            float textLeft = 10f;
+            if (icon != null)
+            {
+                var ig = new GameObject("Icon"); ig.transform.SetParent(rt, false);
+                var iimg = ig.AddComponent<Image>(); iimg.sprite = icon; iimg.preserveAspect = true;
+                var irt = iimg.rectTransform; irt.anchorMin = new Vector2(0, 0.5f); irt.anchorMax = new Vector2(0, 0.5f); irt.pivot = new Vector2(0, 0.5f);
+                irt.anchoredPosition = new Vector2(4, 0); irt.sizeDelta = new Vector2(24, 24);
+                textLeft = 32f;
+            }
+
+            var t = MakeText(rt, label, new Vector2(0, 0.5f), new Vector2(textLeft, 0), new Vector2(340, 26), 15, TextAnchor.MiddleLeft);
             t.rectTransform.anchorMin = new Vector2(0, 0); t.rectTransform.anchorMax = new Vector2(1, 1);
-            t.rectTransform.offsetMin = new Vector2(10, 0); t.rectTransform.offsetMax = new Vector2(-6, 0);
+            t.rectTransform.offsetMin = new Vector2(textLeft, 0); t.rectTransform.offsetMax = new Vector2(-6, 0);
             return btn;
         }
 
