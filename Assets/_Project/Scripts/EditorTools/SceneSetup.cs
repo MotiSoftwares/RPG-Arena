@@ -65,6 +65,8 @@ namespace RPGArena.EditorTools
             var pauseGo = new GameObject("PauseMenu");
             pauseGo.AddComponent<PauseMenu>();
 
+            DressArena();
+
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             Debug.Log("[SceneSetup] BattleArena wired: BattleController + BattleHUD + PauseMenu + 9 channels + content.");
@@ -81,6 +83,51 @@ namespace RPGArena.EditorTools
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             Debug.Log("[SceneSetup] MainMenu wired with MainMenuUI (main menu + character select).");
+        }
+
+        // Lava-glow stage: a dark ground, a warm point light by the boss, framed camera + a
+        // moodier directional light. The orthographic 2.5D arena (§10.1).
+        private static void DressArena()
+        {
+            DestroyIfExists("Ground");
+            DestroyIfExists("LavaGlow");
+
+            var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            ground.name = "Ground";
+            ground.transform.position = new Vector3(0, 0, 1.5f);
+            ground.transform.localScale = new Vector3(4f, 1f, 1.6f);
+            ground.GetComponent<MeshRenderer>().sharedMaterial = Mat("Arena_Ground", new Color(0.12f, 0.08f, 0.07f));
+
+            var glow = new GameObject("LavaGlow");
+            glow.transform.position = new Vector3(4.5f, 1.2f, 0.6f);
+            var pl = glow.AddComponent<Light>();
+            pl.type = LightType.Point; pl.color = new Color(1f, 0.42f, 0.16f); pl.intensity = 5f; pl.range = 14f;
+
+            var sun = GameObject.Find("Directional Light");
+            if (sun) { var l = sun.GetComponent<Light>(); if (l) { l.intensity = 0.85f; l.color = new Color(0.7f, 0.75f, 1f); } }
+
+            var cam = GameObject.FindWithTag("MainCamera");
+            if (cam)
+            {
+                cam.transform.position = new Vector3(-0.2f, 1.5f, -10f);
+                var c = cam.GetComponent<Camera>();
+                if (c) { c.orthographic = true; c.orthographicSize = 4.7f; }
+            }
+        }
+
+        // Creates (or reuses) a URP/Lit material asset so scene objects keep a valid reference.
+        private static Material Mat(string name, Color color)
+        {
+            const string dir = "Assets/_Project/Art/Materials";
+            if (!AssetDatabase.IsValidFolder("Assets/_Project/Art")) AssetDatabase.CreateFolder("Assets/_Project", "Art");
+            if (!AssetDatabase.IsValidFolder(dir)) AssetDatabase.CreateFolder("Assets/_Project/Art", "Materials");
+            string path = $"{dir}/{name}.mat";
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null) { existing.SetColor("_BaseColor", color); return existing; }
+            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            mat.SetColor("_BaseColor", color);
+            AssetDatabase.CreateAsset(mat, path);
+            return mat;
         }
 
         private static T L<T>(string rel) where T : Object

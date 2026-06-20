@@ -149,6 +149,52 @@ namespace RPGArena.Combat
                 if (def != null) Context.heroes.Add(BattleSpawner.SpawnHero(def, balance, null)); // null brain => player
             }
             Context.boss = BattleSpawner.SpawnBoss(boss, balance);
+
+            PlaceCombatants();
+        }
+
+        // Stage the combatants on the orthographic arena: heroes on the left facing the boss
+        // on the right. Each gets a placeholder capsule "body" (swapped for real rigged models
+        // when those are imported) so the fight is visible. Colours distinguish the classes.
+        private static readonly Color[] HeroPalette =
+        {
+            new Color(0.85f, 0.3f, 0.3f), new Color(0.3f, 0.5f, 0.9f),
+            new Color(0.6f, 0.35f, 0.8f), new Color(0.35f, 0.75f, 0.4f)
+        };
+
+        private void PlaceCombatants()
+        {
+            for (int i = 0; i < Context.heroes.Count; i++)
+            {
+                var h = Context.heroes[i];
+                h.transform.position = new Vector3(-5f + i * 1.7f, 0f, i * 0.4f);
+                h.transform.rotation = Quaternion.Euler(0, 90, 0);
+                AttachBody(h.gameObject, HeroPalette[i % HeroPalette.Length], 1f, 1.9f);
+            }
+            if (Context.boss != null)
+            {
+                Context.boss.transform.position = new Vector3(4.5f, 0f, 0.6f);
+                Context.boss.transform.rotation = Quaternion.Euler(0, -90, 0);
+                AttachBody(Context.boss.gameObject, new Color(0.5f, 0.12f, 0.12f), 2.3f, 3.4f);
+            }
+        }
+
+        private static void AttachBody(GameObject host, Color color, float width, float height)
+        {
+            if (host.transform.Find("Body") != null) return;
+            var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            body.name = "Body";
+            var col = body.GetComponent<Collider>(); if (col) Destroy(col);
+            body.transform.SetParent(host.transform, false);
+            body.transform.localScale = new Vector3(width, height * 0.5f, width);
+            body.transform.localPosition = new Vector3(0, height * 0.5f, 0);
+            var shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader != null)
+            {
+                var mat = new Material(shader);
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+                body.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            }
         }
 
         // --- helpers ------------------------------------------------------------------
