@@ -67,6 +67,12 @@ namespace RPGArena.EditorTools
             var pauseGo = new GameObject("PauseMenu");
             pauseGo.AddComponent<PauseMenu>();
 
+            // Juice layer (presentation): floating numbers, hit-stop, shake, BREAK slow-mo.
+            DestroyIfExists("JuiceController");
+            var juiceGo = new GameObject("JuiceController");
+            var juice = juiceGo.AddComponent<JuiceController>();
+            juice.onDamageDealt = cDmg; juice.onStaggerBroken = cBreak; juice.onBossTelegraph = cTele;
+
             DressArena();
 
             EditorSceneManager.MarkSceneDirty(scene);
