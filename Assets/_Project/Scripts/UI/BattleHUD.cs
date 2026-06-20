@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using RPGArena.Core;
 using RPGArena.Characters;
 using RPGArena.Combat;
+using RPGArena.Combat.Status;
 using RPGArena.Combat.Events;
 
 namespace RPGArena.UI
@@ -33,6 +34,9 @@ namespace RPGArena.UI
         private RectTransform actionPanel;
         private GameObject resultPanel;
         private readonly List<string> logLines = new();
+        private RectTransform bossStatusRow;
+        private readonly List<RectTransform> heroStatusRows = new();
+        private readonly string[] statusSigs = new string[8];   // 0 = boss, 1.. = heroes
 
         private void Awake()
         {
@@ -115,6 +119,7 @@ namespace RPGArena.UI
                 bossHpText.text = $"HP {ctx.boss.currentHP}/{ctx.boss.stats.maxHP}";
                 if (bossWeakness != null)
                     bossWeakness.text = (weaknessSeen || ctx.weaknessRevealed) ? FormatWeakness(ctx.boss) : "";
+                RefreshStatusRow(bossStatusRow, ctx.boss, 0, true);
             }
             for (int i = 0; i < partyTexts.Count; i++)
             {
@@ -125,7 +130,64 @@ namespace RPGArena.UI
                 partyTexts[i].color = h.IsAlive ? (active ? Color.yellow : Color.white) : new Color(0.5f, 0.5f, 0.5f);
                 SetFill(partyHpFill[i], h.currentHP, h.stats.maxHP);
                 SetFill(partyMpFill[i], h.currentMP, h.stats.maxMP);
+                if (i < heroStatusRows.Count) RefreshStatusRow(heroStatusRows[i], h, i + 1, false);
             }
+        }
+
+        // --- status-effect badges -----------------------------------------------------
+        // Rebuild a combatant's status badge row only when its set of statuses changes (cheap sig).
+        private void RefreshStatusRow(RectTransform row, Entity e, int sigKey, bool big)
+        {
+            if (row == null || e == null) return;
+            string sig = StatusSig(e);
+            if (sig == statusSigs[sigKey]) return;
+            statusSigs[sigKey] = sig;
+            ClearChildren(row);
+            var fx = e.Status.Effects;
+            float step = big ? 62f : 46f;
+            float startX = big ? Mathf.Max(0f, (row.sizeDelta.x - fx.Count * step) / 2f) : 0f;
+            for (int i = 0; i < fx.Count; i++) MakeBadge(row, fx[i], startX + i * step, big);
+        }
+
+        private void MakeBadge(RectTransform parent, StatusEffectContainer.Active a, float x, bool big)
+        {
+            float w = big ? 58f : 42f, h = big ? 22f : 15f;
+            var go = new GameObject("Badge"); go.transform.SetParent(parent, false);
+            var img = go.AddComponent<Image>(); img.color = KindColor(a.def.kind);
+            var rt = img.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f); rt.pivot = new Vector2(0f, 0.5f);
+            rt.anchoredPosition = new Vector2(x, 0f); rt.sizeDelta = new Vector2(w, h);
+            string lbl = Abbrev(a.def.displayName) + (a.stacks > 1 ? a.stacks.ToString() : "") + (a.remaining < 90 ? " " + a.remaining : "");
+            var t = MakeText(rt, lbl, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(w, h), big ? 12 : 10, TextAnchor.MiddleCenter);
+            t.color = Color.white;
+        }
+
+        private static string Abbrev(string name) =>
+            string.IsNullOrEmpty(name) ? "?" : name.Substring(0, Mathf.Min(3, name.Length)).ToUpper();
+
+        // Colour-codes the badge by kind (paired with the abbreviation for colourblind safety, §9.8).
+        private static Color KindColor(StatusKind k) =>
+            k == StatusKind.Buff ? new Color(0.24f, 0.66f, 0.34f, 0.92f) :
+            k == StatusKind.Debuff ? new Color(0.8f, 0.3f, 0.3f, 0.92f) :
+            k == StatusKind.DoT ? new Color(0.9f, 0.55f, 0.2f, 0.92f) :
+            k == StatusKind.Control ? new Color(0.55f, 0.35f, 0.85f, 0.92f) :
+            new Color(0.28f, 0.6f, 0.85f, 0.92f);   // Flag
+
+        private string StatusSig(Entity e)
+        {
+            var sb = new System.Text.StringBuilder();
+            var fx = e.Status.Effects;
+            for (int i = 0; i < fx.Count; i++)
+                sb.Append(fx[i].def.displayName).Append(fx[i].stacks).Append('x').Append(fx[i].remaining).Append('|');
+            return sb.ToString();
+        }
+
+        private RectTransform MakeRow(RectTransform parent, Vector2 anchor, Vector2 pos, Vector2 size)
+        {
+            var go = new GameObject("StatusRow"); go.transform.SetParent(parent, false);
+            var rt = go.AddComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = anchor; rt.pivot = anchor; rt.anchoredPosition = pos; rt.sizeDelta = size;
+            return rt;
         }
 
         private void BuildActionMenu(Entity hero)
@@ -238,15 +300,18 @@ namespace RPGArena.UI
             telegraph = MakeText(root, "", new Vector2(0.5f, 1f), new Vector2(0, -150), new Vector2(900, 40), 24, TextAnchor.MiddleCenter);
             telegraph.color = new Color(1f, 0.5f, 0.1f);
             telegraph.gameObject.SetActive(false);
+            // Boss status-effect badges (so Oiled/Wet/Marked/Frozen are visible for combos, §9.4).
+            bossStatusRow = MakeRow(root, new Vector2(0.5f, 1f), new Vector2(0, -176), new Vector2(820, 26));
 
             // Party panel (bottom-left): up to 3 hero strips.
             for (int i = 0; i < 3; i++)
             {
-                var strip = MakePanel(root, new Vector2(0f, 0f), new Vector2(20, 30 + i * 84), new Vector2(360, 78), new Color(0.05f, 0.06f, 0.1f, 0.62f));
+                var strip = MakePanel(root, new Vector2(0f, 0f), new Vector2(20, 36 + i * 92), new Vector2(360, 86), new Color(0.05f, 0.06f, 0.1f, 0.62f));
                 var st = strip.GetComponent<RectTransform>();
                 partyTexts.Add(MakeText(st, "Hero", new Vector2(0f, 1f), new Vector2(110, -4), new Vector2(240, 22), 18, TextAnchor.MiddleLeft));
                 partyHpFill.Add(MakeBar(st, new Vector2(0f, 1f), new Vector2(118, -30), new Vector2(230, 16), new Color(0.3f, 0.8f, 0.3f)));
                 partyMpFill.Add(MakeBar(st, new Vector2(0f, 1f), new Vector2(118, -52), new Vector2(230, 12), new Color(0.3f, 0.5f, 0.9f)));
+                heroStatusRows.Add(MakeRow(st, new Vector2(0f, 0f), new Vector2(116, 6), new Vector2(240, 16)));
             }
 
             // Action menu (bottom-right).
