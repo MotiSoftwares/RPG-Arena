@@ -53,6 +53,23 @@ namespace RPGArena.Combat
         private IEnumerator RunBattle()
         {
             BuildContext();
+
+            // Narrative intro (Ink): if a NarrativeRunner is present, wait for the player's
+            // pre-fight choice, then let it alter the opening (§13.2). Found by interface so this
+            // assembly never depends on the Narrative assembly.
+            var intro = FindIntro();
+            if (intro != null)
+            {
+                while (!intro.IsIntroDone) yield return null;
+                if (intro.StartTelegraph && Context.boss != null)
+                    Context.boss.aiCycleIndex = 2;          // open on Charging Breath (riskier, faster)
+                if (intro.RevealWeak)
+                {
+                    Context.weaknessRevealed = true;        // HUD reveals weak/absorb elements now
+                    Context.Log("You studied the Dragon: weak to ICE, absorbs FIRE.");
+                }
+            }
+
             Context.Log($"=== {boss.bossName} appears! ===");
             onBattleStarted?.Raise();
             yield return Wait();
@@ -119,8 +136,21 @@ namespace RPGArena.Combat
                 }
             }
 
-            if (Result == BattleManager.Outcome.Victory) { Context.Log($"=== VICTORY! {boss.bossName} is slain. ==="); onBattleWon?.Raise(); }
+            bool won = Result == BattleManager.Outcome.Victory;
+            if (won) { Context.Log($"=== VICTORY! {boss.bossName} is slain. ==="); onBattleWon?.Raise(); }
             else { Context.Log("=== DEFEAT. The party has fallen. ==="); onBattleLost?.Raise(); }
+
+            // Closing narrative beat, referencing what actually happened.
+            int heroesLost = Context.heroes.FindAll(h => !h.IsAlive).Count;
+            intro?.PlayOutro(won, Context.bossEverBroken, heroesLost);
+        }
+
+        // Find a narrative intro by interface (no compile-time dependency on the Narrative asm).
+        private IBattleIntro FindIntro()
+        {
+            foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+                if (mb is IBattleIntro bi) return bi;
+            return null;
         }
 
         // --- setup --------------------------------------------------------------------

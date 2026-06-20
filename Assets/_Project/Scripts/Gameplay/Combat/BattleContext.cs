@@ -32,6 +32,11 @@ namespace RPGArena.Combat
         // (weakness/crit) and to check for deaths. Cleared before each action resolves.
         public readonly List<DamageResult> lastActionResults = new();
 
+        // Narrative/HUD hints (§13): set by the Ink "study" choice or the first weakness hit so
+        // the HUD can reveal the boss's weakness; bossEverBroken feeds the outro text.
+        public bool weaknessRevealed;
+        public bool bossEverBroken;
+
         // Plain-English combat log: doubles as the headless trace and the combat-log UI feed.
         public readonly List<string> log = new();
         public bool echoToConsole = true;

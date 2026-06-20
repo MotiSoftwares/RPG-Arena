@@ -11,6 +11,7 @@ using RPGArena.Characters;
 using RPGArena.Combat;
 using RPGArena.Combat.Events;
 using RPGArena.UI;
+using RPGArena.Narrative;
 
 namespace RPGArena.EditorTools
 {
@@ -79,6 +80,16 @@ namespace RPGArena.EditorTools
             var battleAudio = audioGo.AddComponent<BattleAudio>();
             battleAudio.onDamageDealt = cDmg; battleAudio.onStaggerBroken = cBreak; battleAudio.onBossTelegraph = cTele;
             battleAudio.onBattleStarted = cStarted; battleAudio.onBattleWon = cWon; battleAudio.onBattleLost = cLost;
+
+            // Narrative (Ink): the pre-fight intro whose choice alters the opening (§13). The Ink
+            // package compiles the .ink to a .json TextAsset; if it isn't compiled yet the runner
+            // simply skips the intro (graceful) and a re-run wires it once the JSON exists.
+            DestroyIfExists("Narrative");
+            var narrGo = new GameObject("Narrative");
+            var narr = narrGo.AddComponent<NarrativeRunner>();
+            narr.introJson = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Ink/dragon_intro.json");
+            narr.outroJson = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Ink/dragon_outro.json");
+            if (narr.introJson == null) Debug.LogWarning("[SceneSetup] dragon_intro.json not found yet — re-run after Ink compiles.");
 
             DressArena();
 

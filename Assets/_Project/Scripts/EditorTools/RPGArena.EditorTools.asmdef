@@ -6,6 +6,7 @@
         "RPGArena.Gameplay",
         "RPGArena.UI",
         "RPGArena.Audio",
+        "RPGArena.Narrative",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime"
     ],

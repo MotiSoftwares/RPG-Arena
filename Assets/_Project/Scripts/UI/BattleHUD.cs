@@ -24,8 +24,9 @@ namespace RPGArena.UI
         public Core.Events.VoidChannel onBattleWon, onBattleLost;
 
         private Font font;
-        private Text bossName, bossHpText, log, telegraph, resultText;
+        private Text bossName, bossHpText, log, telegraph, resultText, bossWeakness;
         private Image bossHpFill, bossStaggerFill;
+        private bool weaknessSeen;          // a weakness hit has landed (or the player studied)
         private readonly List<Text> partyTexts = new();
         private readonly List<Image> partyHpFill = new();
         private readonly List<Image> partyMpFill = new();
@@ -86,6 +87,7 @@ namespace RPGArena.UI
             else if (r.absorbed) AddLog($"{who} ABSORBED {r.amount} (healed!)");
             else if (r.isHeal) AddLog($"{who} +{r.amount} HP");
             else AddLog($"{who} -{r.amount}{(r.reaction == ElementReaction.Weak ? " WEAK!" : "")}{(r.crit ? " CRIT" : "")}");
+            if (r.reaction == ElementReaction.Weak) weaknessSeen = true;   // reveal it in the HUD
         }
 
         private void OnBreak(Entity boss) => AddLog($">>> BREAK! {boss.displayName} is staggered! <<<");
@@ -111,6 +113,8 @@ namespace RPGArena.UI
                 SetFill(bossHpFill, ctx.boss.currentHP, ctx.boss.stats.maxHP);
                 SetFill(bossStaggerFill, ctx.boss.isStaggered ? ctx.boss.staggerThreshold : ctx.boss.staggerMeter, ctx.boss.staggerThreshold);
                 bossHpText.text = $"HP {ctx.boss.currentHP}/{ctx.boss.stats.maxHP}";
+                if (bossWeakness != null)
+                    bossWeakness.text = (weaknessSeen || ctx.weaknessRevealed) ? FormatWeakness(ctx.boss) : "";
             }
             for (int i = 0; i < partyTexts.Count; i++)
             {
@@ -186,6 +190,21 @@ namespace RPGArena.UI
             if (img) img.fillAmount = max > 0 ? Mathf.Clamp01(cur / max) : 0f;
         }
 
+        // Build the "Weak: Ice • Absorbs: Fire" hint from the boss's element profile.
+        private static string FormatWeakness(Entity boss)
+        {
+            if (boss == null || boss.elementProfile == null) return "";
+            string weak = Join(boss.elementProfile.weakTo);
+            string absorb = Join(boss.elementProfile.absorbs);
+            string s = "";
+            if (weak.Length > 0) s += $"Weak: {weak}";
+            if (absorb.Length > 0) s += (s.Length > 0 ? "     " : "") + $"Absorbs: {absorb}";
+            return s;
+        }
+
+        private static string Join(ElementType[] arr) =>
+            arr == null || arr.Length == 0 ? "" : string.Join("/", arr);
+
         // ============================ UI construction ================================
         private void BuildUI()
         {
@@ -212,6 +231,8 @@ namespace RPGArena.UI
             bossHpFill = MakeBar(root, new Vector2(0.5f, 1f), new Vector2(0, -78), new Vector2(700, 26), new Color(0.8f, 0.2f, 0.2f));
             bossHpText = MakeText(root, "HP", new Vector2(0.5f, 1f), new Vector2(0, -78), new Vector2(700, 26), 16, TextAnchor.MiddleCenter);
             bossStaggerFill = MakeBar(root, new Vector2(0.5f, 1f), new Vector2(0, -106), new Vector2(700, 12), new Color(0.95f, 0.8f, 0.2f));
+            bossWeakness = MakeText(root, "", new Vector2(0.5f, 1f), new Vector2(0, -124), new Vector2(700, 22), 16, TextAnchor.MiddleCenter);
+            bossWeakness.color = new Color(0.4f, 0.9f, 1f);
             telegraph = MakeText(root, "", new Vector2(0.5f, 1f), new Vector2(0, -150), new Vector2(900, 40), 24, TextAnchor.MiddleCenter);
             telegraph.color = new Color(1f, 0.5f, 0.1f);
             telegraph.gameObject.SetActive(false);

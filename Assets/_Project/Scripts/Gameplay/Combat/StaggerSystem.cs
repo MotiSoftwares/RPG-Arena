@@ -23,6 +23,7 @@ namespace RPGArena.Combat
             boss.isStaggered = true;
             boss.staggeredTurnsRemaining = ctx.BossStaggeredTurns;
             boss.staggerMeter = boss.staggerThreshold;
+            ctx.bossEverBroken = true;      // remembered for the narrative outro
             ctx.Log($"    *** BREAK! {boss.displayName} is staggered for {boss.staggeredTurnsRemaining} turn(s) ***");
 
             // The signature payoff: breaking the boss mid-charge cancels its telegraphed
