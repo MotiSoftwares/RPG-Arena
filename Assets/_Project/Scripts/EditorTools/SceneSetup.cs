@@ -46,6 +46,7 @@ namespace RPGArena.EditorTools
 
             DestroyIfExists("BattleSystem");
             DestroyIfExists("BattleHUD");
+            DestroyIfExists("PauseMenu");
 
             var sysGo = new GameObject("BattleSystem");
             var ctrl = sysGo.AddComponent<BattleController>();
@@ -61,9 +62,25 @@ namespace RPGArena.EditorTools
             hud.onDamageDealt = cDmg; hud.onBossTelegraph = cTele;
             hud.onBattleWon = cWon; hud.onBattleLost = cLost;
 
+            var pauseGo = new GameObject("PauseMenu");
+            pauseGo.AddComponent<PauseMenu>();
+
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
-            Debug.Log("[SceneSetup] BattleArena wired: BattleController + BattleHUD + 9 channels + content.");
+            Debug.Log("[SceneSetup] BattleArena wired: BattleController + BattleHUD + PauseMenu + 9 channels + content.");
+        }
+
+        [MenuItem("RPGArena/Setup Menu Scene")]
+        public static void SetupMenuScene()
+        {
+            var scene = EditorSceneManager.OpenScene("Assets/_Project/Scenes/MainMenu.unity", OpenSceneMode.Single);
+            DestroyIfExists("MenuCanvas");   // remove the M0 placeholder menu
+            DestroyIfExists("MainMenu");
+            var go = new GameObject("MainMenu");
+            go.AddComponent<RPGArena.UI.MainMenuUI>();
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log("[SceneSetup] MainMenu wired with MainMenuUI (main menu + character select).");
         }
 
         private static T L<T>(string rel) where T : Object

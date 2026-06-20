@@ -119,6 +119,50 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &142307021
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 142307023}
+  - component: {fileID: 142307022}
+  m_Layer: 0
+  m_Name: PauseMenu
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &142307022
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 142307021}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02d30ae303a0f8d458ca1ca2339c6837, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.PauseMenu
+--- !u!4 &142307023
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 142307021}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &938180031
 GameObject:
   m_ObjectHideFlags: 0
@@ -246,71 +290,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1023125613
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1023125615}
-  - component: {fileID: 1023125614}
-  m_Layer: 0
-  m_Name: BattleSystem
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1023125614
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1023125613}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7297477348aa2fe4db22679ec6360749, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.BattleController
-  balance: {fileID: 11400000, guid: a85cd1224894331458e2db94cbf7e892, type: 2}
-  boss: {fileID: 11400000, guid: 2cfb9bc596ada9f4c9c9e05b480f95a7, type: 2}
-  roster:
-  - {fileID: 11400000, guid: 6796e50d3a053f3459f97684c645b9ad, type: 2}
-  - {fileID: 11400000, guid: 12de23190c2ec5b4b8ad8556206be63e, type: 2}
-  - {fileID: 11400000, guid: accaf9eda403b2745b817604be4faf9a, type: 2}
-  - {fileID: 11400000, guid: fef4f82286727694ead3ec63f29c9844, type: 2}
-  defaultParty:
-  - Warrior
-  - Mage
-  - Thief
-  onBattleStarted: {fileID: 11400000, guid: 90c2fafe43967714391b7e5fad4e10db, type: 2}
-  onBattleWon: {fileID: 11400000, guid: 7755cb59b38f1884b8840356c088cee5, type: 2}
-  onBattleLost: {fileID: 11400000, guid: 657f440bf23332a44b9d34be3cca5dbe, type: 2}
-  onTurnStarted: {fileID: 11400000, guid: f1037ec492552084588d630a06c461d1, type: 2}
-  onTurnEnded: {fileID: 11400000, guid: 8ce12d69169611e4ea6b1f59a8ef27da, type: 2}
-  onEntityDied: {fileID: 11400000, guid: 223b9d66e21970a4688959bac1aa2718, type: 2}
-  onStaggerBroken: {fileID: 11400000, guid: 8a35baa42a6697d4abe004e74e987e4e, type: 2}
-  onDamageDealt: {fileID: 11400000, guid: 0101cc0a17792dd41bbcc3f041516552, type: 2}
-  onBossTelegraph: {fileID: 11400000, guid: 733f7f6ed4ac5cd45bf63f9f8cc43399, type: 2}
-  actionDelay: 0.55
---- !u!4 &1023125615
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1023125613}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1208433520
 GameObject:
   m_ObjectHideFlags: 0
@@ -394,7 +373,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &2025745223
+--- !u!1 &1929617439
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -402,8 +381,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2025745225}
-  - component: {fileID: 2025745224}
+  - component: {fileID: 1929617441}
+  - component: {fileID: 1929617440}
   m_Layer: 0
   m_Name: BattleHUD
   m_TagString: Untagged
@@ -411,19 +390,19 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &2025745224
+--- !u!114 &1929617440
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2025745223}
+  m_GameObject: {fileID: 1929617439}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bf26e3096267afc4ba0e73b179a5eccd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.BattleHUD
-  controller: {fileID: 1023125614}
+  controller: {fileID: 1978482912}
   onTurnStarted: {fileID: 11400000, guid: f1037ec492552084588d630a06c461d1, type: 2}
   onStaggerBroken: {fileID: 11400000, guid: 8a35baa42a6697d4abe004e74e987e4e, type: 2}
   onEntityDied: {fileID: 11400000, guid: 223b9d66e21970a4688959bac1aa2718, type: 2}
@@ -431,13 +410,78 @@ MonoBehaviour:
   onBossTelegraph: {fileID: 11400000, guid: 733f7f6ed4ac5cd45bf63f9f8cc43399, type: 2}
   onBattleWon: {fileID: 11400000, guid: 7755cb59b38f1884b8840356c088cee5, type: 2}
   onBattleLost: {fileID: 11400000, guid: 657f440bf23332a44b9d34be3cca5dbe, type: 2}
---- !u!4 &2025745225
+--- !u!4 &1929617441
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2025745223}
+  m_GameObject: {fileID: 1929617439}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1978482911
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1978482913}
+  - component: {fileID: 1978482912}
+  m_Layer: 0
+  m_Name: BattleSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1978482912
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1978482911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7297477348aa2fe4db22679ec6360749, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.BattleController
+  balance: {fileID: 11400000, guid: a85cd1224894331458e2db94cbf7e892, type: 2}
+  boss: {fileID: 11400000, guid: 2cfb9bc596ada9f4c9c9e05b480f95a7, type: 2}
+  roster:
+  - {fileID: 11400000, guid: 6796e50d3a053f3459f97684c645b9ad, type: 2}
+  - {fileID: 11400000, guid: 12de23190c2ec5b4b8ad8556206be63e, type: 2}
+  - {fileID: 11400000, guid: accaf9eda403b2745b817604be4faf9a, type: 2}
+  - {fileID: 11400000, guid: fef4f82286727694ead3ec63f29c9844, type: 2}
+  defaultParty:
+  - Warrior
+  - Mage
+  - Thief
+  onBattleStarted: {fileID: 11400000, guid: 90c2fafe43967714391b7e5fad4e10db, type: 2}
+  onBattleWon: {fileID: 11400000, guid: 7755cb59b38f1884b8840356c088cee5, type: 2}
+  onBattleLost: {fileID: 11400000, guid: 657f440bf23332a44b9d34be3cca5dbe, type: 2}
+  onTurnStarted: {fileID: 11400000, guid: f1037ec492552084588d630a06c461d1, type: 2}
+  onTurnEnded: {fileID: 11400000, guid: 8ce12d69169611e4ea6b1f59a8ef27da, type: 2}
+  onEntityDied: {fileID: 11400000, guid: 223b9d66e21970a4688959bac1aa2718, type: 2}
+  onStaggerBroken: {fileID: 11400000, guid: 8a35baa42a6697d4abe004e74e987e4e, type: 2}
+  onDamageDealt: {fileID: 11400000, guid: 0101cc0a17792dd41bbcc3f041516552, type: 2}
+  onBossTelegraph: {fileID: 11400000, guid: 733f7f6ed4ac5cd45bf63f9f8cc43399, type: 2}
+  actionDelay: 0.55
+--- !u!4 &1978482913
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1978482911}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -452,5 +496,6 @@ SceneRoots:
   m_Roots:
   - {fileID: 1208433522}
   - {fileID: 938180034}
-  - {fileID: 1023125615}
-  - {fileID: 2025745225}
+  - {fileID: 1978482913}
+  - {fileID: 1929617441}
+  - {fileID: 142307023}
