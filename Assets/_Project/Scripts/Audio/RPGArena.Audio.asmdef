@@ -1,0 +1,16 @@
+{
+    "name": "RPGArena.Audio",
+    "rootNamespace": "RPGArena.Audio",
+    "references": [
+        "RPGArena.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

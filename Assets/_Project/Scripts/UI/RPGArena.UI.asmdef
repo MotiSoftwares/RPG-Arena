@@ -1,0 +1,16 @@
+{
+    "name": "RPGArena.UI",
+    "rootNamespace": "RPGArena.UI",
+    "references": [
+        "RPGArena.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

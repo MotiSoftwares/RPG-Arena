@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e5c14b215dbf4947ba846d46356c09f, type: 3}
+  m_Name: BalanceConfig
+  m_EditorClassIdentifier: RPGArena.Core::RPGArena.Core.BalanceConfig
+  weakMult: 1.5
+  resistMult: 0.5
+  defenseK: 100
+  staggerDamageMult: 1.85
+  staggerBuildNormalHit: 8
+  staggerBuildWeaknessHit: 20
+  staggerBuildBreakSkill: 30
+  maxExtraTurnsPerEntityPerRound: 1
+  k1: 2
+  k2: 2.2
+  k3: 0.5
+  k4: 1
+  k5: 1
+  k6: 1
+  k7: 0.5
+  k8: 0.4
+  damageVarianceMin: 0.85
+  damageVarianceMax: 1.15
+  reliableHitBase: 0.99
+  standardHitBase: 0.9
+  riskyHitBase: 0.84
+  hitFloor: 0.5
+  hitCeiling: 0.99
+  missStreakCap: 2
