@@ -1,0 +1,52 @@
+using System.Collections.Generic;
+using UnityEngine;
+using RPGArena.Characters;
+
+namespace RPGArena.Combat.AI
+{
+    // The Black Mage's brain (§7.3): high-variance chaos that punishes a static plan. It favours
+    // party-wide DEBUFFS (a curse that blinds, a weakening hex) and occasional Dark nukes, with a
+    // small chance of a devastating blast in phase 2 ("Reality Warp"). It rewards cleansing/
+    // accuracy buffs (Bless, Eye of Amazon) and the Archer's can't-miss shots. All randomness
+    // reads ctx.rng so a battle stays reproducible.
+    [CreateAssetMenu(menuName = "RPGArena/AI/Chaotic AI", fileName = "ChaoticAI")]
+    public class ChaoticAI : AIBehavior
+    {
+        [Header("Moves (assign the Black Mage's abilities)")]
+        public Ability darkBolt;     // single-target Dark nuke
+        public Ability darkNova;     // AoE Dark on the whole party
+        public Ability curse;        // AllEnemies debuff (Blind)
+        public Ability weakenHex;    // single-target debuff (Weaken)
+        public Ability oblivion;     // rare, powerful phase-2 nuke
+
+        [Header("Tuning")]
+        [Range(0f, 1f)] public float phase2HpFraction = 0.5f;
+
+        public override Ability DecideAction(BattleContext ctx, Entity self,
+                                             IReadOnlyList<Entity> opponents, out Entity target)
+        {
+            target = null;
+            var alive = TargetingSystem.AllAlive(opponents);
+            if (alive.Count == 0) return null;
+
+            bool phase2 = self.currentHP <= self.stats.maxHP * phase2HpFraction;
+            double r = ctx.rng.NextDouble();
+
+            // Phase 2 "Reality Warp": a chance to unleash the big nuke on a random hero.
+            if (phase2 && oblivion != null && r < 0.22)
+            {
+                target = TargetingSystem.RandomAlive(opponents, ctx.rng);
+                return oblivion;
+            }
+            // Otherwise a high-variance spread: nuke / curse / nova / hex.
+            if (darkBolt != null && r < 0.32) { target = TargetingSystem.RandomAlive(opponents, ctx.rng); return darkBolt; }
+            if (curse != null && r < 0.52) return curse;            // AllEnemies => resolves itself
+            if (darkNova != null && r < 0.72) return darkNova;      // AllEnemies
+            if (weakenHex != null && r < 0.86) { target = TargetingSystem.RandomAlive(opponents, ctx.rng); return weakenHex; }
+
+            // Fallback: always a valid action so the loop can't deadlock.
+            target = TargetingSystem.RandomAlive(opponents, ctx.rng);
+            return darkBolt != null ? darkBolt : darkNova;
+        }
+    }
+}

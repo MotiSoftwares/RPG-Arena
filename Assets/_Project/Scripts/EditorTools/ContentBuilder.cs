@@ -118,12 +118,57 @@ namespace RPGArena.EditorTools
             dragon.phases = new List<BossPhase> { new BossPhase { name = "Enrage", hpThresholdPercent = 0.4f, enrage = true, attackMultiplier = 1.3f } };
             Save(dragon, $"{Root}/Bosses/Dragon.asset");
 
+            // --- THE BLACK MAGE (§7.3) ------------------------------------------------
+            // Weak to Holy/Light (the Cleric school punishes it), resists Dark. A chaotic caster.
+            var blackMageProfile = Profile("BlackMage_Profile", weak: new[] { ElementType.Holy }, resist: new[] { ElementType.Dark });
+            var bmDarkBolt = Ab("BlackMage_DarkBolt", "Dark Bolt", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Dark, 1.4f, magic: true, tier: HitTier.Standard);
+            var bmDarkNova = Ab("BlackMage_DarkNova", "Dark Nova", EffectType.Attack, TargetRule.AllEnemies, ElementType.Dark, 0.85f, magic: true, auto: true);
+            var bmCurse = Ab("BlackMage_Curse", "Curse", EffectType.Debuff, TargetRule.AllEnemies, ElementType.Dark, 0f, statuses: One(blind));
+            var bmHex = Ab("BlackMage_Hex", "Weakening Hex", EffectType.Debuff, TargetRule.SingleEnemy, ElementType.Dark, 0f, statuses: One(weaken));
+            var bmOblivion = Ab("BlackMage_Oblivion", "Oblivion", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Dark, 2.2f, magic: true, tier: HitTier.Risky, tags: Fin);
+
+            var blackMageAI = ScriptableObject.CreateInstance<ChaoticAI>();
+            blackMageAI.darkBolt = bmDarkBolt; blackMageAI.darkNova = bmDarkNova; blackMageAI.curse = bmCurse;
+            blackMageAI.weakenHex = bmHex; blackMageAI.oblivion = bmOblivion;
+            Save(blackMageAI, $"{Root}/AI/ChaoticAI.asset");
+
+            var blackMage = ScriptableObject.CreateInstance<BossDefinition>();
+            blackMage.bossName = "The Black Mage"; blackMage.primaryStat = PrimaryStat.INT;
+            blackMage.elementProfile = blackMageProfile; blackMage.aiBehavior = blackMageAI;
+            blackMage.baseStats = new StatBlock { INT = 30, maxHP = 850, maxMP = 999, baseMagicAttack = 24, baseDefense = 10, baseSpeed = 12, baseAccuracy = 14 };
+            blackMage.abilities = new List<Ability> { bmDarkBolt, bmDarkNova, bmCurse, bmHex, bmOblivion };
+            blackMage.staggerThreshold = 110f; blackMage.staggeredTurns = 1;
+            blackMage.phases = new List<BossPhase> { new BossPhase { name = "Reality Warp", hpThresholdPercent = 0.5f, enrage = true, attackMultiplier = 1.25f } };
+            Save(blackMage, $"{Root}/Bosses/BlackMage.asset");
+
+            // --- THE EVIL WARRIOR (§7.4) ----------------------------------------------
+            // Heavily armoured: resists Physical, weak to Lightning (armour conducts). A focused
+            // aggressor that executes the weakest hero.
+            var evilProfile = Profile("EvilWarrior_Profile", weak: new[] { ElementType.Lightning }, resist: new[] { ElementType.Physical });
+            var ewCleave = Ab("EvilWarrior_Cleave", "Dark Cleave", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 1.4f, tier: HitTier.Standard);
+            var ewExecute = Ab("EvilWarrior_Execute", "Execute", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 2.4f, tier: HitTier.Risky, tags: Fin);
+            var ewRage = Ab("EvilWarrior_DarkRage", "Dark Rage", EffectType.Buff, TargetRule.Self, ElementType.Physical, 0f, statuses: One(rage));
+            var ewFlurry = Ab("EvilWarrior_Flurry", "Blade Flurry", EffectType.MultiHit, TargetRule.SingleEnemy, ElementType.Physical, 0.65f, hits: 3, auto: true);
+
+            var evilAI = ScriptableObject.CreateInstance<AggressiveAI>();
+            evilAI.strike = ewCleave; evilAI.execute = ewExecute; evilAI.selfRage = ewRage; evilAI.flurry = ewFlurry;
+            Save(evilAI, $"{Root}/AI/AggressiveAI.asset");
+
+            var evilWarrior = ScriptableObject.CreateInstance<BossDefinition>();
+            evilWarrior.bossName = "The Evil Warrior"; evilWarrior.primaryStat = PrimaryStat.STR;
+            evilWarrior.elementProfile = evilProfile; evilWarrior.aiBehavior = evilAI;
+            evilWarrior.baseStats = new StatBlock { STR = 28, maxHP = 950, maxMP = 200, baseAttack = 30, baseDefense = 16, baseSpeed = 13, baseAccuracy = 12 };
+            evilWarrior.abilities = new List<Ability> { ewCleave, ewExecute, ewRage, ewFlurry };
+            evilWarrior.staggerThreshold = 110f; evilWarrior.staggeredTurns = 1;
+            evilWarrior.phases = new List<BossPhase> { new BossPhase { name = "Last Stand", hpThresholdPercent = 0.4f, enrage = true, attackMultiplier = 1.35f } };
+            Save(evilWarrior, $"{Root}/Bosses/EvilWarrior.asset");
+
             // Suppress "unused" warnings for statuses authored for later bosses/heroes.
-            _ = new Object[] { poison, weaken, warrior, mage, thief, archer };
+            _ = new Object[] { poison, warrior, mage, thief, archer };
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[ContentBuilder] Built all content: 4 classes + Dragon + statuses/profiles.");
+            Debug.Log("[ContentBuilder] Built all content: 4 classes + 3 bosses (Dragon/Black Mage/Evil Warrior) + AI + statuses/profiles.");
         }
 
         // --- builders -----------------------------------------------------------------

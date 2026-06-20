@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.Ability
   displayName: Shadow Mark
   description: 
-  icon: {fileID: 21300000, guid: 221661637e7d5124782d81bbde994cb6, type: 3}
+  icon: {fileID: 0}
   effectType: 5
   targetRule: 0
   element: 0

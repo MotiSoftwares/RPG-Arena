@@ -50,7 +50,9 @@ namespace RPGArena.EditorTools
             {
                 var def = AssetDatabase.LoadAssetAtPath<BossDefinition>(AssetDatabase.GUIDToAssetPath(guid));
                 if (def == null) continue;
-                var key = def.bossName.Split(' ').Last();
+                // Map the display name to the sprite file: "The Black Mage" -> "BlackMage",
+                // "The Evil Warrior" -> "EvilWarrior", "The Dragon" -> "Dragon".
+                var key = def.bossName.Replace("The ", "").Replace(" ", "");
                 var sprite = LoadSprite(key);
                 if (sprite != null) { def.stageSprite = sprite; def.portrait = sprite; EditorUtility.SetDirty(def); assigned++; }
             }

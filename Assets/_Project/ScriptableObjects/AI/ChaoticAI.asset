@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a35b21220aeb8d142a98d2297ccda41f, type: 3}
+  m_Name: ChaoticAI
+  m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.AI.ChaoticAI
+  darkBolt: {fileID: 11400000, guid: 3e07e63486122bb45b4a35574eb34cde, type: 2}
+  darkNova: {fileID: 11400000, guid: 4f051f98b8e7f604ba3a2e44aca35daf, type: 2}
+  curse: {fileID: 11400000, guid: 242725b83880dc24481591f363b0f6a3, type: 2}
+  weakenHex: {fileID: 11400000, guid: 112d0d235cb2304429065da11b7d8fb9, type: 2}
+  oblivion: {fileID: 11400000, guid: 7213f9632f6fe9a4fba2eab0eae28f9e, type: 2}
+  phase2HpFraction: 0.5
