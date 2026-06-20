@@ -4,6 +4,8 @@
 
 An affectionate homage to MapleStory's four original jobs (Warrior / Mage / Thief / Archer) and its iconic villains, distilled into short, replayable, puzzle-like duels in the spirit of *Octopath Traveler*'s Break system and *Final Fantasy XIII*'s stagger.
 
+![A party of Warrior, Mage, and Thief faces the Dragon on the lava arena](docs/screenshot-battle.png)
+
 ---
 
 ## How to run
