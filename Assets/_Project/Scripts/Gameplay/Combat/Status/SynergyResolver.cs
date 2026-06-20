@@ -45,6 +45,13 @@ namespace RPGArena.Combat.Status
                 outcome.note = "Wet+Ice (Freeze)";
             }
 
+            // Frozen + Physical => SHATTER: a big bonus, completing Wet->Ice(freeze)->smash (§5.8/§7.2).
+            if (targetStatus.Has(StatusFlag.Frozen) && element == ElementType.Physical)
+            {
+                outcome.damageMultiplier *= 1.6f;
+                outcome.note = string.IsNullOrEmpty(outcome.note) ? "SHATTER!" : outcome.note + " +SHATTER!";
+            }
+
             // Marked => more crit and more stagger on every hit against the target.
             if (targetStatus.Has(StatusFlag.Marked))
             {
