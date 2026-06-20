@@ -118,7 +118,8 @@ namespace RPGArena.Combat
             bool weaknessOrCrit = false;
             foreach (var r in ctx.lastActionResults)
                 if (r.hit && (r.reaction == ElementReaction.Weak || r.crit)) { weaknessOrCrit = true; break; }
-            if (weaknessOrCrit && ctx.turns.TryGrantExtraTurn(actor, order))
+            // Hero-only (the boss never earns invisible extra turns, §5.5).
+            if (actor.team == Characters.Team.Heroes && weaknessOrCrit && ctx.turns.TryGrantExtraTurn(actor, order))
                 ctx.Log($"    +1 MORE! {actor.displayName} earns a bonus turn (weakness/crit).");
         }
 
@@ -141,7 +142,7 @@ namespace RPGArena.Combat
         // Boss phase transitions (enrage at HP thresholds, §7.1). For M1 the DragonCycleAI
         // reads HP directly to shorten its cycle; this stays a hook for explicit phase effects
         // (new abilities, attack buffs) added with the other bosses in M6.
-        private void RoundEnd(int round) { }
+        private void RoundEnd(int round) => ctx.boss?.CheckPhaseTransition(ctx);
 
         private Outcome Evaluate()
         {

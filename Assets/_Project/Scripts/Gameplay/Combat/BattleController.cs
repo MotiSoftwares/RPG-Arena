@@ -119,10 +119,16 @@ namespace RPGArena.Combat
                             Context.Log(cmd.DescribeForLog());
                             cmd.Resolve(Context);
 
-                            // Action economy: a weakness hit or crit grants one capped bonus turn.
-                            foreach (var r in Context.lastActionResults)
-                                if (r.hit && (r.reaction == ElementReaction.Weak || r.crit))
-                                { Context.turns.TryGrantExtraTurn(actor, order); break; }
+                            // Action economy (§5.5): a weakness hit or crit grants the HERO one
+                            // capped bonus turn (the boss never earns invisible extra turns).
+                            if (actor.team == Team.Heroes)
+                                foreach (var r in Context.lastActionResults)
+                                    if (r.hit && (r.reaction == ElementReaction.Weak || r.crit))
+                                    {
+                                        if (Context.turns.TryGrantExtraTurn(actor, order))
+                                            Context.Log($"    +1 MORE! {actor.displayName} seizes another action.");
+                                        break;
+                                    }
 
                             yield return Wait();
                         }
@@ -136,6 +142,7 @@ namespace RPGArena.Combat
                     actor.TickEndOfTurn();
                     onTurnEnded?.Raise(actor);
                     CheckDeaths();
+                    Context.boss?.CheckPhaseTransition(Context);
                     Result = Evaluate();
                 }
             }
@@ -174,7 +181,9 @@ namespace RPGArena.Combat
                 balance = balance,
                 rng = new System.Random(),
                 echoToConsole = true,
-                BossStaggeredTurns = boss.staggeredTurns,
+                // The Break window lasts at least 2 of the boss's turns so a fast party still gets
+                // a real burst round even if some heroes already acted before the Break landed (1.16).
+                BossStaggeredTurns = Mathf.Max(2, boss.staggeredTurns),
                 damage = new DamagePipeline(balance, new System.Random()),
                 stagger = new StaggerSystem(),
                 turns = new TurnSystem(),

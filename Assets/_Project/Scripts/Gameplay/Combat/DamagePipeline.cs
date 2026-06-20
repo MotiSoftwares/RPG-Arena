@@ -63,9 +63,10 @@ namespace RPGArena.Combat
                 return r;
             }
 
-            // 2) BASE DAMAGE: offense stat × ability power × the variance roll.
+            // 2) BASE DAMAGE: offense stat × ability power × variance roll × enrage multiplier.
             float offense = src != null ? (info.isMagic ? src.MagicAttack : src.Attack) : 0f;
-            float dmg = offense * Mathf.Max(0f, info.basePower) * damageRoll;
+            float dmg = offense * Mathf.Max(0f, info.basePower) * damageRoll
+                      * (src != null ? src.damageOutMultiplier : 1f);
 
             // 3) ELEMENT modifier. Absorb (negative sentinel) flips the hit into a heal.
             var reaction = (tgt != null && tgt.elementProfile != null)

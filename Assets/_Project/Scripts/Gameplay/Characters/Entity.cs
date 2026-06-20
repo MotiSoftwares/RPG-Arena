@@ -36,6 +36,11 @@ namespace RPGArena.Characters
         // Mage: which elemental school the attunement-following basic (Magic Bolt) uses.
         public ElementType currentAttunement = ElementType.Ice;
 
+        [Header("Phases")]
+        public float damageOutMultiplier = 1f;   // raised by a boss enrage phase (§7.1)
+        public System.Collections.Generic.List<RPGArena.Combat.BossPhase> phases;   // boss only
+        private int phaseEntered = -1;
+
         [Header("Stagger (bosses)")]
         public float staggerMeter;
         public float staggerThreshold = 100f;
@@ -84,6 +89,8 @@ namespace RPGArena.Characters
             currentMP = stats.maxMP;
             staggerMeter = 0f;
             isStaggered = false;
+            damageOutMultiplier = 1f;
+            phaseEntered = -1;
             Status.Clear();
             cooldowns.Clear();
             ConsecutiveMisses = 0;
@@ -124,6 +131,25 @@ namespace RPGArena.Characters
         // Start of this entity's turn: tick DoTs and return the total damage they dealt
         // (so the battle log can report it).
         public int TickStartOfTurn() => Status.TickStartOfTurn(this, balance);
+
+        // Boss phases (§7.1): once HP crosses a phase threshold, apply its enrage damage
+        // multiplier (each phase fires once). Both battle loops call this so the authored
+        // BossPhase data is a real, shared mechanic. No-op for non-boss / phaseless entities.
+        public void CheckPhaseTransition(RPGArena.Combat.BattleContext ctx)
+        {
+            if (!isBoss || !IsAlive || phases == null) return;
+            float frac = stats.maxHP > 0 ? (float)currentHP / stats.maxHP : 0f;
+            for (int i = 0; i < phases.Count; i++)
+            {
+                var ph = phases[i];
+                if (i > phaseEntered && frac <= ph.hpThresholdPercent)
+                {
+                    phaseEntered = i;
+                    if (ph.enrage && ph.attackMultiplier > 0f) damageOutMultiplier = ph.attackMultiplier;
+                    ctx?.Log($"    *** {displayName} enters {ph.name}!  (x{ph.attackMultiplier:0.0} damage) ***");
+                }
+            }
+        }
 
         // End of turn: durations decrement, cooldowns count down, the Break window shrinks.
         public void TickEndOfTurn()
