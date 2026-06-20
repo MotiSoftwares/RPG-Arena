@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.Ability
   displayName: Eye of Amazon
   description: 
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 8fb0c5aeefbd3564fb829f611cde446f, type: 3}
   effectType: 3
   targetRule: 3
   element: 0

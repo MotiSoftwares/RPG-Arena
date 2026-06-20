@@ -54,6 +54,14 @@ namespace RPGArena.EditorTools
             var sysGo = new GameObject("BattleSystem");
             var ctrl = sysGo.AddComponent<BattleController>();
             ctrl.balance = balance; ctrl.boss = dragon; ctrl.roster = roster;
+            // Full boss roster (picked by RunState) + all boons (looked up by name at setup).
+            ctrl.bossRoster = new List<BossDefinition>
+            {
+                dragon,
+                L<BossDefinition>("Bosses/BlackMage.asset"),
+                L<BossDefinition>("Bosses/EvilWarrior.asset"),
+            };
+            ctrl.boonRoster = LoadAll<BoonDefinition>("Boons");
             ctrl.onBattleStarted = cStarted; ctrl.onBattleWon = cWon; ctrl.onBattleLost = cLost;
             ctrl.onTurnStarted = cTurnS; ctrl.onTurnEnded = cTurnE; ctrl.onEntityDied = cDied;
             ctrl.onStaggerBroken = cBreak; ctrl.onDamageDealt = cDmg; ctrl.onBossTelegraph = cTele;
@@ -90,6 +98,13 @@ namespace RPGArena.EditorTools
             narr.introJson = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Ink/dragon_intro.json");
             narr.outroJson = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Ink/dragon_outro.json");
             if (narr.introJson == null) Debug.LogWarning("[SceneSetup] dragon_intro.json not found yet — re-run after Ink compiles.");
+
+            // Run flow (presentation): owns boon-select between bosses, run-complete, and retry.
+            DestroyIfExists("RunFlow");
+            var runGo = new GameObject("RunFlow");
+            var runFlow = runGo.AddComponent<RunFlow>();
+            runFlow.onBattleWon = cWon; runFlow.onBattleLost = cLost;
+            runFlow.boonRoster = LoadAll<BoonDefinition>("Boons");
 
             DressArena();
 
@@ -197,6 +212,18 @@ namespace RPGArena.EditorTools
             var a = AssetDatabase.LoadAssetAtPath<T>(SO + rel);
             if (a == null) Debug.LogError($"[SceneSetup] Missing asset: {SO + rel}");
             return a;
+        }
+
+        // Load every asset of a type from a ScriptableObjects subfolder (e.g. all the boons).
+        private static List<T> LoadAll<T>(string subfolder) where T : Object
+        {
+            var list = new List<T>();
+            foreach (var guid in AssetDatabase.FindAssets("t:" + typeof(T).Name, new[] { SO + subfolder }))
+            {
+                var a = AssetDatabase.LoadAssetAtPath<T>(AssetDatabase.GUIDToAssetPath(guid));
+                if (a != null) list.Add(a);
+            }
+            return list;
         }
 
         private static void DestroyIfExists(string name)

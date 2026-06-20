@@ -47,8 +47,8 @@ namespace RPGArena.UI
             onStaggerBroken?.Subscribe(OnBreak);
             onBossTelegraph?.Subscribe(OnTelegraph);
             onEntityDied?.Subscribe(OnDied);
-            onBattleWon?.Subscribe(_ => ShowResult("VICTORY!  The Dragon is slain.", new Color(0.2f, 0.8f, 0.3f)));
-            onBattleLost?.Subscribe(_ => ShowResult("DEFEAT.  The party has fallen.", new Color(0.85f, 0.25f, 0.25f)));
+            // Win/lose end-screens are owned by RunFlow (boon select / run complete / retry), so
+            // the HUD no longer shows its own result panel.
         }
 
         private void OnDisable()

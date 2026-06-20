@@ -21,6 +21,26 @@ namespace RPGArena.Core
         // How far the player is in the gauntlet (0 = first boss).
         public int currentBossIndex;
 
+        // The boss-rush order (asset names). The BattleController picks the current boss by name.
+        public static readonly string[] BossOrder = { "Dragon", "BlackMage", "EvilWarrior" };
+
+        // The boss currently being faced (clamped so it is always valid).
+        public string CurrentBoss => BossOrder[currentBossIndex < 0 ? 0 :
+            (currentBossIndex >= BossOrder.Length ? BossOrder.Length - 1 : currentBossIndex)];
+
+        // True while there is still a boss after the current one.
+        public bool HasNextBoss => currentBossIndex < BossOrder.Length - 1;
+
+        // The boss after the current one (for "Next: ..." UI); the current one if none remains.
+        public string NextBoss => HasNextBoss ? BossOrder[currentBossIndex + 1] : CurrentBoss;
+
+        // Advance to the next boss (called after a win + boon pick).
+        public void AdvanceBoss()
+        {
+            if (currentBossIndex >= 0 && currentBossIndex < BossOrder.Length) bossesCleared.Add(CurrentBoss);
+            if (HasNextBoss) currentBossIndex++;
+        }
+
         // Wipe everything for a brand-new run.
         public void Reset()
         {

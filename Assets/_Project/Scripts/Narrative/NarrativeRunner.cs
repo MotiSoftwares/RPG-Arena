@@ -3,6 +3,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 using Ink.Runtime;
+using RPGArena.Core;
 using RPGArena.Combat;
 
 namespace RPGArena.Narrative
@@ -41,8 +42,12 @@ namespace RPGArena.Narrative
 
         private void Start()
         {
-            if (introJson != null) PlayIntro();
-            else IsIntroDone = true;       // no story assigned => don't block the fight
+            // The intro is the Dragon's pre-fight scene (the first boss of a run). Later bosses in
+            // the gauntlet skip it so the fight starts immediately.
+            var run = GameBootstrap.Instance != null ? GameBootstrap.Instance.Run : null;
+            bool firstBoss = run == null || run.CurrentBoss == "Dragon";
+            if (introJson != null && firstBoss) PlayIntro();
+            else IsIntroDone = true;       // no story (or not the first boss) => don't block the fight
         }
 
         // --- intro --------------------------------------------------------------------

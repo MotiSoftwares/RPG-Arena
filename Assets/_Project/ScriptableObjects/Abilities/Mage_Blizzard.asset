@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.Ability
   displayName: Blizzard
   description: 
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: e16fae2a23cad9e40845e39b2bb94602, type: 3}
   effectType: 0
   targetRule: 0
   element: 2

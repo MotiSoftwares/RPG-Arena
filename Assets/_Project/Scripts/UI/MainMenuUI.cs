@@ -71,7 +71,8 @@ namespace RPGArena.UI
             var boot = GameBootstrap.Instance;
             if (boot != null && boot.Run != null)
             {
-                boot.Run.partyClassNames.Clear();
+                // Start a brand-new run: reset boss progress + boons, then set the chosen party.
+                boot.Run.Reset();
                 boot.Run.partyClassNames.AddRange(picked);
                 boot.Scenes.LoadScene("BattleArena");
             }

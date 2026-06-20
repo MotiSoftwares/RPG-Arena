@@ -163,6 +163,18 @@ namespace RPGArena.EditorTools
             evilWarrior.phases = new List<BossPhase> { new BossPhase { name = "Last Stand", hpThresholdPercent = 0.4f, enrage = true, attackMultiplier = 1.35f } };
             Save(evilWarrior, $"{Root}/Bosses/EvilWarrior.asset");
 
+            // --- ROGUELITE BOONS (Appendix E.2) ---------------------------------------
+            // Party-wide power-ups; the player picks 1 of 3 after each boss.
+            Boon("Boon_GiantsBlood", "Giant's Blood", "Every hero gains +90 max HP.", hp: 90);
+            Boon("Boon_ArcaneFont", "Arcane Font", "Every hero gains +70 max MP.", mp: 70);
+            Boon("Boon_Whetstone", "Whetstone", "Sharper strikes: +7 Attack and +7 Magic Attack.", atk: 7, matk: 7);
+            Boon("Boon_IronSkin", "Iron Skin", "Hardened hide: +9 Defense for all heroes.", def: 9);
+            Boon("Boon_EagleEye", "Eagle Eye", "Truer aim: +10 Accuracy (fewer misses).", acc: 10f);
+            Boon("Boon_KillerInstinct", "Killer Instinct", "+12% critical hit chance for the party.", crit: 0.12f);
+            Boon("Boon_FleetFooted", "Fleet-Footed", "Quicker reflexes: +5 Speed (act sooner).", spd: 5);
+            Boon("Boon_HeroicMight", "Heroic Might", "+4 to every primary stat (STR/DEX/INT/LUK).", str: 4, dex: 4, intel: 4, luk: 4);
+            Boon("Boon_Bloodlust", "Bloodlust", "Overwhelming force: +12 Attack and +12 Magic Attack.", atk: 12, matk: 12);
+
             // Suppress "unused" warnings for statuses authored for later bosses/heroes.
             _ = new Object[] { poison, warrior, mage, thief, archer };
 
@@ -213,6 +225,19 @@ namespace RPGArena.EditorTools
             return a;
         }
 
+        private static BoonDefinition Boon(string file, string name, string desc,
+            int str = 0, int dex = 0, int intel = 0, int luk = 0, int hp = 0, int mp = 0,
+            int atk = 0, int matk = 0, int def = 0, int spd = 0, float acc = 0f, float crit = 0f)
+        {
+            var b = ScriptableObject.CreateInstance<BoonDefinition>();
+            b.displayName = name; b.description = desc;
+            b.strDelta = str; b.dexDelta = dex; b.intDelta = intel; b.lukDelta = luk;
+            b.maxHpDelta = hp; b.maxMpDelta = mp; b.attackDelta = atk; b.magicAttackDelta = matk;
+            b.defenseDelta = def; b.speedDelta = spd; b.accuracyDelta = acc; b.critChanceDelta = crit;
+            Save(b, $"{Root}/Boons/{file}.asset");
+            return b;
+        }
+
         private static CharacterDefinition Character(string file, string name, PrimaryStat primary,
             ElementProfile profile, StatBlock stats, Ability[] abilities)
         {
@@ -231,7 +256,7 @@ namespace RPGArena.EditorTools
 
         private static void EnsureFolders()
         {
-            foreach (var sub in new[] { "Status", "Elements", "Abilities", "Characters", "Bosses", "AI" })
+            foreach (var sub in new[] { "Status", "Elements", "Abilities", "Characters", "Bosses", "AI", "Boons" })
                 if (!AssetDatabase.IsValidFolder($"{Root}/{sub}"))
                     AssetDatabase.CreateFolder(Root, sub);
         }

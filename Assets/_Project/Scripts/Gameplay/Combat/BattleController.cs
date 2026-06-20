@@ -18,7 +18,9 @@ namespace RPGArena.Combat
     {
         [Header("Content")]
         public BalanceConfig balance;
-        public BossDefinition boss;
+        public BossDefinition boss;                                   // fallback boss (direct-play)
+        public List<BossDefinition> bossRoster = new();               // all bosses, picked by RunState
+        public List<BoonDefinition> boonRoster = new();               // all boons, looked up by name
         public List<CharacterDefinition> roster = new();              // all selectable classes
         public List<string> defaultParty = new() { "Warrior", "Mage", "Thief" };
 
@@ -140,9 +142,8 @@ namespace RPGArena.Combat
             if (won) { Context.Log($"=== VICTORY! {boss.bossName} is slain. ==="); onBattleWon?.Raise(); }
             else { Context.Log("=== DEFEAT. The party has fallen. ==="); onBattleLost?.Raise(); }
 
-            // Closing narrative beat, referencing what actually happened.
-            int heroesLost = Context.heroes.FindAll(h => !h.IsAlive).Count;
-            intro?.PlayOutro(won, Context.bossEverBroken, heroesLost);
+            // The RunFlow (presentation) owns the post-battle UX (boon select / run complete /
+            // retry), driven by the OnBattleWon / OnBattleLost channels raised above.
         }
 
         // Find a narrative intro by interface (no compile-time dependency on the Narrative asm).
@@ -170,14 +171,33 @@ namespace RPGArena.Combat
                 onStaggerBroken = onStaggerBroken, onDamageDealt = onDamageDealt, onBossTelegraph = onBossTelegraph
             };
 
+            var run = GameBootstrap.Instance?.Run;
+
+            // Boss: pick the run's current boss from the roster, else the fallback (direct-play).
+            if (run != null && bossRoster != null && bossRoster.Count > 0)
+            {
+                var match = bossRoster.Find(b => b != null && b.name == run.CurrentBoss);
+                if (match != null) boss = match;
+            }
+
             // Party: from the run state's selection, else the default trio.
-            var chosen = GameBootstrap.Instance?.Run?.partyClassNames;
-            if (chosen == null || chosen.Count == 0) chosen = defaultParty;
+            var chosen = run != null && run.partyClassNames.Count > 0 ? run.partyClassNames : defaultParty;
             foreach (var className in chosen)
             {
                 var def = roster.Find(c => c != null && c.className == className);
                 if (def != null) Context.heroes.Add(BattleSpawner.SpawnHero(def, balance, null)); // null brain => player
             }
+
+            // Roguelite boons: apply every boon collected this run to the whole party (Appendix E.2).
+            if (run != null && boonRoster != null)
+                foreach (var boonName in run.acquiredBoons)
+                {
+                    var bd = boonRoster.Find(b => b != null && b.name == boonName);
+                    if (bd != null) foreach (var h in Context.heroes) BoonSystem.Apply(h, bd);
+                }
+            // Full restore between bosses (and top up after boon maxHP/MP increases).
+            foreach (var h in Context.heroes) { h.currentHP = h.stats.maxHP; h.currentMP = h.stats.maxMP; }
+
             Context.boss = BattleSpawner.SpawnBoss(boss, balance);
 
             PlaceCombatants();
