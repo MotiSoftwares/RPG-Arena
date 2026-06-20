@@ -31,6 +31,8 @@ namespace RPGArena.UI
         private readonly List<Text> partyTexts = new();
         private readonly List<Image> partyHpFill = new();
         private readonly List<Image> partyMpFill = new();
+        private readonly List<Text> partyHpText = new();
+        private readonly List<Text> partyMpText = new();
         private RectTransform actionPanel;
         private GameObject resultPanel;
         private readonly List<string> logLines = new();
@@ -130,6 +132,8 @@ namespace RPGArena.UI
                 partyTexts[i].color = h.IsAlive ? (active ? Color.yellow : Color.white) : new Color(0.5f, 0.5f, 0.5f);
                 SetFill(partyHpFill[i], h.currentHP, h.stats.maxHP);
                 SetFill(partyMpFill[i], h.currentMP, h.stats.maxMP);
+                if (i < partyHpText.Count) partyHpText[i].text = h.IsAlive ? $"{h.currentHP}/{h.stats.maxHP}" : "— KO —";
+                if (i < partyMpText.Count) partyMpText[i].text = $"MP {h.currentMP}/{h.stats.maxMP}";
                 if (i < heroStatusRows.Count) RefreshStatusRow(heroStatusRows[i], h, i + 1, false);
             }
         }
@@ -311,6 +315,8 @@ namespace RPGArena.UI
                 partyTexts.Add(MakeText(st, "Hero", new Vector2(0f, 1f), new Vector2(110, -4), new Vector2(240, 22), 18, TextAnchor.MiddleLeft));
                 partyHpFill.Add(MakeBar(st, new Vector2(0f, 1f), new Vector2(118, -30), new Vector2(230, 16), new Color(0.3f, 0.8f, 0.3f)));
                 partyMpFill.Add(MakeBar(st, new Vector2(0f, 1f), new Vector2(118, -52), new Vector2(230, 12), new Color(0.3f, 0.5f, 0.9f)));
+                partyHpText.Add(MakeText(st, "", new Vector2(0f, 1f), new Vector2(118, -30), new Vector2(230, 16), 12, TextAnchor.MiddleCenter));
+                partyMpText.Add(MakeText(st, "", new Vector2(0f, 1f), new Vector2(118, -52), new Vector2(230, 12), 10, TextAnchor.MiddleCenter));
                 heroStatusRows.Add(MakeRow(st, new Vector2(0f, 0f), new Vector2(116, 6), new Vector2(240, 16)));
             }
 
