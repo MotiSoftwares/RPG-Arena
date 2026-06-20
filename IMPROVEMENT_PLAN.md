@@ -22,13 +22,13 @@ Implementing in impact/effort order, committing + engine-verifying each.
 - [x] 1.16 Break window >=2 turns `S` — 5d409fa
 
 ## THEME 2 — UI / UX (make the depth visible)
-- [ ] 2.1 Status-effect icons on boss + party `M`
+- [x] 2.1 Status-effect badges on boss + party (colour + abbrev + turns) `M` — 259bbad
 - [ ] 2.2 Turn-order tracker `M`
 - [ ] 2.3 Manual target picker with highlighting `M`
 - [ ] 2.4 Per-ability tooltips (+ absorb warning) `M`
 - [ ] 2.5 Damage-range preview (fix README overclaim; absorb in hit%) `M`
 - [ ] 2.6 Richer scrollable combat log `M`
-- [ ] 2.7 Numeric bar labels + KO markers `S`
+- [x] 2.7 Numeric HP/MP bar labels + KO marker `S` — b1af537
 - [ ] 2.8 Pause-menu Settings panel (shared SettingsPanel) `S`
 - [ ] 2.9 Resolution + fullscreen settings `S`
 - [ ] 2.10 Delete orphaned HUD result panel + defeat tip `S`
