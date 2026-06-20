@@ -226,11 +226,13 @@ namespace RPGArena.UI
             canvasGo.AddComponent<GraphicRaycaster>();
             var root = canvasGo.GetComponent<RectTransform>();
 
-            // Boss panel (top).
-            bossName = MakeText(root, "Boss", new Vector2(0.5f, 1f), new Vector2(0, -40), new Vector2(700, 40), 28, TextAnchor.MiddleCenter);
-            bossHpFill = MakeBar(root, new Vector2(0.5f, 1f), new Vector2(0, -78), new Vector2(700, 26), new Color(0.8f, 0.2f, 0.2f));
-            bossHpText = MakeText(root, "HP", new Vector2(0.5f, 1f), new Vector2(0, -78), new Vector2(700, 26), 16, TextAnchor.MiddleCenter);
-            bossStaggerFill = MakeBar(root, new Vector2(0.5f, 1f), new Vector2(0, -106), new Vector2(700, 12), new Color(0.95f, 0.8f, 0.2f));
+            // Boss panel (top) — dark backing so it reads over the arena backdrop.
+            MakePanel(root, new Vector2(0.5f, 1f), new Vector2(0, -6), new Vector2(840, 148), new Color(0.04f, 0.04f, 0.07f, 0.55f));
+            bossName = MakeText(root, "Boss", new Vector2(0.5f, 1f), new Vector2(0, -34), new Vector2(780, 44), 34, TextAnchor.MiddleCenter);
+            bossName.color = new Color(1f, 0.58f, 0.48f); bossName.fontStyle = FontStyle.Bold;
+            bossHpFill = MakeBar(root, new Vector2(0.5f, 1f), new Vector2(0, -80), new Vector2(780, 28), new Color(0.85f, 0.18f, 0.18f));
+            bossHpText = MakeText(root, "HP", new Vector2(0.5f, 1f), new Vector2(0, -80), new Vector2(780, 28), 16, TextAnchor.MiddleCenter);
+            bossStaggerFill = MakeBar(root, new Vector2(0.5f, 1f), new Vector2(0, -110), new Vector2(780, 12), new Color(0.95f, 0.8f, 0.2f));
             bossWeakness = MakeText(root, "", new Vector2(0.5f, 1f), new Vector2(0, -124), new Vector2(700, 22), 16, TextAnchor.MiddleCenter);
             bossWeakness.color = new Color(0.4f, 0.9f, 1f);
             telegraph = MakeText(root, "", new Vector2(0.5f, 1f), new Vector2(0, -150), new Vector2(900, 40), 24, TextAnchor.MiddleCenter);
@@ -240,7 +242,7 @@ namespace RPGArena.UI
             // Party panel (bottom-left): up to 3 hero strips.
             for (int i = 0; i < 3; i++)
             {
-                var strip = MakePanel(root, new Vector2(0f, 0f), new Vector2(20, 30 + i * 84), new Vector2(360, 78), new Color(0, 0, 0, 0.35f));
+                var strip = MakePanel(root, new Vector2(0f, 0f), new Vector2(20, 30 + i * 84), new Vector2(360, 78), new Color(0.05f, 0.06f, 0.1f, 0.62f));
                 var st = strip.GetComponent<RectTransform>();
                 partyTexts.Add(MakeText(st, "Hero", new Vector2(0f, 1f), new Vector2(110, -4), new Vector2(240, 22), 18, TextAnchor.MiddleLeft));
                 partyHpFill.Add(MakeBar(st, new Vector2(0f, 1f), new Vector2(118, -30), new Vector2(230, 16), new Color(0.3f, 0.8f, 0.3f)));
@@ -248,10 +250,11 @@ namespace RPGArena.UI
             }
 
             // Action menu (bottom-right).
-            var menu = MakePanel(root, new Vector2(1f, 0f), new Vector2(-20, 30), new Vector2(380, 320), new Color(0, 0, 0, 0.35f));
+            var menu = MakePanel(root, new Vector2(1f, 0f), new Vector2(-20, 30), new Vector2(390, 330), new Color(0.05f, 0.06f, 0.1f, 0.62f));
             actionPanel = menu.GetComponent<RectTransform>();
 
-            // Combat log (left-middle).
+            // Combat log (left-middle) with a dark backing.
+            MakePanel(root, new Vector2(0f, 0.5f), new Vector2(16, -50), new Vector2(440, 240), new Color(0.04f, 0.04f, 0.07f, 0.45f));
             log = MakeText(root, "", new Vector2(0f, 0.5f), new Vector2(20, 60), new Vector2(420, 220), 15, TextAnchor.LowerLeft);
 
             // Result overlay (hidden until end).
@@ -272,6 +275,8 @@ namespace RPGArena.UI
             t.font = font; t.text = content; t.fontSize = fontSize; t.alignment = align; t.color = Color.white;
             t.horizontalOverflow = HorizontalWrapMode.Overflow; t.verticalOverflow = VerticalWrapMode.Overflow;
             var rt = t.rectTransform; rt.anchorMin = rt.anchorMax = anchor; rt.pivot = anchor; rt.anchoredPosition = pos; rt.sizeDelta = size;
+            // A dark outline keeps text legible over the busy arena backdrop.
+            var o = go.AddComponent<Outline>(); o.effectColor = new Color(0, 0, 0, 0.85f); o.effectDistance = new Vector2(1.5f, -1.5f);
             return t;
         }
 
