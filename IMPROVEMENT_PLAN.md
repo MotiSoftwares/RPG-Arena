@@ -12,12 +12,12 @@ Implementing in impact/effort order, committing + engine-verifying each.
 - [x] 1.6 Dark Sight truly untargetable (TargetingSystem excludes Stealthed) `S` — b4dd31e
 - [ ] 1.7 Guardian Taunt redirect/cover `M`
 - [ ] 1.8 Behavioral Warrior stances (lifesteal/execute, guardian cover) `M`
-- [ ] 1.9 Magic Guard (MP-as-shield) + author Mage_MagicGuard `M`
+- [x] 1.9 Magic Guard (MP-as-shield) + Mage_MagicGuard `M` — 95d0c17
 - [x] 1.10 Frozen shatter bonus on physical (x1.6) `S` — b4dd31e
 - [ ] 1.11 Wet+Lightning ⇒ Frozen reliably `S`
-- [ ] 1.12 Conditional finisher payoffs (guaranteedCrit/bonusVsFlag/execute) `M`
-- [ ] 1.13 Telegraphs for Black Mage & Evil Warrior `M`
-- [ ] 1.14 Soul Arrow defense-ignore + Mage school-nuke follows attunement `S`
+- [x] 1.12 Conditional finisher payoffs (guaranteedCrit/bonusVsFlag/execute) `M` — 95d0c17
+- [x] 1.13 Telegraphs for Black Mage & Evil Warrior (verified firing) `M` — 95d0c17
+- [x] 1.14a Soul Arrow defense-ignore (50%) `S` — 95d0c17  (1.14b attunement-nuke collapse deferred)
 - [x] 1.15 Extra turns hero-only + logged `S` — 5d409fa
 - [x] 1.16 Break window >=2 turns `S` — 5d409fa
 

@@ -46,6 +46,7 @@ namespace RPGArena.Combat
                     }
 
                     CheckDeaths();
+                    ctx.boss?.CheckPhaseTransition(ctx);   // per-action (matches BattleController)
                     TurnEnd(actor);
 
                     var outcome = Evaluate();
