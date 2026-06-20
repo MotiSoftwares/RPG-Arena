@@ -23,6 +23,7 @@ namespace RPGArena.Combat
     {
         public Entity source;
         public Entity target;
+        public ElementType element;    // the attack's element (drives element-coloured VFX)
         public int amount;             // final HP delta magnitude (>= 0)
         public bool hit;               // false == missed
         public bool crit;

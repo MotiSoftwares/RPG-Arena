@@ -100,6 +100,12 @@ namespace RPGArena.UI
 
             SpawnFloating(head, text, color, size);
 
+            // Elemental impact burst at the target (green for heals/absorbs).
+            if (r.hit)
+                SpawnVFX(r.target.transform.position + Vector3.up * (r.target.isBoss ? 2.0f : 1.2f),
+                         (r.isHeal || r.absorbed) ? new Color(0.4f, 1f, 0.5f) : ElementColor(r.element),
+                         r.crit ? 52 : 30);
+
             // Impact feedback scales with the hit's weight.
             if (r.hit && !r.isHeal && !r.absorbed)
             {
@@ -188,6 +194,89 @@ namespace RPGArena.UI
                 flashAmount = Mathf.MoveTowards(flashAmount, 0f, flashDecay * Time.unscaledDeltaTime);
                 flashImage.color = new Color(1f, 1f, 1f, flashAmount);
             }
+        }
+
+        // --- elemental VFX ------------------------------------------------------------
+        private static Color ElementColor(ElementType e)
+        {
+            switch (e)
+            {
+                case ElementType.Fire: return new Color(1f, 0.45f, 0.1f);
+                case ElementType.Ice: return new Color(0.4f, 0.8f, 1f);
+                case ElementType.Lightning: return new Color(1f, 0.95f, 0.3f);
+                case ElementType.Holy: return new Color(1f, 0.95f, 0.6f);
+                case ElementType.Dark: return new Color(0.65f, 0.3f, 0.95f);
+                default: return new Color(1f, 0.95f, 0.85f);   // physical
+            }
+        }
+
+        // A short-lived, self-destroying particle burst tinted to the element. Built in code so it
+        // needs no imported VFX assets; uses a soft glow texture on a URP-safe sprite shader.
+        private void SpawnVFX(Vector3 pos, Color color, int count)
+        {
+            var go = new GameObject("VFX");
+            go.transform.position = pos;
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop();
+
+            var main = ps.main;
+            main.duration = 0.6f; main.loop = false; main.playOnAwake = false;
+            main.startLifetime = 0.55f; main.startSpeed = 3.2f;
+            main.startSize = 0.45f; main.startColor = color;
+            main.maxParticles = 80; main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.stopAction = ParticleSystemStopAction.Destroy;
+            main.gravityModifier = 0.15f;
+
+            var emission = ps.emission;
+            emission.rateOverTime = 0f;
+            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)count) });
+
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Sphere; shape.radius = 0.35f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            var grad = new Gradient();
+            grad.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.5f), new GradientAlphaKey(0f, 1f) });
+            col.color = grad;
+
+            var sol = ps.sizeOverLifetime; sol.enabled = true;
+            sol.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 1f, 1f, 0.1f));
+
+            var rend = ps.GetComponent<ParticleSystemRenderer>();
+            rend.material = VfxMaterial();
+            rend.sortingOrder = 10;
+
+            ps.Play();
+        }
+
+        private static Material vfxMaterial;
+        private static Material VfxMaterial()
+        {
+            if (vfxMaterial != null) return vfxMaterial;
+            // "Sprites/Default" is URP-safe, alpha-blended, and respects the particle's vertex colour.
+            var sh = Shader.Find("Sprites/Default");
+            vfxMaterial = new Material(sh) { mainTexture = GlowTexture() };
+            return vfxMaterial;
+        }
+
+        private static Texture2D glowTexture;
+        private static Texture2D GlowTexture()
+        {
+            if (glowTexture != null) return glowTexture;
+            const int s = 32;
+            glowTexture = new Texture2D(s, s, TextureFormat.RGBA32, false);
+            var c = new Vector2(s / 2f, s / 2f);
+            for (int y = 0; y < s; y++)
+                for (int x = 0; x < s; x++)
+                {
+                    float d = Vector2.Distance(new Vector2(x, y), c) / (s / 2f);
+                    float a = Mathf.Clamp01(1f - d); a = a * a;
+                    glowTexture.SetPixel(x, y, new Color(1, 1, 1, a));
+                }
+            glowTexture.Apply();
+            return glowTexture;
         }
 
         // --- floating text ------------------------------------------------------------

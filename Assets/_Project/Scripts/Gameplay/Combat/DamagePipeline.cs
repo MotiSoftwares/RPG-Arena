@@ -36,7 +36,7 @@ namespace RPGArena.Combat
         public static DamageResult ComputePure(DamageInfo info, BalanceConfig cfg,
                                                float hitRoll, float damageRoll, float critRoll)
         {
-            var r = new DamageResult { source = info.source, target = info.target, hit = true, damageRoll = damageRoll };
+            var r = new DamageResult { source = info.source, target = info.target, element = info.element, hit = true, damageRoll = damageRoll };
             var src = info.source;
             var tgt = info.target;
 
