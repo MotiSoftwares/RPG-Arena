@@ -106,6 +106,14 @@ namespace RPGArena.UI
                          (r.isHeal || r.absorbed) ? new Color(0.4f, 1f, 0.5f) : ElementColor(r.element),
                          r.crit ? 52 : 30);
 
+            // Procedural motion: the attacker lunges toward the target; the target recoils away.
+            if (r.hit && r.source != null && r.target != null)
+            {
+                Vector3 dir = r.target.transform.position - r.source.transform.position;
+                r.source.GetComponent<Characters.CombatantMotion>()?.Lunge(dir);
+                if (!r.isHeal && !r.absorbed) r.target.GetComponent<Characters.CombatantMotion>()?.Recoil(dir);
+            }
+
             // Impact feedback scales with the hit's weight.
             if (r.hit && !r.isHeal && !r.absorbed)
             {

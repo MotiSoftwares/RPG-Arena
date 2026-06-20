@@ -220,12 +220,15 @@ namespace RPGArena.Combat
                 h.transform.position = new Vector3(-5f + i * 1.7f, 0f, i * 0.4f);
                 h.transform.rotation = Quaternion.Euler(0, 90, 0);
                 AttachBody(h.gameObject, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i);
+                h.gameObject.AddComponent<CombatantMotion>();          // procedural idle/lunge/recoil
             }
             if (Context.boss != null)
             {
                 Context.boss.transform.position = new Vector3(4.5f, 0f, 0.6f);
                 Context.boss.transform.rotation = Quaternion.Euler(0, -90, 0);
                 AttachBody(Context.boss.gameObject, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.3f, 3.4f, 0);
+                var bm = Context.boss.gameObject.AddComponent<CombatantMotion>();
+                bm.bobAmplitude = 0.12f; bm.lungeDistance = 0.8f;     // a heavier-feeling boss
             }
 
             DressStage();
