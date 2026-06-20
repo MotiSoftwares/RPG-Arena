@@ -20,6 +20,9 @@ namespace RPGArena.UI
             ("Archer", "DEX — ranged precision; never misses, Puppet decoy, Arrow Rain"),
         };
 
+        [Header("Art")]
+        public Sprite backgroundSprite;     // title-screen background (assigned by SceneSetup)
+
         private Font font;
         private GameObject mainPanel, selectPanel, infoPanel, settingsPanel;
         private Text infoText, selectHint;
@@ -102,11 +105,17 @@ namespace RPGArena.UI
             canvasGo.AddComponent<GraphicRaycaster>();
             var root = (RectTransform)canvasGo.transform;
 
+            // Shared cinematic background + dark overlay behind every sub-panel.
+            BuildBackground(root);
+
             // Main panel.
             mainPanel = Panel(root, "Main");
             var mp = (RectTransform)mainPanel.transform;
-            Label(mp, "ARENA OF THE ALGORITHMS", new Vector2(0.5f, 0.78f), 52, TextAnchor.MiddleCenter, 1200);
-            Label(mp, "A turn-based boss-rush RPG", new Vector2(0.5f, 0.70f), 24, TextAnchor.MiddleCenter, 1000);
+            var title = Label(mp, "ARENA OF THE ALGORITHMS", new Vector2(0.5f, 0.80f), 74, TextAnchor.MiddleCenter, 1600);
+            title.color = new Color(1f, 0.82f, 0.35f); title.fontStyle = FontStyle.Bold;
+            AddOutline(title.gameObject, new Color(0.25f, 0.04f, 0f, 0.95f), 3);
+            var sub = Label(mp, "A turn-based boss-rush RPG", new Vector2(0.5f, 0.72f), 26, TextAnchor.MiddleCenter, 1000);
+            sub.color = new Color(0.85f, 0.85f, 0.9f); AddOutline(sub.gameObject, new Color(0, 0, 0, 0.8f), 2);
             MenuButton(mp, "Play", 0.56f, () => ShowSelect());
             MenuButton(mp, "How to Play", 0.47f, () => ShowInfo("HOW TO PLAY",
                 "Pick 3 of 4 heroes. Read the boss: exploit its WEAKNESS (don't use what it absorbs!),\nset up cross-class combos (Oil+Fire, Wet+Ice/Lightning, Mark), and build the STAGGER bar.\nBreak the boss during its telegraphed charge to cancel the attack, then unload in the window.\nStrong attacks can miss — the action menu shows each move's hit %. Click an ability to act."));
@@ -167,10 +176,31 @@ namespace RPGArena.UI
         // --- tiny uGUI helpers --------------------------------------------------------
         private GameObject Panel(RectTransform parent, string name)
         {
+            // Transparent container so the shared cinematic background shows through every sub-panel.
             var go = new GameObject(name); go.transform.SetParent(parent, false);
-            var img = go.AddComponent<Image>(); img.color = new Color(0.05f, 0.05f, 0.09f, 1f);
+            var img = go.AddComponent<Image>(); img.color = new Color(0, 0, 0, 0f); img.raycastTarget = false;
             var rt = img.rectTransform; rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
             return go;
+        }
+
+        // Full-screen title art + a dark vignette overlay so text stays readable.
+        private void BuildBackground(RectTransform root)
+        {
+            var bg = new GameObject("Background"); bg.transform.SetParent(root, false);
+            var img = bg.AddComponent<Image>();
+            img.sprite = backgroundSprite;
+            img.color = backgroundSprite != null ? Color.white : new Color(0.05f, 0.05f, 0.09f, 1f);
+            img.raycastTarget = false;
+            var rt = img.rectTransform; rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+
+            var ov = new GameObject("Overlay"); ov.transform.SetParent(root, false);
+            var oimg = ov.AddComponent<Image>(); oimg.color = new Color(0.02f, 0.02f, 0.05f, 0.5f); oimg.raycastTarget = false;
+            var ort = oimg.rectTransform; ort.anchorMin = Vector2.zero; ort.anchorMax = Vector2.one; ort.offsetMin = Vector2.zero; ort.offsetMax = Vector2.zero;
+        }
+
+        private static void AddOutline(GameObject go, Color color, int dist)
+        {
+            var o = go.AddComponent<Outline>(); o.effectColor = color; o.effectDistance = new Vector2(dist, -dist);
         }
 
         private Text Label(RectTransform parent, string text, Vector2 anchor, int size, TextAnchor align, float width)
@@ -185,11 +215,18 @@ namespace RPGArena.UI
         private Button MenuButton(RectTransform parent, string label, float anchorY, UnityEngine.Events.UnityAction onClick)
         {
             var go = new GameObject("Button"); go.transform.SetParent(parent, false);
-            var img = go.AddComponent<Image>(); img.color = new Color(0.16f, 0.3f, 0.5f, 0.95f);
-            var rt = img.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(0.5f, anchorY); rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = new Vector2(360, 56);
+            var img = go.AddComponent<Image>();
+            var rt = img.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(0.5f, anchorY); rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = new Vector2(420, 60);
             var btn = go.AddComponent<Button>(); btn.targetGraphic = img;
+            var cb = btn.colors;
+            cb.normalColor = new Color(0.16f, 0.26f, 0.42f, 0.92f);
+            cb.highlightedColor = new Color(0.34f, 0.52f, 0.8f, 1f);
+            cb.pressedColor = new Color(0.1f, 0.16f, 0.28f, 1f);
+            cb.selectedColor = cb.normalColor; cb.fadeDuration = 0.12f;
+            btn.colors = cb; img.color = cb.normalColor;
             btn.onClick.AddListener(() => { Audio?.PlaySfx("ui_click"); onClick(); });
-            var t = Label((RectTransform)go.transform, label, new Vector2(0.5f, 0.5f), 24, TextAnchor.MiddleCenter, 360);
+            var t = Label((RectTransform)go.transform, label, new Vector2(0.5f, 0.5f), 26, TextAnchor.MiddleCenter, 420);
+            t.fontStyle = FontStyle.Bold; AddOutline(t.gameObject, new Color(0, 0, 0, 0.7f), 1);
             return btn;
         }
 

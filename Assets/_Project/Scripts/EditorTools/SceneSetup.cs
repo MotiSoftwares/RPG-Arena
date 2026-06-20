@@ -120,10 +120,23 @@ namespace RPGArena.EditorTools
             DestroyIfExists("MenuCanvas");   // remove the M0 placeholder menu
             DestroyIfExists("MainMenu");
             var go = new GameObject("MainMenu");
-            go.AddComponent<RPGArena.UI.MainMenuUI>();
+            var menu = go.AddComponent<RPGArena.UI.MainMenuUI>();
+
+            // Assign the title-screen background (imported as a Sprite).
+            const string bgPath = "Assets/_Project/Art/Backdrops/TitleScreen.png";
+            if (AssetImporter.GetAtPath(bgPath) is TextureImporter ti &&
+                (ti.textureType != TextureImporterType.Sprite || ti.spriteImportMode != SpriteImportMode.Single))
+            {
+                ti.textureType = TextureImporterType.Sprite;
+                ti.spriteImportMode = SpriteImportMode.Single;
+                ti.SaveAndReimport();
+            }
+            menu.backgroundSprite = AssetDatabase.LoadAssetAtPath<Sprite>(bgPath);
+            if (menu.backgroundSprite == null) Debug.LogWarning("[SceneSetup] TitleScreen sprite not found/loaded.");
+
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
-            Debug.Log("[SceneSetup] MainMenu wired with MainMenuUI (main menu + character select).");
+            Debug.Log("[SceneSetup] MainMenu wired with MainMenuUI + title background.");
         }
 
         // Lava-glow stage: a dark ground, a warm point light by the boss, framed camera + a
