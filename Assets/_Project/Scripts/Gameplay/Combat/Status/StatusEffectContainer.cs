@@ -39,6 +39,12 @@ namespace RPGArena.Combat.Status
 
         public void Clear() => active.Clear();
 
+        // Remove a specific status (used when a stance toggle swaps Berserk <-> Guardian).
+        public void Remove(StatusEffectDefinition def) => active.RemoveAll(a => a.def == def);
+
+        // Is a specific status definition currently active?
+        public bool Has(StatusEffectDefinition def) => active.Exists(a => a.def == def);
+
         // --- Queries ------------------------------------------------------------------
         public bool Has(StatusFlag flag)
         {

@@ -1,0 +1,195 @@
+#if UNITY_EDITOR
+using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
+using RPGArena.Characters;
+using RPGArena.Combat;
+using RPGArena.Combat.AI;
+using RPGArena.Combat.Status;
+
+namespace RPGArena.EditorTools
+{
+    // Authors ALL gameplay content as ScriptableObject assets in one editor run (the
+    // data-driven approach, §4.1). Re-runnable: it overwrites the existing assets. The four
+    // class kits and the Dragon are trimmed/tuned per CLAUDE.md §6/§7.2 + Appendix E.3.
+    public static class ContentBuilder
+    {
+        private const string Root = "Assets/_Project/ScriptableObjects";
+
+        [MenuItem("RPGArena/Build All Content")]
+        public static void BuildAll()
+        {
+            EnsureFolders();
+
+            // --- Status effects (trimmed set, Appendix E.3) ---------------------------
+            var burn     = Status("Burn", StatusKind.DoT, StatusFlag.None, 3, pctHp: 0.05f, el: ElementType.Fire);
+            var poison   = Status("Poison", StatusKind.DoT, StatusFlag.None, 4, flat: 30, stacks: true, maxStacks: 5);
+            var oiled    = Status("Oiled", StatusKind.Flag, StatusFlag.Oiled, 3);
+            var wet      = Status("Wet", StatusKind.Flag, StatusFlag.Wet, 3);
+            var marked   = Status("Marked", StatusKind.Flag, StatusFlag.Marked, 3);
+            var frozen   = Status("Frozen", StatusKind.Control, StatusFlag.Frozen, 1, skip: true);
+            var defending= Status("Defending", StatusKind.Buff, StatusFlag.Defending, 1);
+            var stealth  = Status("Stealth", StatusKind.Buff, StatusFlag.Stealthed, 1, eva: 200f);
+            var rage     = Status("Rage", StatusKind.Buff, StatusFlag.None, 3, atk: 15);
+            var bless    = Status("Bless", StatusKind.Buff, StatusFlag.None, 3, acc: 20f, def: 8);
+            var weaken   = Status("Weaken", StatusKind.Debuff, StatusFlag.None, 3, def: -12);
+            var blind    = Status("Blind", StatusKind.Debuff, StatusFlag.None, 3, acc: -25f);
+            var berserk  = Status("BerserkStance", StatusKind.Buff, StatusFlag.None, 99, atk: 20, def: -10);
+            var guardian = Status("GuardianStance", StatusKind.Buff, StatusFlag.None, 99, def: 25, atk: -8);
+            var tailGuard= Status("TailGuardBuff", StatusKind.Buff, StatusFlag.None, 2, def: 30);
+
+            // --- Element profiles -----------------------------------------------------
+            var neutral = Profile("Hero_Neutral");
+            var dragonProfile = Profile("Dragon_Profile", weak: new[] { ElementType.Ice }, absorb: new[] { ElementType.Fire });
+
+            // --- WARRIOR (STR) --------------------------------------------------------
+            var warrior = Character("Warrior", "Warrior", PrimaryStat.STR, neutral,
+                new StatBlock { STR = 28, maxHP = 320, maxMP = 60, baseAttack = 14, baseDefense = 18, baseSpeed = 8, baseAccuracy = 6, critDamage = 1.5f },
+                new[]
+                {
+                    Ab("Warrior_PowerStrike", "Power Strike", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 1.3f, mp: 0, regen: 8, tier: HitTier.Standard),
+                    Ab("Warrior_SlashBlast", "Slash Blast", EffectType.MultiHit, TargetRule.SingleEnemy, ElementType.Physical, 0.6f, hits: 2, mp: 8, tier: HitTier.Standard, tags: Brk),
+                    Ab("Warrior_Rage", "Rage", EffectType.Buff, TargetRule.AllAllies, ElementType.Physical, 0f, mp: 12, cd: 2, statuses: One(rage)),
+                    Ab("Warrior_GuardianTaunt", "Guardian Taunt", EffectType.Defend, TargetRule.Self, ElementType.Physical, 0f, mp: 10, cd: 2, statuses: One(defending)),
+                    Ab("Warrior_BerserkStance", "Berserk Stance", EffectType.Stance, TargetRule.Self, ElementType.Physical, 0f, mp: 0, stance: StanceAction.ToggleStatus, stanceStatuses: new[] { berserk, guardian }),
+                    Ab("Warrior_CrushingBlow", "Crushing Blow", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 2.2f, mp: 25, cd: 4, tier: HitTier.Risky, tags: Brk),
+                });
+
+            // --- MAGE (INT) -----------------------------------------------------------
+            var mage = Character("Mage", "Mage", PrimaryStat.INT, neutral,
+                new StatBlock { INT = 30, LUK = 8, maxHP = 150, maxMP = 200, baseMagicAttack = 12, baseDefense = 5, baseSpeed = 13, baseAccuracy = 12, baseCritChance = 0.08f, critDamage = 1.6f },
+                new[]
+                {
+                    Ab("Mage_MagicBolt", "Magic Bolt", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Ice, 1.2f, magic: true, mp: 0, regen: 8, tier: HitTier.Standard, followsAttune: true),
+                    Ab("Mage_Attunement", "Element Attunement", EffectType.Stance, TargetRule.Self, ElementType.Ice, 0f, mp: 0, stance: StanceAction.CycleAttunement, attuneOpts: new[] { ElementType.Fire, ElementType.Ice, ElementType.Lightning, ElementType.Holy }),
+                    Ab("Mage_Fireball", "Fireball", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Fire, 1.6f, magic: true, mp: 12, tier: HitTier.Standard, statuses: One(burn)),
+                    Ab("Mage_IceLance", "Ice Lance", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Ice, 1.6f, magic: true, mp: 12, tier: HitTier.Standard, tags: Brk, statuses: One(frozen)),
+                    Ab("Mage_Spark", "Spark", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Lightning, 1.5f, magic: true, mp: 12, tier: HitTier.Standard),
+                    Ab("Mage_Heal", "Heal", EffectType.Heal, TargetRule.SingleAlly, ElementType.Holy, 1.4f, magic: true, mp: 14, cd: 1),
+                    Ab("Mage_Bless", "Bless", EffectType.Buff, TargetRule.AllAllies, ElementType.Holy, 0f, mp: 12, cd: 2, statuses: One(bless)),
+                    Ab("Mage_Blizzard", "Blizzard", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Ice, 2.4f, magic: true, mp: 30, cd: 4, tier: HitTier.Risky, tags: BrkFin),
+                });
+
+            // --- THIEF (LUK) ----------------------------------------------------------
+            var thief = Character("Thief", "Thief", PrimaryStat.LUK, neutral,
+                new StatBlock { LUK = 26, DEX = 14, maxHP = 190, maxMP = 100, baseAttack = 12, baseDefense = 8, baseSpeed = 16, baseAccuracy = 10, baseEvasion = 12, baseCritChance = 0.2f, critDamage = 1.7f },
+                new[]
+                {
+                    Ab("Thief_LuckySeven", "Lucky Seven", EffectType.MultiHit, TargetRule.SingleEnemy, ElementType.Physical, 0.5f, hits: 2, mp: 0, regen: 8, tier: HitTier.Standard),
+                    Ab("Thief_OilBomb", "Oil Bomb", EffectType.ApplyStatus, TargetRule.SingleEnemy, ElementType.Physical, 0f, mp: 8, cd: 1, statuses: One(oiled)),
+                    Ab("Thief_WaterBomb", "Water Bomb", EffectType.ApplyStatus, TargetRule.SingleEnemy, ElementType.Physical, 0f, mp: 8, cd: 1, statuses: One(wet)),
+                    Ab("Thief_ShadowMark", "Shadow Mark", EffectType.ApplyStatus, TargetRule.SingleEnemy, ElementType.Physical, 0f, mp: 6, cd: 1, statuses: One(marked)),
+                    Ab("Thief_DarkSight", "Dark Sight", EffectType.Buff, TargetRule.Self, ElementType.Physical, 0f, mp: 6, cd: 2, statuses: One(stealth)),
+                    Ab("Thief_SmokeBomb", "Smoke Bomb", EffectType.Debuff, TargetRule.SingleEnemy, ElementType.Physical, 0f, mp: 10, cd: 2, statuses: One(blind)),
+                    Ab("Thief_Assassinate", "Assassinate", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 2.0f, mp: 24, cd: 4, tier: HitTier.Risky, tags: Fin),
+                });
+
+            // --- ARCHER (DEX) ---------------------------------------------------------
+            var archer = Character("Archer", "Archer", PrimaryStat.DEX, neutral,
+                new StatBlock { DEX = 26, maxHP = 210, maxMP = 110, baseAttack = 14, baseDefense = 9, baseSpeed = 14, baseAccuracy = 22, baseCritChance = 0.12f, critDamage = 1.6f },
+                new[]
+                {
+                    Ab("Archer_DoubleShot", "Double Shot", EffectType.MultiHit, TargetRule.SingleEnemy, ElementType.Physical, 0.7f, hits: 2, mp: 0, regen: 8, tier: HitTier.Reliable),
+                    Ab("Archer_SoulArrow", "Soul Arrow", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 1.5f, mp: 10, tier: HitTier.Reliable),
+                    Ab("Archer_MarkTarget", "Mark Target", EffectType.ApplyStatus, TargetRule.SingleEnemy, ElementType.Physical, 0f, mp: 6, cd: 1, statuses: One(marked)),
+                    Ab("Archer_Puppet", "Puppet", EffectType.Buff, TargetRule.Self, ElementType.Physical, 0f, mp: 12, cd: 3, statuses: One(defending)),
+                    Ab("Archer_EyeOfAmazon", "Eye of Amazon", EffectType.Buff, TargetRule.AllAllies, ElementType.Physical, 0f, mp: 8, cd: 2, statuses: One(bless)),
+                    Ab("Archer_ArrowRain", "Arrow Rain", EffectType.Attack, TargetRule.AllEnemies, ElementType.Physical, 2.1f, mp: 26, cd: 4, tier: HitTier.Reliable, tags: BrkFin),
+                });
+
+            // --- THE DRAGON -----------------------------------------------------------
+            var dFlame = Ab("Dragon_FlameBreath", "Flame Breath", EffectType.Attack, TargetRule.AllEnemies, ElementType.Fire, 1.4f, auto: true);
+            var dClaw = Ab("Dragon_ClawSwipe", "Claw Swipe", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 1.3f, tier: HitTier.Standard);
+            var dSweep = Ab("Dragon_TailSweep", "Tail Sweep", EffectType.Attack, TargetRule.AllEnemies, ElementType.Physical, 0.8f, auto: true);
+            var dGuard = Ab("Dragon_TailGuard", "Tail Guard", EffectType.Buff, TargetRule.Self, ElementType.Physical, 0f, statuses: One(tailGuard));
+            var dCharge = Ab("Dragon_ChargingBreath", "Charging Breath", EffectType.BossMove, TargetRule.Self, ElementType.Fire, 0f, telegraphs: dFlame);
+
+            var dragonAI = ScriptableObject.CreateInstance<DragonCycleAI>();
+            dragonAI.clawSwipe = dClaw; dragonAI.tailSweep = dSweep; dragonAI.tailGuard = dGuard;
+            dragonAI.chargingBreath = dCharge; dragonAI.flameBreath = dFlame; dragonAI.tailSweepChance = 0.2f;
+            Save(dragonAI, $"{Root}/AI/DragonCycleAI.asset");
+
+            var dragon = ScriptableObject.CreateInstance<BossDefinition>();
+            dragon.bossName = "The Dragon"; dragon.primaryStat = PrimaryStat.STR;
+            dragon.elementProfile = dragonProfile; dragon.aiBehavior = dragonAI;
+            dragon.baseStats = new StatBlock { STR = 24, maxHP = 1000, maxMP = 999, baseAttack = 26, baseDefense = 14, baseSpeed = 8, baseAccuracy = 6 };
+            dragon.abilities = new List<Ability> { dClaw, dSweep, dGuard, dCharge, dFlame };
+            dragon.staggerThreshold = 120f; dragon.staggeredTurns = 1;
+            dragon.phases = new List<BossPhase> { new BossPhase { name = "Enrage", hpThresholdPercent = 0.4f, enrage = true, attackMultiplier = 1.3f } };
+            Save(dragon, $"{Root}/Bosses/Dragon.asset");
+
+            // Suppress "unused" warnings for statuses authored for later bosses/heroes.
+            _ = new Object[] { poison, weaken, warrior, mage, thief, archer };
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log("[ContentBuilder] Built all content: 4 classes + Dragon + statuses/profiles.");
+        }
+
+        // --- builders -----------------------------------------------------------------
+        private static readonly string[] Brk = { "BreakSkill" };
+        private static readonly string[] Fin = { "Finisher" };
+        private static readonly string[] BrkFin = { "BreakSkill", "Finisher" };
+        private static StatusEffectDefinition[] One(StatusEffectDefinition s) => new[] { s };
+
+        private static StatusEffectDefinition Status(string name, StatusKind kind, StatusFlag flag, int dur,
+            bool skip = false, float pctHp = 0f, int flat = 0, bool stacks = false, int maxStacks = 1,
+            int atk = 0, int def = 0, float acc = 0f, float eva = 0f, ElementType el = ElementType.Physical)
+        {
+            var s = ScriptableObject.CreateInstance<StatusEffectDefinition>();
+            s.displayName = name; s.kind = kind; s.flag = flag; s.durationTurns = dur; s.skipsTurn = skip;
+            s.perTurnPercentMaxHP = pctHp; s.perTurnFlatDamage = flat; s.stacks = stacks; s.maxStacks = maxStacks;
+            s.attackMod = atk; s.defenseMod = def; s.accuracyMod = acc; s.evasionMod = eva; s.dotElement = el;
+            Save(s, $"{Root}/Status/{name}.asset");
+            return s;
+        }
+
+        private static ElementProfile Profile(string name, ElementType[] weak = null, ElementType[] resist = null,
+            ElementType[] immune = null, ElementType[] absorb = null)
+        {
+            var p = ScriptableObject.CreateInstance<ElementProfile>();
+            p.weakTo = weak; p.resistTo = resist; p.immuneTo = immune; p.absorbs = absorb;
+            Save(p, $"{Root}/Elements/{name}.asset");
+            return p;
+        }
+
+        private static Ability Ab(string file, string name, EffectType type, TargetRule rule, ElementType el, float power,
+            bool magic = false, int mp = 0, int regen = 0, int hits = 1, int cd = 0, bool auto = false,
+            HitTier tier = HitTier.Reliable, string[] tags = null, StatusEffectDefinition[] statuses = null,
+            bool followsAttune = false, StanceAction stance = StanceAction.None, ElementType[] attuneOpts = null,
+            StatusEffectDefinition[] stanceStatuses = null, Ability telegraphs = null)
+        {
+            var a = ScriptableObject.CreateInstance<Ability>();
+            a.displayName = name; a.effectType = type; a.targetRule = rule; a.element = el; a.power = power; a.isMagic = magic;
+            a.mpCost = mp; a.mpRegenOnUse = regen; a.hits = hits; a.cooldown = cd; a.autoHit = auto; a.hitTier = tier;
+            a.tags = tags; a.statusesToApply = statuses; a.followsAttunement = followsAttune;
+            a.stanceAction = stance; a.attunementOptions = attuneOpts; a.stanceStatuses = stanceStatuses; a.telegraphsAbility = telegraphs;
+            Save(a, $"{Root}/Abilities/{file}.asset");
+            return a;
+        }
+
+        private static CharacterDefinition Character(string file, string name, PrimaryStat primary,
+            ElementProfile profile, StatBlock stats, Ability[] abilities)
+        {
+            var c = ScriptableObject.CreateInstance<CharacterDefinition>();
+            c.className = name; c.primaryStat = primary; c.elementProfile = profile; c.baseStats = stats;
+            c.abilities = new List<Ability>(abilities);
+            Save(c, $"{Root}/Characters/{file}.asset");
+            return c;
+        }
+
+        private static void Save(Object obj, string path)
+        {
+            if (AssetDatabase.LoadAssetAtPath<Object>(path) != null) AssetDatabase.DeleteAsset(path);
+            AssetDatabase.CreateAsset(obj, path);
+        }
+
+        private static void EnsureFolders()
+        {
+            foreach (var sub in new[] { "Status", "Elements", "Abilities", "Characters", "Bosses", "AI" })
+                if (!AssetDatabase.IsValidFolder($"{Root}/{sub}"))
+                    AssetDatabase.CreateFolder(Root, sub);
+        }
+    }
+}
+#endif

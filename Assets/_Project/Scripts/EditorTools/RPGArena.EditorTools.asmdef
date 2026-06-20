@@ -1,0 +1,19 @@
+{
+    "name": "RPGArena.EditorTools",
+    "rootNamespace": "RPGArena.EditorTools",
+    "references": [
+        "RPGArena.Core",
+        "RPGArena.Gameplay"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

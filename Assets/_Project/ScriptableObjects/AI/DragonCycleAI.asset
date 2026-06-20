@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 167853242c48add4a9b08f5ddafb2429, type: 3}
+  m_Name: DragonCycleAI
+  m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.AI.DragonCycleAI
+  clawSwipe: {fileID: 11400000, guid: 4df8a9503b30df84b8bd8f5263c6cffd, type: 2}
+  tailSweep: {fileID: 11400000, guid: 786db29e19f2c2e4faccd1e48d9cf04d, type: 2}
+  tailGuard: {fileID: 11400000, guid: c341649ab8b49284d95f79ebf273892f, type: 2}
+  chargingBreath: {fileID: 11400000, guid: 6cd2334ee429d25488b1301be963d96a, type: 2}
+  flameBreath: {fileID: 11400000, guid: 3a801d386b05f2a4e935b183ad772751, type: 2}
+  tailSweepChance: 0.2
+  phase2HpFraction: 0.4

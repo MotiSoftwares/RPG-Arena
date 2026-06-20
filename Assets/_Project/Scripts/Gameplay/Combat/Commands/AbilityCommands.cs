@@ -55,18 +55,20 @@ namespace RPGArena.Combat.Commands
             if (!PayCosts(ctx)) return;
             var a = req.ability; var caster = req.caster;
             int hits = a.effectType == EffectType.MultiHit ? Mathf.Max(1, a.hits) : 1;
+            // Attunement-following basics (the Mage's Magic Bolt) take the caster's school.
+            ElementType element = a.followsAttunement ? caster.currentAttunement : a.element;
 
             foreach (var target in req.targets)
             {
                 if (target == null || !target.IsAlive) continue;
-                var syn = SynergyResolver.Resolve(target.Status, a.element);
+                var syn = SynergyResolver.Resolve(target.Status, element);
                 if (!string.IsNullOrEmpty(syn.note)) ctx.Log($"      synergy: {syn.note}");
 
                 for (int h = 0; h < hits; h++)
                 {
                     var info = new DamageInfo
                     {
-                        source = caster, target = target, ability = a, element = a.element,
+                        source = caster, target = target, ability = a, element = element,
                         basePower = a.power, isMagic = a.isMagic, forceHit = a.autoHit,
                         isBreakSkill = a.HasTag("BreakSkill"), hitTier = a.hitTier
                     };
@@ -153,6 +155,46 @@ namespace RPGArena.Combat.Commands
         }
     }
 
+    // Stance / attunement toggle (§5.9): the Mage cycles its elemental school; the Warrior
+    // swaps between mutually-exclusive Berserk/Guardian stance statuses.
+    public class StanceCommand : AbilityCommand
+    {
+        public StanceCommand(ActionRequest req) : base(req) { }
+
+        public override void Resolve(BattleContext ctx)
+        {
+            if (!PayCosts(ctx)) return;
+            var a = req.ability; var caster = req.caster;
+            switch (a.stanceAction)
+            {
+                case StanceAction.CycleAttunement: CycleAttunement(ctx, caster, a); break;
+                case StanceAction.ToggleStatus: ToggleStance(ctx, caster, a); break;
+                default: ctx.Log($"  {Name(caster)} shifts stance."); break;
+            }
+        }
+
+        private void CycleAttunement(BattleContext ctx, Entity caster, Ability a)
+        {
+            var opts = a.attunementOptions;
+            if (opts == null || opts.Length == 0) return;
+            int idx = System.Array.IndexOf(opts, caster.currentAttunement);
+            caster.currentAttunement = opts[(idx + 1) % opts.Length];
+            ctx.Log($"  {Name(caster)} attunes to {caster.currentAttunement}.");
+        }
+
+        private void ToggleStance(BattleContext ctx, Entity caster, Ability a)
+        {
+            var stances = a.stanceStatuses;
+            if (stances == null || stances.Length == 0) return;
+            int active = -1;
+            for (int i = 0; i < stances.Length; i++)
+                if (stances[i] != null && caster.Status.Has(stances[i])) active = i;
+            foreach (var s in stances) if (s != null) caster.Status.Remove(s);
+            var next = stances[(active + 1) % stances.Length];
+            if (next != null) { caster.Status.Apply(next); ctx.Log($"  {Name(caster)} switches to {next.displayName}."); }
+        }
+    }
+
     // Builds the right command for an action based on the ability's effect type (§4.3).
     public static class CommandFactory
     {
@@ -162,11 +204,11 @@ namespace RPGArena.Combat.Commands
             {
                 case EffectType.Heal: return new HealCommand(req);
                 case EffectType.BossMove: return new BossMoveCommand(req);
+                case EffectType.Stance: return new StanceCommand(req);
                 case EffectType.Buff:
                 case EffectType.Debuff:
                 case EffectType.ApplyStatus:
                 case EffectType.Defend:
-                case EffectType.Stance:
                     return new ApplyStatusCommand(req);
                 default:
                     return new AttackCommand(req);   // Attack, MultiHit, Composite

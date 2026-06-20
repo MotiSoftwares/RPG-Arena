@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b335960c99a30f42b5f43ed52ac5c82, type: 3}
+  m_Name: Dragon_FlameBreath
+  m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.Ability
+  displayName: Flame Breath
+  description: 
+  icon: {fileID: 0}
+  effectType: 0
+  targetRule: 1
+  element: 1
+  isMagic: 0
+  power: 1.4
+  hits: 1
+  mpCost: 0
+  cooldown: 0
+  mpRegenOnUse: 0
+  hitTier: 0
+  autoHit: 1
+  statusesToApply: []
+  telegraphsAbility: {fileID: 0}
+  stanceAction: 0
+  attunementOptions: 
+  stanceStatuses: []
+  followsAttunement: 0
+  attackMod: 0
+  defenseMod: 0
+  speedMod: 0
+  accuracyMod: 0
+  evasionMod: 0
+  buffDurationTurns: 3
+  vfxPrefab: {fileID: 0}
+  sfxId: 
+  animationTrigger: Attack
+  tags: []

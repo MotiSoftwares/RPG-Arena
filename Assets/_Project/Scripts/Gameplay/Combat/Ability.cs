@@ -13,6 +13,10 @@ namespace RPGArena.Combat
     // skills (basics, AoE, the Archer) effectively never miss; Risky ones (big nukes) can.
     public enum HitTier { Reliable, Standard, Risky }
 
+    // What a Stance ability does when used (§5.9). The two real stance systems after the
+    // E.3 trim are the Mage's attunement cycle and the Warrior's Berserk/Guardian toggle.
+    public enum StanceAction { None, CycleAttunement, ToggleStatus }
+
     // DATA ONLY. An ability is a designer-authored ScriptableObject; its behaviour lives in
     // a Command (the Slay-the-Spire model, §4.3). Adding content never means new engine code.
     [CreateAssetMenu(menuName = "RPGArena/Ability", fileName = "Ability")]
@@ -49,6 +53,15 @@ namespace RPGArena.Combat
         [Header("Boss move")]
         [Tooltip("For a Charging/telegraph move: the attack it commits to next turn (e.g. Flame Breath).")]
         public Ability telegraphsAbility;
+
+        [Header("Stance / attunement (effectType = Stance, §5.9)")]
+        public StanceAction stanceAction = StanceAction.None;
+        [Tooltip("CycleAttunement: the elemental schools to rotate through (Mage).")]
+        public ElementType[] attunementOptions;
+        [Tooltip("ToggleStatus: the mutually-exclusive stance statuses to rotate (Warrior Berserk/Guardian).")]
+        public StatusEffectDefinition[] stanceStatuses;
+        [Tooltip("Basics that follow the caster's current attunement (Mage's Magic Bolt).")]
+        public bool followsAttunement;
 
         [Header("Stat modifiers (Buff / Debuff)")]
         public int attackMod, defenseMod, speedMod;

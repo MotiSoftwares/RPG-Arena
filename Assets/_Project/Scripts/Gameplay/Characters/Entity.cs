@@ -31,6 +31,10 @@ namespace RPGArena.Characters
         public ElementProfile elementProfile;
         public List<Ability> abilities = new();
 
+        [Header("Stance / attunement (player toggles, §5.9)")]
+        // Mage: which elemental school the attunement-following basic (Magic Bolt) uses.
+        public ElementType currentAttunement = ElementType.Ice;
+
         [Header("Stagger (bosses)")]
         public float staggerMeter;
         public float staggerThreshold = 100f;
@@ -84,6 +88,7 @@ namespace RPGArena.Characters
             ConsecutiveMisses = 0;
             aiCycleIndex = 0;
             telegraphedAbility = null;
+            currentAttunement = ElementType.Ice;
         }
 
         // --- Combat mutators ----------------------------------------------------------

@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bdb4c9dbfe744d488b3b626ac8c9074, type: 3}
+  m_Name: Archer
+  m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Characters.CharacterDefinition
+  className: Archer
+  classFlavor: 
+  portrait: {fileID: 0}
+  modelPrefab: {fileID: 0}
+  primaryStat: 1
+  baseStats:
+    STR: 0
+    DEX: 26
+    INT: 0
+    LUK: 0
+    maxHP: 210
+    maxMP: 110
+    baseAttack: 14
+    baseMagicAttack: 0
+    baseDefense: 9
+    baseSpeed: 14
+    baseAccuracy: 22
+    baseEvasion: 0
+    baseCritChance: 0.12
+    critDamage: 1.6
+  abilities:
+  - {fileID: 11400000, guid: ea5e9d0cd389fc746a2f48d302572ba9, type: 2}
+  - {fileID: 11400000, guid: e0c4e6e7478d2d646b5012d764c05009, type: 2}
+  - {fileID: 11400000, guid: 7eee23c34042b2142ba87948ec1b3c41, type: 2}
+  - {fileID: 11400000, guid: b22c396e463dcaf4b8e2bd0ebd868a91, type: 2}
+  - {fileID: 11400000, guid: e876a4afc5e21d343af9a215089deda1, type: 2}
+  - {fileID: 11400000, guid: 62bed88f0b9b25142bde3d6dc1d638f0, type: 2}
+  elementProfile: {fileID: 11400000, guid: ede49bfb01d99f34ab2f5013353588ba, type: 2}
