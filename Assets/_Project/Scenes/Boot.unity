@@ -277,6 +277,34 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e67b823919954464dbc4291144c0f30e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: RPGArena.Audio::RPGArena.Audio.AudioManager
+  mixer: {fileID: 24100000, guid: caff71dec47b8c246bc53de868748d45, type: 2}
+  musicGroup: {fileID: -5436502526550244462, guid: caff71dec47b8c246bc53de868748d45, type: 2}
+  sfxGroup: {fileID: 7202770171117454170, guid: caff71dec47b8c246bc53de868748d45, type: 2}
+  sfx:
+  - id: break
+    clip: {fileID: 8300000, guid: 4e14418d562e0bd44a58472fd2f91b25, type: 3}
+  - id: crit
+    clip: {fileID: 8300000, guid: ad69b2b0a267d8a4cbfbd96e533ae74d, type: 3}
+  - id: defeat
+    clip: {fileID: 8300000, guid: 2ecc977af2c73e444a4f425f74eaaa29, type: 3}
+  - id: heal
+    clip: {fileID: 8300000, guid: 21f26708e363729428588e4aa4f84c3c, type: 3}
+  - id: hit
+    clip: {fileID: 8300000, guid: 7e87d8f967c9d894891fa7187b3fd984, type: 3}
+  - id: miss
+    clip: {fileID: 8300000, guid: 1ac31be10ca13014c964f3fe9baabae1, type: 3}
+  - id: telegraph
+    clip: {fileID: 8300000, guid: 9242310998177a4449bfe6b77111f65f, type: 3}
+  - id: ui_click
+    clip: {fileID: 8300000, guid: ef45fdf7fed14014b8402b8970f770d8, type: 3}
+  - id: victory
+    clip: {fileID: 8300000, guid: a3e44d2c37561664fbc551d3a32c3eee, type: 3}
+  music:
+  - id: battle
+    clip: {fileID: 8300000, guid: 01f7d791c63b829429bd030a74fdfa31, type: 3}
+  - id: menu
+    clip: {fileID: 8300000, guid: f420a212ad715ad4bbdcc4db21bd85ef, type: 3}
+  sfxVoices: 8
 --- !u!114 &1761600622
 MonoBehaviour:
   m_ObjectHideFlags: 0

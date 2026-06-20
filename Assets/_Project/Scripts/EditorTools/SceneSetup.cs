@@ -73,6 +73,13 @@ namespace RPGArena.EditorTools
             var juice = juiceGo.AddComponent<JuiceController>();
             juice.onDamageDealt = cDmg; juice.onStaggerBroken = cBreak; juice.onBossTelegraph = cTele;
 
+            // Audio bridge (presentation): routes combat events to the AudioMixer-backed service.
+            DestroyIfExists("BattleAudio");
+            var audioGo = new GameObject("BattleAudio");
+            var battleAudio = audioGo.AddComponent<BattleAudio>();
+            battleAudio.onDamageDealt = cDmg; battleAudio.onStaggerBroken = cBreak; battleAudio.onBossTelegraph = cTele;
+            battleAudio.onBattleStarted = cStarted; battleAudio.onBattleWon = cWon; battleAudio.onBattleLost = cLost;
+
             DressArena();
 
             EditorSceneManager.MarkSceneDirty(scene);
