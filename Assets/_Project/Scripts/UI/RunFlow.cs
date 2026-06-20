@@ -22,13 +22,31 @@ namespace RPGArena.UI
         private Canvas canvas;
         private RectTransform root;
         private GameObject overlay;
+        private BattleController controller;
 
         private void Awake()
         {
             font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            controller = FindFirstObjectByType<BattleController>();
             EnsureEventSystem();
             BuildCanvas();
         }
+
+        // A turns + deaths based grade for the fight just won (§9.6 / §2.2 scoring).
+        private string Grade()
+        {
+            int rounds = controller != null ? controller.RoundsTaken : 99;
+            int lost = controller != null && controller.Context != null
+                ? controller.Context.heroes.FindAll(h => !h.IsAlive).Count : 0;
+            if (lost == 0 && rounds <= 8) return "S";
+            if (lost == 0 && rounds <= 12) return "A";
+            if (lost <= 1 && rounds <= 16) return "B";
+            return "C";
+        }
+
+        private static Color GradeColor(string g) =>
+            g == "S" ? new Color(1f, 0.85f, 0.2f) : g == "A" ? new Color(0.5f, 1f, 0.5f) :
+            g == "B" ? new Color(0.6f, 0.8f, 1f) : new Color(0.85f, 0.6f, 0.5f);
 
         private void OnEnable()
         {
@@ -56,8 +74,10 @@ namespace RPGArena.UI
         private void ShowBoonSelect(RunState run)
         {
             var panel = NewOverlay();
-            Label(panel, "VICTORY!  Choose a boon for the road ahead", 0.86f, 40, new Color(1f, 0.9f, 0.4f));
-            Label(panel, $"Next: {Pretty(run.NextBoss)}", 0.78f, 24, Color.white);
+            var g = Grade();
+            Label(panel, "VICTORY!", 0.9f, 46, new Color(1f, 0.9f, 0.4f));
+            Label(panel, $"Battle Grade:  {g}", 0.83f, 30, GradeColor(g));
+            Label(panel, $"Choose a boon  —  Next: {Pretty(run.NextBoss)}", 0.77f, 24, Color.white);
 
             var picks = PickThree();
             for (int i = 0; i < picks.Count; i++)
@@ -91,9 +111,11 @@ namespace RPGArena.UI
         private void ShowRunComplete(RunState run)
         {
             var panel = NewOverlay();
-            Label(panel, "THE ARENA IS CONQUERED", 0.62f, 52, new Color(1f, 0.85f, 0.3f));
-            Label(panel, "You have bested every champion of the Arena of the Algorithms.", 0.52f, 26, Color.white);
-            MakeBtn(panel,"Return to Main Menu", 0.36f, () => { ResetRun(); ToMenu(); });
+            var g = Grade();
+            Label(panel, "THE ARENA IS CONQUERED", 0.64f, 52, new Color(1f, 0.85f, 0.3f));
+            Label(panel, $"Final Battle Grade:  {g}", 0.55f, 32, GradeColor(g));
+            Label(panel, "You have bested every champion of the Arena of the Algorithms.", 0.47f, 24, Color.white);
+            MakeBtn(panel,"Return to Main Menu", 0.34f, () => { ResetRun(); ToMenu(); });
         }
 
         private void ShowDefeat()

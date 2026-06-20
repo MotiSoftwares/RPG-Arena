@@ -34,6 +34,7 @@ namespace RPGArena.Combat
         public float actionDelay = 0.55f;
 
         public BattleContext Context { get; private set; }
+        public int RoundsTaken { get; private set; }                  // for the victory grade (§9.6)
         public Entity ActiveHero { get; private set; }                // whose input we await (null otherwise)
         public bool AwaitingInput => ActiveHero != null && pendingAction == null;
         public BattleManager.Outcome Result { get; private set; } = BattleManager.Outcome.InProgress;
@@ -78,6 +79,7 @@ namespace RPGArena.Combat
 
             for (int round = 1; round <= 60 && Result == BattleManager.Outcome.InProgress; round++)
             {
+                RoundsTaken = round;
                 var order = Context.turns.BuildRoundOrder(All(), Context.rng, balance.maxExtraTurnsPerEntityPerRound);
                 while (order.Count > 0 && Result == BattleManager.Outcome.InProgress)
                 {
