@@ -1,0 +1,193 @@
+using NUnit.Framework;
+using UnityEngine;
+using RPGArena.Core;
+using RPGArena.Characters;
+using RPGArena.Combat;
+using RPGArena.Combat.Status;
+
+namespace RPGArena.Tests
+{
+    // Small helpers shared by the edit-mode combat tests.
+    internal static class TestUtil
+    {
+        public static BalanceConfig Cfg() => ScriptableObject.CreateInstance<BalanceConfig>();
+
+        public static ElementProfile Profile(ElementType[] weak = null, ElementType[] resist = null,
+            ElementType[] immune = null, ElementType[] absorb = null)
+        {
+            var p = ScriptableObject.CreateInstance<ElementProfile>();
+            p.weakTo = weak; p.resistTo = resist; p.immuneTo = immune; p.absorbs = absorb;
+            return p;
+        }
+
+        public static Entity Make(BalanceConfig cfg, StatBlock stats, ElementProfile profile = null,
+            bool isBoss = false, PrimaryStat primary = PrimaryStat.INT)
+        {
+            var e = new GameObject("TestEntity").AddComponent<Entity>();
+            e.isBoss = isBoss; e.primaryStat = primary;
+            e.Initialize(stats, cfg, profile, null, null);
+            return e;
+        }
+
+        public static void Destroy(params Entity[] es) { foreach (var e in es) if (e) Object.DestroyImmediate(e.gameObject); }
+
+        public static BattleContext MiniCtx(BalanceConfig cfg) => new BattleContext
+        {
+            balance = cfg, rng = new System.Random(1), echoToConsole = false,
+            stagger = new StaggerSystem(), turns = new TurnSystem(),
+            damage = new DamagePipeline(cfg, new System.Random(2))
+        };
+    }
+
+    public class CombatTests
+    {
+        // --- Elemental matrix (§5.4) -------------------------------------------------
+        [Test]
+        public void Matrix_Multipliers_Match_Config()
+        {
+            var cfg = TestUtil.Cfg();
+            Assert.AreEqual(cfg.weakMult, ElementProfile.MultiplierFor(ElementReaction.Weak, cfg), 1e-4f);
+            Assert.AreEqual(cfg.resistMult, ElementProfile.MultiplierFor(ElementReaction.Resist, cfg), 1e-4f);
+            Assert.AreEqual(0f, ElementProfile.MultiplierFor(ElementReaction.Immune, cfg), 1e-4f);
+            Assert.AreEqual(1f, ElementProfile.MultiplierFor(ElementReaction.Neutral, cfg), 1e-4f);
+            Assert.Less(ElementProfile.MultiplierFor(ElementReaction.Absorb, cfg), 0f);   // negative heal sentinel
+        }
+
+        [Test]
+        public void Profile_Priority_Absorb_Beats_Weak()
+        {
+            var p = TestUtil.Profile(weak: new[] { ElementType.Fire, ElementType.Ice }, absorb: new[] { ElementType.Fire });
+            Assert.AreEqual(ElementReaction.Absorb, p.GetReaction(ElementType.Fire));   // absorb wins over a stray weakness
+            Assert.AreEqual(ElementReaction.Weak, p.GetReaction(ElementType.Ice));
+            Assert.AreEqual(ElementReaction.Neutral, p.GetReaction(ElementType.Holy));
+        }
+
+        // --- Damage pipeline, pure (§4.8 / Appendix E.1) -----------------------------
+        [Test]
+        public void Weakness_Hits_Harder_Than_Neutral()
+        {
+            var cfg = TestUtil.Cfg();
+            var src = TestUtil.Make(cfg, new StatBlock { INT = 20, baseMagicAttack = 50 });
+            var weakT = TestUtil.Make(cfg, new StatBlock { maxHP = 9999 }, TestUtil.Profile(weak: new[] { ElementType.Ice }), isBoss: true);
+            var neutT = TestUtil.Make(cfg, new StatBlock { maxHP = 9999 }, TestUtil.Profile(), isBoss: true);
+
+            var w = DamagePipeline.ComputePure(Info(src, weakT, ElementType.Ice), cfg, 0f, 1f, 1f);
+            var n = DamagePipeline.ComputePure(Info(src, neutT, ElementType.Ice), cfg, 0f, 1f, 1f);
+            Assert.AreEqual(ElementReaction.Weak, w.reaction);
+            Assert.Greater(w.amount, n.amount);
+            TestUtil.Destroy(src, weakT, neutT);
+        }
+
+        [Test]
+        public void Absorb_Turns_Damage_Into_Heal()
+        {
+            var cfg = TestUtil.Cfg();
+            var src = TestUtil.Make(cfg, new StatBlock { baseMagicAttack = 50 });
+            var dragon = TestUtil.Make(cfg, new StatBlock { maxHP = 9999 }, TestUtil.Profile(absorb: new[] { ElementType.Fire }), isBoss: true);
+            var r = DamagePipeline.ComputePure(Info(src, dragon, ElementType.Fire), cfg, 0f, 1f, 1f);
+            Assert.IsTrue(r.absorbed);
+            Assert.IsTrue(r.isHeal);
+            Assert.Greater(r.amount, 0);
+            TestUtil.Destroy(src, dragon);
+        }
+
+        [Test]
+        public void Crit_Increases_Damage()
+        {
+            var cfg = TestUtil.Cfg();
+            var src = TestUtil.Make(cfg, new StatBlock { baseMagicAttack = 50, critDamage = 2f, baseCritChance = 0.5f });
+            var tgt = TestUtil.Make(cfg, new StatBlock { maxHP = 9999 }, TestUtil.Profile(), isBoss: true);
+            var info = Info(src, tgt, ElementType.Physical);
+            var noCrit = DamagePipeline.ComputePure(info, cfg, 0f, 1f, 1f);   // critRoll 1 > 0.5 -> no crit
+            var crit = DamagePipeline.ComputePure(info, cfg, 0f, 1f, 0f);     // critRoll 0 <= 0.5 -> crit
+            Assert.IsFalse(noCrit.crit);
+            Assert.IsTrue(crit.crit);
+            Assert.Greater(crit.amount, noCrit.amount);
+            TestUtil.Destroy(src, tgt);
+        }
+
+        [Test]
+        public void Reliable_Never_Misses_But_Risky_Can()
+        {
+            var cfg = TestUtil.Cfg();
+            var src = TestUtil.Make(cfg, new StatBlock { baseMagicAttack = 50, baseAccuracy = 0 });
+            var tgt = TestUtil.Make(cfg, new StatBlock { maxHP = 9999, baseEvasion = 0 }, TestUtil.Profile(), isBoss: true);
+            var reliable = new DamageInfo { source = src, target = tgt, element = ElementType.Physical, basePower = 1f, isMagic = true, hitTier = HitTier.Reliable };
+            var risky = new DamageInfo { source = src, target = tgt, element = ElementType.Physical, basePower = 1f, isMagic = true, hitTier = HitTier.Risky };
+            Assert.IsTrue(DamagePipeline.ComputePure(reliable, cfg, 0.999f, 1f, 1f).hit);    // never misses
+            Assert.IsFalse(DamagePipeline.ComputePure(risky, cfg, 0.999f, 1f, 1f).hit);      // can miss
+            TestUtil.Destroy(src, tgt);
+        }
+
+        [Test]
+        public void Higher_Defense_Reduces_Damage()
+        {
+            var cfg = TestUtil.Cfg();
+            var src = TestUtil.Make(cfg, new StatBlock { baseMagicAttack = 50 });
+            var soft = TestUtil.Make(cfg, new StatBlock { maxHP = 9999, baseDefense = 0 }, TestUtil.Profile(), isBoss: true);
+            var hard = TestUtil.Make(cfg, new StatBlock { maxHP = 9999, baseDefense = 300 }, TestUtil.Profile(), isBoss: true);
+            int s = DamagePipeline.ComputePure(Info(src, soft, ElementType.Physical), cfg, 0f, 1f, 1f).amount;
+            int h = DamagePipeline.ComputePure(Info(src, hard, ElementType.Physical), cfg, 0f, 1f, 1f).amount;
+            Assert.Greater(s, h);
+            TestUtil.Destroy(src, soft, hard);
+        }
+
+        // --- Stagger & telegraph (§4.9 / §7.2) ---------------------------------------
+        [Test]
+        public void Stagger_Builds_And_Breaks_At_Threshold()
+        {
+            var cfg = TestUtil.Cfg();
+            var ctx = TestUtil.MiniCtx(cfg);
+            var boss = TestUtil.Make(cfg, new StatBlock { maxHP = 9999 }, TestUtil.Profile(), isBoss: true);
+            boss.staggerThreshold = 50f; ctx.boss = boss; ctx.BossStaggeredTurns = 1;
+
+            ctx.stagger.Build(boss, 30f, ctx);
+            Assert.IsFalse(boss.isStaggered);
+            ctx.stagger.Build(boss, 30f, ctx);              // crosses 50
+            Assert.IsTrue(boss.isStaggered);
+            TestUtil.Destroy(boss);
+        }
+
+        [Test]
+        public void Break_Cancels_The_Telegraphed_Attack()
+        {
+            var cfg = TestUtil.Cfg();
+            var ctx = TestUtil.MiniCtx(cfg);
+            var boss = TestUtil.Make(cfg, new StatBlock { maxHP = 9999 }, TestUtil.Profile(), isBoss: true);
+            boss.staggerThreshold = 10f; ctx.boss = boss;
+            var flame = ScriptableObject.CreateInstance<Ability>(); flame.displayName = "Flame Breath";
+            boss.telegraphedAbility = flame;                // the Dragon is mid-charge
+
+            ctx.stagger.Build(boss, 999f, ctx);             // BREAK during the charge
+            Assert.IsTrue(boss.isStaggered);
+            Assert.IsNull(boss.telegraphedAbility, "Breaking the boss mid-charge must cancel its telegraphed attack (§7.2).");
+            TestUtil.Destroy(boss);
+        }
+
+        // --- Cross-class synergy (§4.12 / Appendix E.3) ------------------------------
+        [Test]
+        public void WetIce_Forces_Freeze_And_OiledFire_Boosts()
+        {
+            var wet = new StatusEffectContainer();
+            wet.Apply(Flag(StatusFlag.Wet));
+            Assert.IsTrue(SynergyResolver.Resolve(wet, ElementType.Ice).forceStatusApply, "Wet + Ice must reliably Freeze.");
+
+            var oiled = new StatusEffectContainer();
+            oiled.Apply(Flag(StatusFlag.Oiled));
+            Assert.Greater(SynergyResolver.Resolve(oiled, ElementType.Fire).damageMultiplier, 1f, "Oiled + Fire must boost fire damage.");
+        }
+
+        // --- helpers -----------------------------------------------------------------
+        private static DamageInfo Info(Entity src, Entity tgt, ElementType e) => new DamageInfo
+        {
+            source = src, target = tgt, element = e, basePower = 1f, isMagic = true, forceHit = true, hitTier = HitTier.Standard
+        };
+
+        private static StatusEffectDefinition Flag(StatusFlag f)
+        {
+            var s = ScriptableObject.CreateInstance<StatusEffectDefinition>();
+            s.flag = f; s.durationTurns = 3; s.kind = StatusKind.Flag;
+            return s;
+        }
+    }
+}

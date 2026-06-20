@@ -1,0 +1,139 @@
+using UnityEngine;
+using RPGArena.Core;
+using RPGArena.Combat.Status;
+
+namespace RPGArena.Combat
+{
+    // The single source of truth for damage (§4.8). The COMPUTE half is pure and
+    // deterministic given explicit rolls, so it is unit-testable without a scene (§16.1);
+    // the APPLY half has the side effects (mutates HP, builds stagger, raises events).
+    public class DamagePipeline
+    {
+        private readonly BalanceConfig cfg;
+        private readonly System.Random rng;
+
+        public DamagePipeline(BalanceConfig cfg, System.Random rng = null)
+        {
+            this.cfg = cfg;
+            this.rng = rng ?? new System.Random();
+        }
+
+        // Live path: draws the three rolls (with the pity guard) and computes.
+        public DamageResult Compute(DamageInfo info)
+        {
+            // Pity (Appendix E.1): after too many misses in a row, force the next hit.
+            if (info.source != null && info.source.ConsecutiveMisses >= cfg.missStreakCap)
+                info.forceHit = true;
+
+            float hitRoll = (float)rng.NextDouble();
+            float damageRoll = Mathf.Lerp(cfg.damageVarianceMin, cfg.damageVarianceMax, (float)rng.NextDouble());
+            float critRoll = (float)rng.NextDouble();
+            return ComputePure(info, cfg, hitRoll, damageRoll, critRoll);
+        }
+
+        // PURE: deterministic given explicit rolls. hitRoll/critRoll in [0,1); damageRoll is the
+        // already-chosen variance multiplier. Mirrors the §4.8 order of operations.
+        public static DamageResult ComputePure(DamageInfo info, BalanceConfig cfg,
+                                               float hitRoll, float damageRoll, float critRoll)
+        {
+            var r = new DamageResult { source = info.source, target = info.target, hit = true, damageRoll = damageRoll };
+            var src = info.source;
+            var tgt = info.target;
+
+            // 1) HIT CHECK (Appendix E.1). Auto-hit/forceHit skips it; a Broken target can't evade.
+            float tierBase = info.hitTier switch
+            {
+                HitTier.Reliable => cfg.reliableHitBase,
+                HitTier.Standard => cfg.standardHitBase,
+                HitTier.Risky => cfg.riskyHitBase,
+                _ => cfg.reliableHitBase
+            };
+            float acc = src != null ? src.Accuracy : 0f;
+            float eva = (tgt != null && !tgt.isStaggered) ? tgt.Evasion : 0f;
+            float hitChance = Mathf.Clamp(tierBase + (acc - eva) * 0.01f, cfg.hitFloor, cfg.hitCeiling);
+            // Reliable abilities (basics, AoE, the Archer) NEVER miss (Appendix E.1), as do
+            // explicit auto-hit / forced (pity) attacks.
+            bool guaranteed = info.forceHit || info.hitTier == HitTier.Reliable;
+            r.hitChance = guaranteed ? 1f : hitChance;
+            if (!guaranteed && hitRoll > hitChance)
+            {
+                r.hit = false;
+                // A missed committed skill still builds a little stagger (anti-feel-bad).
+                r.staggerBuilt = info.isBreakSkill ? cfg.staggerBuildNormalHit : 0f;
+                return r;
+            }
+
+            // 2) BASE DAMAGE: offense stat × ability power × the variance roll.
+            float offense = src != null ? (info.isMagic ? src.MagicAttack : src.Attack) : 0f;
+            float dmg = offense * Mathf.Max(0f, info.basePower) * damageRoll;
+
+            // 3) ELEMENT modifier. Absorb (negative sentinel) flips the hit into a heal.
+            var reaction = (tgt != null && tgt.elementProfile != null)
+                ? tgt.elementProfile.GetReaction(info.element) : ElementReaction.Neutral;
+            r.reaction = reaction;
+            float elementMult = ElementProfile.MultiplierFor(reaction, cfg);
+            if (elementMult < 0f)
+            {
+                r.absorbed = true; r.isHeal = true;
+                r.amount = Mathf.Max(0, Mathf.RoundToInt(dmg));   // healed instead of damaged
+                return r;
+            }
+            dmg *= elementMult;
+
+            // 4) DEFENSE mitigation (percentage, diminishing).
+            float def = tgt != null ? tgt.Defense : 0f;
+            dmg *= (1f - def / (def + cfg.defenseK));
+
+            // 5) STAGGER multiplier while the target is Broken — the burst window.
+            if (tgt != null && tgt.isStaggered) dmg *= cfg.staggerDamageMult;
+
+            // 6) SYNERGY (Oiled+Fire, Wet+Lightning, Marked, ...).
+            var syn = SynergyResolver.Resolve(tgt != null ? tgt.Status : null, info.element);
+            dmg *= syn.damageMultiplier;
+
+            // 7) CRIT (Marked raises the chance; crit multiplies by CritDamage).
+            float critChance = (src != null ? src.CritChance : 0f) + syn.critChanceBonus;
+            if (critRoll <= critChance)
+            {
+                r.crit = true;
+                dmg *= (src != null ? src.CritDamage : 1.5f);
+            }
+
+            // 8) DEFEND stance halves incoming damage.
+            if (tgt != null && tgt.Status.Has(StatusFlag.Defending)) dmg *= 0.5f;
+
+            // 9) CLAMP & round (never below 0).
+            r.amount = Mathf.Max(0, Mathf.RoundToInt(dmg));
+
+            // 10) STAGGER BUILD: weakness hits build most; break skills add a chunk; +synergy.
+            float build = info.isBreakSkill ? cfg.staggerBuildBreakSkill
+                        : reaction == ElementReaction.Weak ? cfg.staggerBuildWeaknessHit
+                        : cfg.staggerBuildNormalHit;
+            r.staggerBuilt = build + syn.bonusStaggerBuild;
+            return r;
+        }
+
+        // APPLY: the side-effect half. Mutates the target, updates the miss streak, builds
+        // stagger on a boss target, and raises OnDamageDealt for presentation + the log.
+        public void Apply(DamageResult r, BattleContext ctx)
+        {
+            if (r.target == null) return;
+
+            if (!r.hit)
+            {
+                if (r.source != null) r.source.ConsecutiveMisses++;
+            }
+            else
+            {
+                if (r.source != null) r.source.ConsecutiveMisses = 0;
+                if (r.isHeal) r.target.Heal(r.amount);
+                else r.target.TakeDamage(r.amount);
+            }
+
+            if (r.staggerBuilt > 0f && r.target.isBoss)
+                ctx.stagger.Build(r.target, r.staggerBuilt, ctx);
+
+            ctx.RaiseDamage(r);
+        }
+    }
+}
