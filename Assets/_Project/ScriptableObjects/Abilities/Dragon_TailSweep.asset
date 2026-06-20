@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.Ability
   displayName: Tail Sweep
   description: 
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 456177500d008394cb407044d039b381, type: 3}
   effectType: 0
   targetRule: 1
   element: 0
