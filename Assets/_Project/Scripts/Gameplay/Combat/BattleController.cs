@@ -227,6 +227,71 @@ namespace RPGArena.Combat
                 Context.boss.transform.rotation = Quaternion.Euler(0, -90, 0);
                 AttachBody(Context.boss.gameObject, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.3f, 3.4f, 0);
             }
+
+            DressStage();
+        }
+
+        // Turns the bare stage into a place: a full-screen arena backdrop behind everyone and a
+        // soft contact shadow under each combatant so they don't float (the 2.5D look, §10).
+        private void DressStage()
+        {
+            var cam = Camera.main;
+            if (cam == null) return;
+
+            if (boss != null && boss.arenaBackdrop != null && GameObject.Find("Backdrop") == null)
+            {
+                var bg = new GameObject("Backdrop");
+                var sr = bg.AddComponent<SpriteRenderer>();
+                sr.sprite = boss.arenaBackdrop;
+                sr.color = new Color(0.7f, 0.7f, 0.75f);     // slightly dimmed so combatants pop
+                sr.sortingOrder = -100;
+                float viewH = 2f * cam.orthographicSize;
+                float viewW = viewH * Mathf.Max(1.3f, cam.aspect);
+                var size = boss.arenaBackdrop.bounds.size;
+                float scale = Mathf.Max(viewW / size.x, viewH / size.y) * 1.08f;
+                bg.transform.localScale = Vector3.one * scale;
+                var cp = cam.transform.position;
+                bg.transform.position = new Vector3(cp.x, cp.y, cp.z + 18f);
+            }
+
+            for (int i = 0; i < Context.heroes.Count; i++) AddShadow(Context.heroes[i].gameObject, 1.2f);
+            if (Context.boss != null) AddShadow(Context.boss.gameObject, 2.8f);
+        }
+
+        // A camera-facing flattened dark blob at a combatant's feet — a cheap, readable contact shadow.
+        private static void AddShadow(GameObject host, float width)
+        {
+            if (host.transform.Find("Shadow") != null) return;
+            var go = new GameObject("Shadow");
+            go.transform.SetParent(host.transform, false);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = ShadowSprite();
+            sr.color = new Color(0f, 0f, 0f, 0.5f);
+            sr.sortingOrder = -1;
+            go.transform.localRotation = Quaternion.Inverse(host.transform.rotation);   // face camera
+            float sx = width / 0.64f;                       // shadow sprite is 64px @ 100ppu = 0.64u
+            go.transform.localScale = new Vector3(sx, sx * 0.32f, 1f);
+            go.transform.localPosition = new Vector3(0f, 0.14f, 0.02f);
+        }
+
+        // Procedural soft radial sprite (built once) used for the contact shadows.
+        private static Sprite shadowSprite;
+        private static Sprite ShadowSprite()
+        {
+            if (shadowSprite != null) return shadowSprite;
+            const int s = 64;
+            var tex = new Texture2D(s, s, TextureFormat.RGBA32, false);
+            var c = new Vector2(s / 2f, s / 2f);
+            for (int y = 0; y < s; y++)
+                for (int x = 0; x < s; x++)
+                {
+                    float d = Vector2.Distance(new Vector2(x, y), c) / (s / 2f);
+                    float a = Mathf.Clamp01(1f - d); a *= a;
+                    tex.SetPixel(x, y, new Color(0, 0, 0, a));
+                }
+            tex.Apply();
+            shadowSprite = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), 100f);
+            return shadowSprite;
         }
 
         // Give a combatant a visible "body". If it has a stageSprite, billboard that full-body art

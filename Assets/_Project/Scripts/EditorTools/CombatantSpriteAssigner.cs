@@ -14,6 +14,7 @@ namespace RPGArena.EditorTools
     public static class CombatantSpriteAssigner
     {
         private const string Cutouts = "Assets/_Project/Art/Sprites/Combatants/cutout";
+        private const string Backdrops = "Assets/_Project/Art/Backdrops";
         private const string Characters = "Assets/_Project/ScriptableObjects/Characters";
         private const string Bosses = "Assets/_Project/ScriptableObjects/Bosses";
 
@@ -22,17 +23,9 @@ namespace RPGArena.EditorTools
         {
             if (!AssetDatabase.IsValidFolder(Cutouts)) { Debug.LogError($"[CombatantSprites] No cutouts at {Cutouts}"); return; }
 
-            // 1) Ensure each cutout imports as a Sprite (single).
-            foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { Cutouts }))
-            {
-                var path = AssetDatabase.GUIDToAssetPath(guid);
-                if (AssetImporter.GetAtPath(path) is TextureImporter imp && imp.textureType != TextureImporterType.Sprite)
-                {
-                    imp.textureType = TextureImporterType.Sprite;
-                    imp.spriteImportMode = SpriteImportMode.Single;
-                    imp.SaveAndReimport();
-                }
-            }
+            // 1) Ensure each cutout + backdrop imports as a Sprite (single).
+            EnsureSprites(Cutouts);
+            EnsureSprites(Backdrops);
 
             int assigned = 0;
 
@@ -54,7 +47,10 @@ namespace RPGArena.EditorTools
                 // "The Evil Warrior" -> "EvilWarrior", "The Dragon" -> "Dragon".
                 var key = def.bossName.Replace("The ", "").Replace(" ", "");
                 var sprite = LoadSprite(key);
-                if (sprite != null) { def.stageSprite = sprite; def.portrait = sprite; EditorUtility.SetDirty(def); assigned++; }
+                if (sprite != null) { def.stageSprite = sprite; def.portrait = sprite; assigned++; }
+                var backdrop = AssetDatabase.LoadAssetAtPath<Sprite>($"{Backdrops}/Arena_{key}.png");
+                if (backdrop != null) def.arenaBackdrop = backdrop;
+                EditorUtility.SetDirty(def);
             }
 
             AssetDatabase.SaveAssets();
@@ -63,6 +59,22 @@ namespace RPGArena.EditorTools
 
         private static Sprite LoadSprite(string name) =>
             AssetDatabase.LoadAssetAtPath<Sprite>($"{Cutouts}/{name}.png");
+
+        // Set every texture in a folder to import as a single Sprite.
+        private static void EnsureSprites(string folder)
+        {
+            if (!AssetDatabase.IsValidFolder(folder)) return;
+            foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { folder }))
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                if (AssetImporter.GetAtPath(path) is TextureImporter imp && imp.textureType != TextureImporterType.Sprite)
+                {
+                    imp.textureType = TextureImporterType.Sprite;
+                    imp.spriteImportMode = SpriteImportMode.Single;
+                    imp.SaveAndReimport();
+                }
+            }
+        }
     }
 }
 #endif

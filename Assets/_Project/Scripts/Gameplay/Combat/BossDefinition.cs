@@ -26,6 +26,7 @@ namespace RPGArena.Combat
         [TextArea] public string intro;
         public Sprite portrait;
         public Sprite stageSprite;          // full-body cutout billboarded on the arena (2.5D)
+        public Sprite arenaBackdrop;        // cinematic background behind the combatants
         public GameObject modelPrefab;
         public PrimaryStat primaryStat = PrimaryStat.STR;
 
