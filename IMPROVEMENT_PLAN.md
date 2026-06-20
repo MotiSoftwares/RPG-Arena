@@ -4,22 +4,22 @@ Status legend: [ ] todo · [~] in progress · [x] done · [defer] needs 3D model
 Implementing in impact/effort order, committing + engine-verifying each.
 
 ## THEME 1 — Combat depth & correctness (highest rubric leverage)
-- [ ] 1.1 Fix wrong-boss Stagger duration (BuildContext sets BossStaggeredTurns before roster lookup) `S` BUG
-- [ ] 1.2 Wire boss phases/enrage (OnBossPhaseChanged + damage multiplier; dead data today) `M`
-- [ ] 1.3 Route DoT through the damage pipeline (Burn must HEAL the fire-absorbing Dragon) `M` BUG
-- [ ] 1.4 Dragon Physical resist + "Break strips armor" (staggered ⇒ resist treated as neutral) `S`
+- [x] 1.1 Fix wrong-boss Stagger duration (resolve boss before BossStaggeredTurns) `S` BUG — 9eb864b
+- [x] 1.2 Boss phases/enrage live (Entity.CheckPhaseTransition + damageOutMultiplier) `M` — 5d409fa
+- [x] 1.3 DoT respects element (Burn HEALS the fire-absorbing Dragon) `M` BUG — 9eb864b
+- [x] 1.4 Dragon Physical resist + Break strips armor (staggered ⇒ resist→neutral) `S` — 9eb864b
 - [ ] 1.5 Party-buff duration round-scoped (not per-owner-turn) `M`
-- [ ] 1.6 Dark Sight truly untargetable + ambush `S`
+- [x] 1.6 Dark Sight truly untargetable (TargetingSystem excludes Stealthed) `S` — b4dd31e
 - [ ] 1.7 Guardian Taunt redirect/cover `M`
 - [ ] 1.8 Behavioral Warrior stances (lifesteal/execute, guardian cover) `M`
 - [ ] 1.9 Magic Guard (MP-as-shield) + author Mage_MagicGuard `M`
-- [ ] 1.10 Frozen shatter bonus on physical `S`
+- [x] 1.10 Frozen shatter bonus on physical (x1.6) `S` — b4dd31e
 - [ ] 1.11 Wet+Lightning ⇒ Frozen reliably `S`
 - [ ] 1.12 Conditional finisher payoffs (guaranteedCrit/bonusVsFlag/execute) `M`
 - [ ] 1.13 Telegraphs for Black Mage & Evil Warrior `M`
 - [ ] 1.14 Soul Arrow defense-ignore + Mage school-nuke follows attunement `S`
-- [ ] 1.15 Extra turns hero-only + OnExtraTurnGranted signal `S`
-- [ ] 1.16 Lengthen/guarantee the Break burst window `S`
+- [x] 1.15 Extra turns hero-only + logged `S` — 5d409fa
+- [x] 1.16 Break window >=2 turns `S` — 5d409fa
 
 ## THEME 2 — UI / UX (make the depth visible)
 - [ ] 2.1 Status-effect icons on boss + party `M`
