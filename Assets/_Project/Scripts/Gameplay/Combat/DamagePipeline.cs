@@ -70,6 +70,10 @@ namespace RPGArena.Combat
             // 3) ELEMENT modifier. Absorb (negative sentinel) flips the hit into a heal.
             var reaction = (tgt != null && tgt.elementProfile != null)
                 ? tgt.elementProfile.GetReaction(info.element) : ElementReaction.Neutral;
+            // Breaking the boss STRIPS its armour: a staggered target no longer resists, so the
+            // Break window is a clear payoff even for physical-only parties (§7.2/§7.4/§19.3).
+            if (tgt != null && tgt.isStaggered && reaction == ElementReaction.Resist)
+                reaction = ElementReaction.Neutral;
             r.reaction = reaction;
             float elementMult = ElementProfile.MultiplierFor(reaction, cfg);
             if (elementMult < 0f)

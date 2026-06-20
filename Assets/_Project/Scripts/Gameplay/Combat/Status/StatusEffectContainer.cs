@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using RPGArena.Core;
 using RPGArena.Characters;
 
 namespace RPGArena.Combat.Status
@@ -73,24 +74,35 @@ namespace RPGArena.Combat.Status
         public float EvasionMod => SumF(a => a.def.evasionMod);
 
         // --- Turn lifecycle -----------------------------------------------------------
-        // Apply damage-over-time at the owner's turn start; returns total DoT dealt (for logging).
-        public int TickStartOfTurn(Entity owner)
+        // Apply damage-over-time at the owner's turn start; returns NET HP lost (negative if the
+        // owner was healed). The DoT respects the owner's element profile, so a Fire Burn on the
+        // fire-ABSORBING Dragon heals it instead of hurting it — the central "don't burn the
+        // dragon" puzzle now also holds for the burn it leaves behind (§4.11/§7.2).
+        public int TickStartOfTurn(Entity owner, BalanceConfig cfg)
         {
-            int totalDoT = 0;
+            int net = 0;
             for (int i = 0; i < active.Count; i++)
             {
                 var a = active[i];
                 if (a.def.kind != StatusKind.DoT) continue;
-                // DoT = (% of max HP + flat) per stack.
                 float dmg = (a.def.perTurnPercentMaxHP * owner.stats.maxHP + a.def.perTurnFlatDamage) * a.stacks;
-                int rounded = Mathf.RoundToInt(dmg);
-                if (rounded > 0)
+                if (dmg <= 0f) continue;
+
+                var reaction = owner.elementProfile != null
+                    ? owner.elementProfile.GetReaction(a.def.dotElement) : ElementReaction.Neutral;
+                float mult = cfg != null ? ElementProfile.MultiplierFor(reaction, cfg) : 1f;
+                if (mult < 0f)                       // absorb: the DoT heals the owner
                 {
-                    owner.TakeDamage(rounded);
-                    totalDoT += rounded;
+                    int heal = Mathf.RoundToInt(dmg);
+                    owner.Heal(heal); net -= heal;
+                }
+                else
+                {
+                    int rounded = Mathf.RoundToInt(dmg * mult);
+                    if (rounded > 0) { owner.TakeDamage(rounded); net += rounded; }
                 }
             }
-            return totalDoT;
+            return net;
         }
 
         // Decrement durations at the owner's turn end and drop expired statuses.

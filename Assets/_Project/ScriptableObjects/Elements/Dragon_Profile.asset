@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: Dragon_Profile
   m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.ElementProfile
   weakTo: 02000000
-  resistTo: 
+  resistTo: 00000000
   immuneTo: 
   absorbs: 01000000

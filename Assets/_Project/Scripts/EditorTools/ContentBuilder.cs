@@ -40,7 +40,7 @@ namespace RPGArena.EditorTools
 
             // --- Element profiles -----------------------------------------------------
             var neutral = Profile("Hero_Neutral");
-            var dragonProfile = Profile("Dragon_Profile", weak: new[] { ElementType.Ice }, absorb: new[] { ElementType.Fire });
+            var dragonProfile = Profile("Dragon_Profile", weak: new[] { ElementType.Ice }, resist: new[] { ElementType.Physical }, absorb: new[] { ElementType.Fire });
 
             // --- WARRIOR (STR) --------------------------------------------------------
             var warrior = Character("Warrior", "Warrior", PrimaryStat.STR, neutral,

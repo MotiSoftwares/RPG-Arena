@@ -159,6 +159,16 @@ namespace RPGArena.Combat
         // --- setup --------------------------------------------------------------------
         private void BuildContext()
         {
+            var run = GameBootstrap.Instance?.Run;
+
+            // Boss: pick the run's current boss from the roster FIRST (so per-boss tuning like the
+            // Break-window length is read from the right boss), else the fallback (direct-play).
+            if (run != null && bossRoster != null && bossRoster.Count > 0)
+            {
+                var match = bossRoster.Find(b => b != null && b.name == run.CurrentBoss);
+                if (match != null) boss = match;
+            }
+
             Context = new BattleContext
             {
                 balance = balance,
@@ -172,15 +182,6 @@ namespace RPGArena.Combat
                 onTurnStarted = onTurnStarted, onTurnEnded = onTurnEnded, onEntityDied = onEntityDied,
                 onStaggerBroken = onStaggerBroken, onDamageDealt = onDamageDealt, onBossTelegraph = onBossTelegraph
             };
-
-            var run = GameBootstrap.Instance?.Run;
-
-            // Boss: pick the run's current boss from the roster, else the fallback (direct-play).
-            if (run != null && bossRoster != null && bossRoster.Count > 0)
-            {
-                var match = bossRoster.Find(b => b != null && b.name == run.CurrentBoss);
-                if (match != null) boss = match;
-            }
 
             // Party: from the run state's selection, else the default trio.
             var chosen = run != null && run.partyClassNames.Count > 0 ? run.partyClassNames : defaultParty;

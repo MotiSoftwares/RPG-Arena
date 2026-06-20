@@ -123,7 +123,7 @@ namespace RPGArena.Characters
         // --- Turn lifecycle -----------------------------------------------------------
         // Start of this entity's turn: tick DoTs and return the total damage they dealt
         // (so the battle log can report it).
-        public int TickStartOfTurn() => Status.TickStartOfTurn(this);
+        public int TickStartOfTurn() => Status.TickStartOfTurn(this, balance);
 
         // End of turn: durations decrement, cooldowns count down, the Break window shrinks.
         public void TickEndOfTurn()
