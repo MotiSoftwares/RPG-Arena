@@ -38,6 +38,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 918e50682176c114e9d94e67ed5b7267, type: 2}
   - {fileID: 11400000, guid: ce302a1444e3c7a4ebb14392004eb0fc, type: 2}
   - {fileID: 11400000, guid: 9ff45caa7943fae4ea306fb2dfaff03e, type: 2}
+  - {fileID: 11400000, guid: 8c04a020d56a83848b4fccb4e1b461ad, type: 2}
   - {fileID: 11400000, guid: fe178c8b31578cb45b60507329a5d428, type: 2}
   elementProfile: {fileID: 11400000, guid: fae631baaa195134ba21ef1da9f1cf05, type: 2}
   aiBehavior: {fileID: 11400000, guid: c51bae04da47660479b203e17dd1b035, type: 2}

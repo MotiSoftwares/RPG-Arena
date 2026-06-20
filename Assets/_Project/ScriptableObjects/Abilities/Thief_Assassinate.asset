@@ -38,6 +38,12 @@ MonoBehaviour:
   accuracyMod: 0
   evasionMod: 0
   buffDurationTurns: 3
+  ignoreDefensePercent: 0
+  guaranteedCrit: 1
+  bonusVsFlag: 3
+  bonusVsFlagMult: 1.6
+  executeBelowHpPct: 0
+  executeMult: 1.6
   vfxPrefab: {fileID: 0}
   sfxId: 
   animationTrigger: Attack

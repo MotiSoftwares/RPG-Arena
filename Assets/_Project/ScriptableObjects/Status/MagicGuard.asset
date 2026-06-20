@@ -10,21 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe8451d44552fdb4f87497d3ee3fa706, type: 3}
-  m_Name: Weaken
+  m_Name: MagicGuard
   m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.Status.StatusEffectDefinition
-  displayName: Weaken
+  displayName: MagicGuard
   icon: {fileID: 0}
   tint: {r: 1, g: 1, b: 1, a: 1}
-  kind: 1
-  flag: 7
-  durationTurns: 3
+  kind: 0
+  flag: 8
+  durationTurns: 2
   stacks: 0
   maxStacks: 1
   perTurnPercentMaxHP: 0
   perTurnFlatDamage: 0
   dotElement: 0
   attackMod: 0
-  defenseMod: -12
+  defenseMod: 0
   speedMod: 0
   accuracyMod: 0
   evasionMod: 0

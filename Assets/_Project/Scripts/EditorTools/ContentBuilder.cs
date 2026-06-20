@@ -32,7 +32,8 @@ namespace RPGArena.EditorTools
             var stealth  = Status("Stealth", StatusKind.Buff, StatusFlag.Stealthed, 1, eva: 200f);
             var rage     = Status("Rage", StatusKind.Buff, StatusFlag.None, 3, atk: 15);
             var bless    = Status("Bless", StatusKind.Buff, StatusFlag.None, 3, acc: 20f, def: 8);
-            var weaken   = Status("Weaken", StatusKind.Debuff, StatusFlag.None, 3, def: -12);
+            var weaken   = Status("Weaken", StatusKind.Debuff, StatusFlag.Weaken, 3, def: -12);
+            var magicGuard = Status("MagicGuard", StatusKind.Buff, StatusFlag.MagicGuard, 2);
             var blind    = Status("Blind", StatusKind.Debuff, StatusFlag.None, 3, acc: -25f);
             var berserk  = Status("BerserkStance", StatusKind.Buff, StatusFlag.None, 99, atk: 20, def: -10);
             var guardian = Status("GuardianStance", StatusKind.Buff, StatusFlag.None, 99, def: 25, atk: -8);
@@ -52,7 +53,7 @@ namespace RPGArena.EditorTools
                     Ab("Warrior_Rage", "Rage", EffectType.Buff, TargetRule.AllAllies, ElementType.Physical, 0f, mp: 12, cd: 2, statuses: One(rage)),
                     Ab("Warrior_GuardianTaunt", "Guardian Taunt", EffectType.Defend, TargetRule.Self, ElementType.Physical, 0f, mp: 10, cd: 2, statuses: One(defending)),
                     Ab("Warrior_BerserkStance", "Berserk Stance", EffectType.Stance, TargetRule.Self, ElementType.Physical, 0f, mp: 0, stance: StanceAction.ToggleStatus, stanceStatuses: new[] { berserk, guardian }),
-                    Ab("Warrior_CrushingBlow", "Crushing Blow", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 2.2f, mp: 25, cd: 4, tier: HitTier.Risky, tags: Brk),
+                    Ab("Warrior_CrushingBlow", "Crushing Blow", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 2.2f, mp: 25, cd: 4, tier: HitTier.Risky, tags: Brk, bonusFlag: StatusFlag.Weaken, bonusMult: 1.5f),
                 });
 
             // --- MAGE (INT) -----------------------------------------------------------
@@ -67,6 +68,7 @@ namespace RPGArena.EditorTools
                     Ab("Mage_Spark", "Spark", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Lightning, 1.5f, magic: true, mp: 12, tier: HitTier.Standard),
                     Ab("Mage_Heal", "Heal", EffectType.Heal, TargetRule.SingleAlly, ElementType.Holy, 1.4f, magic: true, mp: 14, cd: 1),
                     Ab("Mage_Bless", "Bless", EffectType.Buff, TargetRule.AllAllies, ElementType.Holy, 0f, mp: 12, cd: 2, statuses: One(bless)),
+                    Ab("Mage_MagicGuard", "Magic Guard", EffectType.Buff, TargetRule.Self, ElementType.Holy, 0f, mp: 10, cd: 3, statuses: One(magicGuard)),
                     Ab("Mage_Blizzard", "Blizzard", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Ice, 2.4f, magic: true, mp: 30, cd: 4, tier: HitTier.Risky, tags: BrkFin),
                 });
 
@@ -81,7 +83,7 @@ namespace RPGArena.EditorTools
                     Ab("Thief_ShadowMark", "Shadow Mark", EffectType.ApplyStatus, TargetRule.SingleEnemy, ElementType.Physical, 0f, mp: 6, cd: 1, statuses: One(marked)),
                     Ab("Thief_DarkSight", "Dark Sight", EffectType.Buff, TargetRule.Self, ElementType.Physical, 0f, mp: 6, cd: 2, statuses: One(stealth)),
                     Ab("Thief_SmokeBomb", "Smoke Bomb", EffectType.Debuff, TargetRule.SingleEnemy, ElementType.Physical, 0f, mp: 10, cd: 2, statuses: One(blind)),
-                    Ab("Thief_Assassinate", "Assassinate", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 2.0f, mp: 24, cd: 4, tier: HitTier.Risky, tags: Fin),
+                    Ab("Thief_Assassinate", "Assassinate", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 2.0f, mp: 24, cd: 4, tier: HitTier.Risky, tags: Fin, gCrit: true, bonusFlag: StatusFlag.Marked, bonusMult: 1.6f),
                 });
 
             // --- ARCHER (DEX) ---------------------------------------------------------
@@ -90,7 +92,7 @@ namespace RPGArena.EditorTools
                 new[]
                 {
                     Ab("Archer_DoubleShot", "Double Shot", EffectType.MultiHit, TargetRule.SingleEnemy, ElementType.Physical, 0.7f, hits: 2, mp: 0, regen: 8, tier: HitTier.Reliable),
-                    Ab("Archer_SoulArrow", "Soul Arrow", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 1.5f, mp: 10, tier: HitTier.Reliable),
+                    Ab("Archer_SoulArrow", "Soul Arrow", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 1.5f, mp: 10, tier: HitTier.Reliable, ignoreDef: 0.5f),
                     Ab("Archer_MarkTarget", "Mark Target", EffectType.ApplyStatus, TargetRule.SingleEnemy, ElementType.Physical, 0f, mp: 6, cd: 1, statuses: One(marked)),
                     Ab("Archer_Puppet", "Puppet", EffectType.Buff, TargetRule.Self, ElementType.Physical, 0f, mp: 12, cd: 3, statuses: One(defending)),
                     Ab("Archer_EyeOfAmazon", "Eye of Amazon", EffectType.Buff, TargetRule.AllAllies, ElementType.Physical, 0f, mp: 8, cd: 2, statuses: One(bless)),
@@ -126,17 +128,18 @@ namespace RPGArena.EditorTools
             var bmCurse = Ab("BlackMage_Curse", "Curse", EffectType.Debuff, TargetRule.AllEnemies, ElementType.Dark, 0f, statuses: One(blind));
             var bmHex = Ab("BlackMage_Hex", "Weakening Hex", EffectType.Debuff, TargetRule.SingleEnemy, ElementType.Dark, 0f, statuses: One(weaken));
             var bmOblivion = Ab("BlackMage_Oblivion", "Oblivion", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Dark, 2.2f, magic: true, tier: HitTier.Risky, tags: Fin);
+            var bmChannel = Ab("BlackMage_Channel", "Channel Oblivion", EffectType.BossMove, TargetRule.Self, ElementType.Dark, 0f, telegraphs: bmOblivion);
 
             var blackMageAI = ScriptableObject.CreateInstance<ChaoticAI>();
             blackMageAI.darkBolt = bmDarkBolt; blackMageAI.darkNova = bmDarkNova; blackMageAI.curse = bmCurse;
-            blackMageAI.weakenHex = bmHex; blackMageAI.oblivion = bmOblivion;
+            blackMageAI.weakenHex = bmHex; blackMageAI.oblivion = bmOblivion; blackMageAI.channelMove = bmChannel;
             Save(blackMageAI, $"{Root}/AI/ChaoticAI.asset");
 
             var blackMage = ScriptableObject.CreateInstance<BossDefinition>();
             blackMage.bossName = "The Black Mage"; blackMage.primaryStat = PrimaryStat.INT;
             blackMage.elementProfile = blackMageProfile; blackMage.aiBehavior = blackMageAI;
             blackMage.baseStats = new StatBlock { INT = 30, maxHP = 850, maxMP = 999, baseMagicAttack = 24, baseDefense = 10, baseSpeed = 12, baseAccuracy = 14 };
-            blackMage.abilities = new List<Ability> { bmDarkBolt, bmDarkNova, bmCurse, bmHex, bmOblivion };
+            blackMage.abilities = new List<Ability> { bmDarkBolt, bmDarkNova, bmCurse, bmHex, bmChannel, bmOblivion };
             blackMage.staggerThreshold = 110f; blackMage.staggeredTurns = 1;
             blackMage.phases = new List<BossPhase> { new BossPhase { name = "Reality Warp", hpThresholdPercent = 0.5f, enrage = true, attackMultiplier = 1.25f } };
             Save(blackMage, $"{Root}/Bosses/BlackMage.asset");
@@ -149,16 +152,17 @@ namespace RPGArena.EditorTools
             var ewExecute = Ab("EvilWarrior_Execute", "Execute", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 2.4f, tier: HitTier.Risky, tags: Fin);
             var ewRage = Ab("EvilWarrior_DarkRage", "Dark Rage", EffectType.Buff, TargetRule.Self, ElementType.Physical, 0f, statuses: One(rage));
             var ewFlurry = Ab("EvilWarrior_Flurry", "Blade Flurry", EffectType.MultiHit, TargetRule.SingleEnemy, ElementType.Physical, 0.65f, hits: 3, auto: true);
+            var ewWindUp = Ab("EvilWarrior_WindUp", "Dark Wind-Up", EffectType.BossMove, TargetRule.Self, ElementType.Physical, 0f, telegraphs: ewFlurry);
 
             var evilAI = ScriptableObject.CreateInstance<AggressiveAI>();
-            evilAI.strike = ewCleave; evilAI.execute = ewExecute; evilAI.selfRage = ewRage; evilAI.flurry = ewFlurry;
+            evilAI.strike = ewCleave; evilAI.execute = ewExecute; evilAI.selfRage = ewRage; evilAI.flurry = ewFlurry; evilAI.windUpMove = ewWindUp;
             Save(evilAI, $"{Root}/AI/AggressiveAI.asset");
 
             var evilWarrior = ScriptableObject.CreateInstance<BossDefinition>();
             evilWarrior.bossName = "The Evil Warrior"; evilWarrior.primaryStat = PrimaryStat.STR;
             evilWarrior.elementProfile = evilProfile; evilWarrior.aiBehavior = evilAI;
             evilWarrior.baseStats = new StatBlock { STR = 28, maxHP = 950, maxMP = 200, baseAttack = 30, baseDefense = 16, baseSpeed = 13, baseAccuracy = 12 };
-            evilWarrior.abilities = new List<Ability> { ewCleave, ewExecute, ewRage, ewFlurry };
+            evilWarrior.abilities = new List<Ability> { ewCleave, ewExecute, ewRage, ewWindUp, ewFlurry };
             evilWarrior.staggerThreshold = 110f; evilWarrior.staggeredTurns = 1;
             evilWarrior.phases = new List<BossPhase> { new BossPhase { name = "Last Stand", hpThresholdPercent = 0.4f, enrage = true, attackMultiplier = 1.35f } };
             Save(evilWarrior, $"{Root}/Bosses/EvilWarrior.asset");
@@ -214,13 +218,17 @@ namespace RPGArena.EditorTools
             bool magic = false, int mp = 0, int regen = 0, int hits = 1, int cd = 0, bool auto = false,
             HitTier tier = HitTier.Reliable, string[] tags = null, StatusEffectDefinition[] statuses = null,
             bool followsAttune = false, StanceAction stance = StanceAction.None, ElementType[] attuneOpts = null,
-            StatusEffectDefinition[] stanceStatuses = null, Ability telegraphs = null)
+            StatusEffectDefinition[] stanceStatuses = null, Ability telegraphs = null,
+            float ignoreDef = 0f, bool gCrit = false, StatusFlag bonusFlag = StatusFlag.None, float bonusMult = 1.5f,
+            float execPct = 0f, float execMult = 1.6f)
         {
             var a = ScriptableObject.CreateInstance<Ability>();
             a.displayName = name; a.effectType = type; a.targetRule = rule; a.element = el; a.power = power; a.isMagic = magic;
             a.mpCost = mp; a.mpRegenOnUse = regen; a.hits = hits; a.cooldown = cd; a.autoHit = auto; a.hitTier = tier;
             a.tags = tags; a.statusesToApply = statuses; a.followsAttunement = followsAttune;
             a.stanceAction = stance; a.attunementOptions = attuneOpts; a.stanceStatuses = stanceStatuses; a.telegraphsAbility = telegraphs;
+            a.ignoreDefensePercent = ignoreDef; a.guaranteedCrit = gCrit; a.bonusVsFlag = bonusFlag; a.bonusVsFlagMult = bonusMult;
+            a.executeBelowHpPct = execPct; a.executeMult = execMult;
             Save(a, $"{Root}/Abilities/{file}.asset");
             return a;
         }

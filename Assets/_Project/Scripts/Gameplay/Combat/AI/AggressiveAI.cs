@@ -15,7 +15,8 @@ namespace RPGArena.Combat.AI
         public Ability strike;       // standard strong single-target hit
         public Ability execute;      // high-power finisher vs a low-HP hero
         public Ability selfRage;     // self attack buff (TargetRule.Self)
-        public Ability flurry;       // phase-2 multi-hit assault
+        public Ability flurry;       // phase-2 multi-hit assault (committed after a wind-up)
+        public Ability windUpMove;   // telegraphs the flurry the turn before (break-cancellable)
 
         [Header("Tuning")]
         [Range(0f, 1f)] public float executeHpFraction = 0.3f;   // execute heroes below this HP %
@@ -33,18 +34,24 @@ namespace RPGArena.Combat.AI
             var lowest = TargetingSystem.LowestHP(opponents);
             bool phase2 = self.currentHP <= self.stats.maxHP * phase2HpFraction;
 
+            // Commit a telegraphed Blade Flurry from last turn (unless a Break cancelled it).
+            if (self.telegraphedAbility != null)
+            {
+                var commit = self.telegraphedAbility;
+                self.telegraphedAbility = null;
+                target = lowest;
+                return commit;
+            }
+
             // 1) Finish off a hero who has dropped below the execute threshold.
             if (execute != null && lowest != null && lowest.currentHP <= lowest.stats.maxHP * executeHpFraction)
             {
                 target = lowest;
                 return execute;
             }
-            // 2) Last Stand (phase 2): a relentless flurry on the weakest hero.
-            if (phase2 && flurry != null)
-            {
-                target = lowest;
-                return flurry;
-            }
+            // 2) Last Stand (phase 2): wind up the relentless flurry (telegraphed).
+            if (phase2 && windUpMove != null)
+                return windUpMove;
             // 3) Occasionally whip itself into a rage (Self target resolves itself).
             if (selfRage != null && ctx.rng.NextDouble() < selfBuffChance)
                 return selfRage;

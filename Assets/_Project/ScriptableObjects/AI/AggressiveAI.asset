@@ -16,6 +16,7 @@ MonoBehaviour:
   execute: {fileID: 11400000, guid: ce302a1444e3c7a4ebb14392004eb0fc, type: 2}
   selfRage: {fileID: 11400000, guid: 9ff45caa7943fae4ea306fb2dfaff03e, type: 2}
   flurry: {fileID: 11400000, guid: fe178c8b31578cb45b60507329a5d428, type: 2}
+  windUpMove: {fileID: 11400000, guid: 8c04a020d56a83848b4fccb4e1b461ad, type: 2}
   executeHpFraction: 0.3
   selfBuffChance: 0.22
   phase2HpFraction: 0.4

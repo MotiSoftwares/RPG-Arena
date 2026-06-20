@@ -68,6 +68,18 @@ namespace RPGArena.Combat
         public float accuracyMod, evasionMod;
         public int buffDurationTurns = 3;
 
+        [Header("Advanced combat (finishers / piercing, §6)")]
+        [Tooltip("Soul Arrow etc.: ignore this fraction of the target's Defense (0..1).")]
+        [Range(0f, 1f)] public float ignoreDefensePercent = 0f;
+        [Tooltip("Assassinate etc.: this attack always crits.")]
+        public bool guaranteedCrit = false;
+        [Tooltip("Finisher: bonus multiplier when the target carries this flag (None = off).")]
+        public StatusFlag bonusVsFlag = StatusFlag.None;
+        public float bonusVsFlagMult = 1.5f;
+        [Tooltip("Execute: bonus multiplier when the target is at/below this HP fraction (0 = off).")]
+        [Range(0f, 1f)] public float executeBelowHpPct = 0f;
+        public float executeMult = 1.6f;
+
         [Header("Presentation (read by listeners, never by logic)")]
         public GameObject vfxPrefab;
         public string sfxId;

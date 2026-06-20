@@ -85,8 +85,9 @@ namespace RPGArena.Combat
             }
             dmg *= elementMult;
 
-            // 4) DEFENSE mitigation (percentage, diminishing).
-            float def = tgt != null ? tgt.Defense : 0f;
+            // 4) DEFENSE mitigation (percentage, diminishing). Soul Arrow etc. pierce some defense.
+            float pierce = info.ability != null ? Mathf.Clamp01(info.ability.ignoreDefensePercent) : 0f;
+            float def = tgt != null ? tgt.Defense * (1f - pierce) : 0f;
             dmg *= (1f - def / (def + cfg.defenseK));
 
             // 5) STAGGER multiplier while the target is Broken — the burst window.
@@ -96,12 +97,24 @@ namespace RPGArena.Combat
             var syn = SynergyResolver.Resolve(tgt != null ? tgt.Status : null, info.element);
             dmg *= syn.damageMultiplier;
 
-            // 7) CRIT (Marked raises the chance; crit multiplies by CritDamage).
+            // 7) CRIT (Marked raises the chance; some finishers always crit).
             float critChance = (src != null ? src.CritChance : 0f) + syn.critChanceBonus;
-            if (critRoll <= critChance)
+            bool forcedCrit = info.ability != null && info.ability.guaranteedCrit;
+            if (forcedCrit || critRoll <= critChance)
             {
                 r.crit = true;
                 dmg *= (src != null ? src.CritDamage : 1.5f);
+            }
+
+            // 7b) FINISHER payoffs (§6): bonus vs a setup flag (Marked/Weaken/Frozen) and an
+            //     execute bonus on a low-HP target — reasons to set up before firing an ult.
+            if (info.ability != null && tgt != null)
+            {
+                if (info.ability.bonusVsFlag != StatusFlag.None && tgt.Status.Has(info.ability.bonusVsFlag))
+                    dmg *= info.ability.bonusVsFlagMult;
+                if (info.ability.executeBelowHpPct > 0f && tgt.stats.maxHP > 0
+                    && (float)tgt.currentHP / tgt.stats.maxHP <= info.ability.executeBelowHpPct)
+                    dmg *= info.ability.executeMult;
             }
 
             // 8) DEFEND stance halves incoming damage.
@@ -132,7 +145,20 @@ namespace RPGArena.Combat
             {
                 if (r.source != null) r.source.ConsecutiveMisses = 0;
                 if (r.isHeal) r.target.Heal(r.amount);
-                else r.target.TakeDamage(r.amount);
+                else
+                {
+                    int dmg = r.amount;
+                    // Magic Guard (§6.2): convert incoming damage to MP loss — each MP soaks 2 HP.
+                    if (dmg > 0 && r.target.currentMP > 0 && r.target.Status.Has(StatusFlag.MagicGuard))
+                    {
+                        int absorbed = Mathf.Min(dmg, r.target.currentMP * 2);
+                        int mpUsed = Mathf.CeilToInt(absorbed / 2f);
+                        r.target.TrySpendMP(mpUsed);
+                        dmg -= absorbed;
+                        ctx.Log($"      Magic Guard absorbs {absorbed} damage ({mpUsed} MP).");
+                    }
+                    r.target.TakeDamage(dmg);
+                }
             }
 
             if (r.staggerBuilt > 0f && r.target.isBoss)

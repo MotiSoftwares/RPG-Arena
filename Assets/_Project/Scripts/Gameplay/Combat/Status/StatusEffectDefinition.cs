@@ -8,7 +8,7 @@ namespace RPGArena.Combat.Status
     // Synergy/flag identities. TRIMMED per CLAUDE.md Appendix E.3: Bleed is dropped and
     // Stun is merged into Frozen (one skip-turn control). Flags (Wet/Oiled/Marked) are the
     // setup that one class applies and another detonates (§4.12).
-    public enum StatusFlag { None, Wet, Oiled, Marked, Frozen, Defending, Stealthed }
+    public enum StatusFlag { None, Wet, Oiled, Marked, Frozen, Defending, Stealthed, Weaken, MagicGuard, Taunting }
 
     // DATA ONLY. A status effect is a designer-authored asset; the runtime container applies
     // and ticks it (§4.10). The synergy resolver reads its flag.

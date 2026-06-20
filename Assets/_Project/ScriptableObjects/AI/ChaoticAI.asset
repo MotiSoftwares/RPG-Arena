@@ -17,4 +17,5 @@ MonoBehaviour:
   curse: {fileID: 11400000, guid: 242725b83880dc24481591f363b0f6a3, type: 2}
   weakenHex: {fileID: 11400000, guid: 112d0d235cb2304429065da11b7d8fb9, type: 2}
   oblivion: {fileID: 11400000, guid: 7213f9632f6fe9a4fba2eab0eae28f9e, type: 2}
+  channelMove: {fileID: 11400000, guid: 44fa5b24312fca443a3a1897fc601671, type: 2}
   phase2HpFraction: 0.5
