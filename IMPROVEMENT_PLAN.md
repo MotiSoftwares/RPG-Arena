@@ -26,12 +26,12 @@ Implementing in impact/effort order, committing + engine-verifying each.
 - [ ] 2.2 Turn-order tracker `M`
 - [ ] 2.3 Manual target picker with highlighting `M`
 - [ ] 2.4 Per-ability tooltips (+ absorb warning) `M`
-- [ ] 2.5 Damage-range preview (fix README overclaim; absorb in hit%) `M`
+- [x] 2.5 Damage-range preview + ABSORB warning; magic numbers → BalanceConfig `M` — 38b14a7
 - [ ] 2.6 Richer scrollable combat log `M`
 - [x] 2.7 Numeric HP/MP bar labels + KO marker `S` — b1af537
 - [ ] 2.8 Pause-menu Settings panel (shared SettingsPanel) `S`
 - [ ] 2.9 Resolution + fullscreen settings `S`
-- [ ] 2.10 Delete orphaned HUD result panel + defeat tip `S`
+- [x] 2.10 Deleted orphaned HUD result panel + rotating defeat tips `S` — b6fef8b
 - [ ] 2.11 Character-select primary-stat + dynamic synergy hints `M`
 - [ ] 2.12 Bar lerp+chip, stance/attunement chips, Continue Run `S-M`
 
@@ -50,7 +50,7 @@ Implementing in impact/effort order, committing + engine-verifying each.
 - [ ] 4.2 Fill missing SFX + route by element/ability `S`
 
 ## THEME 5 — Content / AI
-- [ ] 5.1 Per-boss Ink intros & outros + run intro `M`
+- [x] 5.1 Per-boss Ink intros & outros (all 3 bosses) `M` — 565d617
 - [ ] 5.2 ChaoticAI Reality Warp + adaptivity `M`
 - [ ] 5.3 AggressiveAI real utility scoring `S`
 - [ ] 5.4 Archer Puppet as a real summoned decoy `L`
@@ -60,7 +60,7 @@ Implementing in impact/effort order, committing + engine-verifying each.
 ## THEME 6 — Code quality / architecture
 - [ ] 6.1 Data-drive synergy table + move magic numbers to BalanceConfig `M`
 - [ ] 6.2 Single TargetingSystem.Resolve (kill 3 duplicate switches) `S`
-- [ ] 6.3 OnValidate / Awake null-safety `M`
+- [x] 6.3 OnValidate null-safety (BossDefinition + Ability) `M` — b6fef8b
 - [ ] 6.4 Complete the event-channel set (OnHealed/OnStatusApplied/OnStaggerBuilt/...) `M`
 - [ ] 6.5 Real state-object FSM + de-dupe the two battle loops `L`
 - [ ] 6.6 Command pacing (IEnumerator Resolve) + CompositeCommand + cheat Commands `L`
