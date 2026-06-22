@@ -97,5 +97,18 @@ namespace RPGArena.Combat
                 if (string.Equals(tags[i], tag, System.StringComparison.OrdinalIgnoreCase)) return true;
             return false;
         }
+
+#if UNITY_EDITOR
+        // Warn on common authoring mistakes so a bad asset is caught in the Inspector (§3.4).
+        private void OnValidate()
+        {
+            if (effectType == EffectType.BossMove && telegraphsAbility == null && (statusesToApply == null || statusesToApply.Length == 0))
+                Debug.LogWarning($"[{name}] BossMove '{displayName}' does nothing: no telegraphsAbility and no statuses.", this);
+            if (effectType == EffectType.Stance && stanceAction == StanceAction.CycleAttunement && (attunementOptions == null || attunementOptions.Length == 0))
+                Debug.LogWarning($"[{name}] CycleAttunement '{displayName}' has no attunementOptions.", this);
+            if (effectType == EffectType.Stance && stanceAction == StanceAction.ToggleStatus && (stanceStatuses == null || stanceStatuses.Length < 2))
+                Debug.LogWarning($"[{name}] ToggleStatus '{displayName}' needs >=2 stanceStatuses to toggle.", this);
+        }
+#endif
     }
 }

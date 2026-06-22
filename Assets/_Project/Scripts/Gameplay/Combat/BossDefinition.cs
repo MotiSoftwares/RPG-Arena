@@ -42,5 +42,16 @@ namespace RPGArena.Combat
         [Header("Stagger")]
         public float staggerThreshold = 100f;
         public int staggeredTurns = 1;          // how many of the boss's turns a Break costs it
+
+#if UNITY_EDITOR
+        // Catch a misconfigured boss in the Inspector instead of a silent NRE mid-fight (§3.4).
+        private void OnValidate()
+        {
+            if (aiBehavior == null) Debug.LogWarning($"[{name}] BossDefinition has no AI Behavior assigned.", this);
+            if (elementProfile == null) Debug.LogWarning($"[{name}] BossDefinition has no Element Profile (its weakness puzzle).", this);
+            if (abilities == null || abilities.Count == 0) Debug.LogWarning($"[{name}] BossDefinition has no abilities.", this);
+            if (staggerThreshold <= 0f) Debug.LogWarning($"[{name}] staggerThreshold must be > 0.", this);
+        }
+#endif
     }
 }

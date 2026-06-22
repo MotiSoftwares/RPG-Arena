@@ -25,7 +25,7 @@ namespace RPGArena.UI
         public Core.Events.VoidChannel onBattleWon, onBattleLost;
 
         private Font font;
-        private Text bossName, bossHpText, log, telegraph, resultText, bossWeakness;
+        private Text bossName, bossHpText, log, telegraph, bossWeakness;
         private Image bossHpFill, bossStaggerFill;
         private bool weaknessSeen;          // a weakness hit has landed (or the player studied)
         private readonly List<Text> partyTexts = new();
@@ -34,7 +34,6 @@ namespace RPGArena.UI
         private readonly List<Text> partyHpText = new();
         private readonly List<Text> partyMpText = new();
         private RectTransform actionPanel;
-        private GameObject resultPanel;
         private readonly List<string> logLines = new();
         private RectTransform bossStatusRow;
         private readonly List<RectTransform> heroStatusRows = new();
@@ -245,12 +244,6 @@ namespace RPGArena.UI
             if (log) log.text = string.Join("\n", logLines);
         }
 
-        private void ShowResult(string text, Color color)
-        {
-            resultPanel.SetActive(true);
-            resultText.text = text; resultText.color = color;
-        }
-
         private static void SetFill(Image img, float cur, float max)
         {
             if (img) img.fillAmount = max > 0 ? Mathf.Clamp01(cur / max) : 0f;
@@ -327,16 +320,7 @@ namespace RPGArena.UI
             // Combat log (left-middle) with a dark backing.
             MakePanel(root, new Vector2(0f, 0.5f), new Vector2(16, -50), new Vector2(440, 240), new Color(0.04f, 0.04f, 0.07f, 0.45f));
             log = MakeText(root, "", new Vector2(0f, 0.5f), new Vector2(20, 60), new Vector2(420, 220), 15, TextAnchor.LowerLeft);
-
-            // Result overlay (hidden until end).
-            resultPanel = MakePanel(root, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(800, 240), new Color(0, 0, 0, 0.8f));
-            resultPanel.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
-            resultText = MakeText(resultPanel.GetComponent<RectTransform>(), "", new Vector2(0.5f, 0.5f), new Vector2(0, 40), new Vector2(760, 60), 34, TextAnchor.MiddleCenter);
-            var menuBtn = MakeButton(resultPanel.GetComponent<RectTransform>(), "Return to Main Menu", new Vector2(0, -40), true);
-            var mbr = menuBtn.GetComponent<RectTransform>();
-            mbr.anchorMin = mbr.anchorMax = new Vector2(0.5f, 0.5f); mbr.anchoredPosition = new Vector2(0, -50);
-            menuBtn.onClick.AddListener(() => { var b = GameBootstrap.Instance; if (b != null) b.Scenes.LoadScene("MainMenu"); });
-            resultPanel.SetActive(false);
+            // (End-of-battle screens are owned by RunFlow, driven by OnBattleWon/OnBattleLost.)
         }
 
         private Text MakeText(RectTransform parent, string content, Vector2 anchor, Vector2 pos, Vector2 size, int fontSize, TextAnchor align)

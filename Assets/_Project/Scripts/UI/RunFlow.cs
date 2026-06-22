@@ -121,11 +121,24 @@ namespace RPGArena.UI
         private void ShowDefeat()
         {
             var panel = NewOverlay();
-            Label(panel, "DEFEAT", 0.62f, 56, new Color(0.9f, 0.3f, 0.3f));
-            Label(panel, "The party has fallen. Try again?", 0.52f, 26, Color.white);
-            MakeBtn(panel,"Retry", 0.38f, Reload);
-            MakeBtn(panel,"Return to Main Menu", 0.29f, () => { ResetRun(); ToMenu(); });
+            Label(panel, "DEFEAT", 0.64f, 56, new Color(0.9f, 0.3f, 0.3f));
+            Label(panel, "The party has fallen. Try again?", 0.55f, 26, Color.white);
+            Label(panel, RandomTip(), 0.46f, 19, new Color(0.75f, 0.85f, 1f));
+            MakeBtn(panel,"Retry", 0.36f, Reload);
+            MakeBtn(panel,"Return to Main Menu", 0.27f, () => { ResetRun(); ToMenu(); });
         }
+
+        // A rotating gameplay tip on the defeat screen (layered onboarding, §13.4 / E.4).
+        private static readonly string[] Tips =
+        {
+            "Tip: Exploit the boss's WEAKNESS — and never use the element it absorbs.",
+            "Tip: Build the Stagger bar and Break the boss during its telegraphed charge to cancel the big hit.",
+            "Tip: Set up combos — Oil then Fire, or Wet then Ice to Freeze, then smash for a Shatter bonus.",
+            "Tip: Defend, Dark Sight, or Magic Guard the turn a boss telegraphs a nuke.",
+            "Tip: A Broken boss loses its armour — physical parties get a real payoff in the Break window.",
+        };
+        private int tipIndex;
+        private string RandomTip() => Tips[(tipIndex++) % Tips.Length];
 
         // --- navigation ---------------------------------------------------------------
         private void Reload()
