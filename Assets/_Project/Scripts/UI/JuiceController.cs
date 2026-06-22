@@ -19,6 +19,7 @@ namespace RPGArena.UI
         public EntityChannel onStaggerBroken;
         public EntityChannel onEntityDied;
         public AbilityChannel onBossTelegraph;
+        public Core.Events.VoidChannel onBattleWon;
 
         [Header("Hit-stop (freeze-frame on impact, §12.1)")]
         public float hitStopNormal = 0.04f;
@@ -77,6 +78,7 @@ namespace RPGArena.UI
             onStaggerBroken?.Subscribe(OnBreak);
             onBossTelegraph?.Subscribe(OnTelegraph);
             onEntityDied?.Subscribe(OnDied);
+            onBattleWon?.Subscribe(OnWon);
         }
 
         private void OnDisable()
@@ -85,10 +87,19 @@ namespace RPGArena.UI
             onStaggerBroken?.Unsubscribe(OnBreak);
             onBossTelegraph?.Unsubscribe(OnTelegraph);
             onEntityDied?.Unsubscribe(OnDied);
+            onBattleWon?.Unsubscribe(OnWon);
         }
 
         // Play the death animation on a fallen combatant's rigged model (no-op for billboards).
         private void OnDied(Characters.Entity e) => e?.GetComponentInChildren<Characters.AnimationDriver>()?.PlayDie();
+
+        // On victory, every surviving hero plays its Victory pose.
+        private void OnWon(bool _)
+        {
+            foreach (var e in FindObjectsByType<Characters.Entity>(FindObjectsSortMode.None))
+                if (e.team == Characters.Team.Heroes && e.IsAlive)
+                    e.GetComponentInChildren<Characters.AnimationDriver>()?.PlayVictory();
+        }
 
         // --- channel handlers ---------------------------------------------------------
         private void OnDamage(DamageResult r)
@@ -118,7 +129,14 @@ namespace RPGArena.UI
             {
                 Vector3 dir = r.target.transform.position - r.source.transform.position;
                 r.source.GetComponent<Characters.CombatantMotion>()?.Lunge(dir);
-                r.source.GetComponentInChildren<Characters.AnimationDriver>()?.PlayAttack();
+                // Pick the attacker's animation from the ability: AoE -> area, magic -> cast, else attack.
+                var drv = r.source.GetComponentInChildren<Characters.AnimationDriver>();
+                if (drv != null)
+                {
+                    if (r.ability != null && r.ability.targetRule == TargetRule.AllEnemies) drv.PlayAreaAttack();
+                    else if (r.ability != null && r.ability.isMagic) drv.PlayCast();
+                    else drv.PlayAttack();
+                }
                 if (!r.isHeal && !r.absorbed)
                 {
                     r.target.GetComponent<Characters.CombatantMotion>()?.Recoil(dir);

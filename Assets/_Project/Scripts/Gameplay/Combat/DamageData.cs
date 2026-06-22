@@ -23,6 +23,7 @@ namespace RPGArena.Combat
     {
         public Entity source;
         public Entity target;
+        public Ability ability;        // the ability used (drives per-ability animation: cast/area/attack)
         public ElementType element;    // the attack's element (drives element-coloured VFX)
         public int amount;             // final HP delta magnitude (>= 0)
         public bool hit;               // false == missed

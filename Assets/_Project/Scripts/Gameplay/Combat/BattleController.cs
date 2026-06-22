@@ -229,14 +229,15 @@ namespace RPGArena.Combat
 
         private void PlaceCombatants()
         {
-            var bossPos = new Vector3(4.5f, 0f, 0.6f);
+            var bossPos = new Vector3(4.5f, 0f, 1.2f);   // pushed back so the 2D Dragon doesn't dwarf the heroes
             for (int i = 0; i < Context.heroes.Count; i++)
             {
                 var h = Context.heroes[i];
-                h.transform.position = new Vector3(-5f + i * 1.7f, 0f, i * 0.4f);
+                h.transform.position = new Vector3(-3.6f + i * 1.5f, 0f, i * 0.4f);   // grouped tighter for the closer frame
                 h.transform.rotation = Quaternion.Euler(0, 90, 0);
                 Vector3 faceBoss = bossPos - h.transform.position; faceBoss.y = 0f;
-                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss);
+                float scale = h.modelPrefab != null ? 1.2f : 1f;     // make the 3D heroes read larger
+                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss, scale);
                 var motion = h.gameObject.AddComponent<CombatantMotion>();    // lunge/recoil (+ procedural bob if no model)
                 if (h.modelPrefab != null) motion.bobAmplitude = 0f;          // the Animator's Idle replaces the bob
             }
@@ -245,7 +246,8 @@ namespace RPGArena.Combat
                 Context.boss.transform.position = bossPos;
                 Context.boss.transform.rotation = Quaternion.Euler(0, -90, 0);
                 Vector3 faceHeroes = (Context.heroes.Count > 0 ? Context.heroes[0].transform.position : Vector3.zero) - bossPos; faceHeroes.y = 0f;
-                AttachBody(Context.boss.gameObject, Context.boss.modelPrefab, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.3f, 3.4f, 0, faceHeroes);
+                // Smaller billboard (3.0 vs 3.4) so the 2D Dragon is imposing but not overwhelming next to the heroes.
+                AttachBody(Context.boss.gameObject, Context.boss.modelPrefab, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.0f, 3.0f, 0, faceHeroes);
                 var bm = Context.boss.gameObject.AddComponent<CombatantMotion>();
                 bm.lungeDistance = 0.8f;
                 bm.bobAmplitude = Context.boss.modelPrefab != null ? 0f : 0.12f;   // a heavier-feeling 2D boss bobs
@@ -277,7 +279,7 @@ namespace RPGArena.Combat
                 bg.transform.position = new Vector3(cp.x, cp.y, cp.z + 18f);
             }
 
-            for (int i = 0; i < Context.heroes.Count; i++) AddShadow(Context.heroes[i].gameObject, 1.2f);
+            for (int i = 0; i < Context.heroes.Count; i++) AddShadow(Context.heroes[i].gameObject, 1.5f);
             if (Context.boss != null) AddShadow(Context.boss.gameObject, 2.8f);
         }
 
@@ -319,7 +321,7 @@ namespace RPGArena.Combat
 
         // Give a combatant a visible "body". If it has a stageSprite, billboard that full-body art
         // facing the camera (the 2.5D MapleStory look); otherwise fall back to a coloured capsule.
-        private static void AttachBody(GameObject host, GameObject modelPrefab, Sprite sprite, Color color, float width, float height, int order, Vector3 faceDir)
+        private static void AttachBody(GameObject host, GameObject modelPrefab, Sprite sprite, Color color, float width, float height, int order, Vector3 faceDir, float modelScale = 1f)
         {
             if (host.transform.Find("Body") != null) return;
 
@@ -329,8 +331,16 @@ namespace RPGArena.Combat
                 var model = Instantiate(modelPrefab);
                 model.name = "Body";
                 model.transform.SetParent(host.transform, false);
-                if (faceDir.sqrMagnitude > 0.0001f)
-                    model.transform.rotation = Quaternion.LookRotation(faceDir.normalized, Vector3.up);
+                // 3/4 view: blend facing-the-foe with facing-the-camera so the model's FRONT shows
+                // (not a dead-on profile). Yaw the model, not the camera, so the backdrop + shadow stay put.
+                Vector3 faceFoe = faceDir; faceFoe.y = 0f;
+                var cam = Camera.main;
+                Vector3 faceCam = (cam != null ? cam.transform.position - host.transform.position : new Vector3(0, 0, -1)); faceCam.y = 0f;
+                Vector3 look = faceFoe.sqrMagnitude > 0.0001f && faceCam.sqrMagnitude > 0.0001f
+                    ? Vector3.Slerp(faceFoe.normalized, faceCam.normalized, 0.5f)
+                    : (faceFoe.sqrMagnitude > 0.0001f ? faceFoe.normalized : Vector3.forward);
+                model.transform.rotation = Quaternion.LookRotation(look, Vector3.up);
+                if (modelScale > 0f && !Mathf.Approximately(modelScale, 1f)) model.transform.localScale *= modelScale;
                 model.transform.localPosition = Vector3.zero;   // prefab pivot is already at the feet
                 return;
             }

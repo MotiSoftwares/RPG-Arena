@@ -82,6 +82,7 @@ namespace RPGArena.EditorTools
             var juice = juiceGo.AddComponent<JuiceController>();
             juice.onDamageDealt = cDmg; juice.onStaggerBroken = cBreak; juice.onBossTelegraph = cTele;
             juice.onEntityDied = cDied;   // drives the death animation on rigged models
+            juice.onBattleWon = cWon;     // surviving heroes play a victory pose
 
             // Audio bridge (presentation): routes combat events to the AudioMixer-backed service.
             DestroyIfExists("BattleAudio");
@@ -168,17 +169,21 @@ namespace RPGArena.EditorTools
             var pl = glow.AddComponent<Light>();
             pl.type = LightType.Point; pl.color = new Color(1f, 0.42f, 0.16f); pl.intensity = 5f; pl.range = 14f;
 
+            // 3-point lighting so the 3D models read as solid + lit (not flat/dark): a brighter warm
+            // KEY from the camera-front, a soft cool FILL from the other side, and a warm RIM/back light.
             var sun = GameObject.Find("Directional Light");
-            if (sun) { var l = sun.GetComponent<Light>(); if (l) { l.intensity = 0.85f; l.color = new Color(0.7f, 0.75f, 1f); } }
+            if (sun) { var l = sun.GetComponent<Light>(); if (l) { l.intensity = 1.15f; l.color = new Color(1f, 0.95f, 0.85f); } sun.transform.rotation = Quaternion.Euler(35f, -35f, 0f); }
+            MakeDir("FillLight", Quaternion.Euler(20f, 60f, 0f), new Color(0.6f, 0.7f, 1f), 0.45f);
+            MakeDir("RimLight", Quaternion.Euler(-10f, 200f, 0f), new Color(1f, 0.55f, 0.25f), 0.9f);
 
             var cam = GameObject.FindWithTag("MainCamera");
             if (cam)
             {
-                cam.transform.position = new Vector3(-0.2f, 1.5f, -10f);
+                cam.transform.position = new Vector3(-0.6f, 1.7f, -10f);
                 var c = cam.GetComponent<Camera>();
                 if (c)
                 {
-                    c.orthographic = true; c.orthographicSize = 4.7f; c.allowHDR = true;
+                    c.orthographic = true; c.orthographicSize = 3.6f; c.allowHDR = true;
                     // GetUniversalAdditionalCameraData() adds the component if missing, so the
                     // post-processing flag actually persists on the camera.
                     c.GetUniversalAdditionalCameraData().renderPostProcessing = true;
@@ -214,6 +219,16 @@ namespace RPGArena.EditorTools
             DestroyIfExists("PostFXVolume");
             var volGo = new GameObject("PostFXVolume");
             var vol = volGo.AddComponent<Volume>(); vol.isGlobal = true; vol.priority = 1; vol.sharedProfile = profile;
+        }
+
+        // Adds (or replaces) a named directional light — used for the fill/rim of the 3-point setup.
+        private static void MakeDir(string name, Quaternion rot, Color color, float intensity)
+        {
+            DestroyIfExists(name);
+            var go = new GameObject(name);
+            go.transform.rotation = rot;
+            var l = go.AddComponent<Light>();
+            l.type = LightType.Directional; l.color = color; l.intensity = intensity; l.shadows = LightShadows.None;
         }
 
         // Creates (or reuses) a URP/Lit material asset so scene objects keep a valid reference.

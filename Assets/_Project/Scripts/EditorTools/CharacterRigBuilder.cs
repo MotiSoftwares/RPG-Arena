@@ -21,22 +21,29 @@ namespace RPGArena.EditorTools
         private const string Prefabs = "Assets/_Project/Art/Rigs/Prefabs";
         private const string SO = "Assets/_Project/ScriptableObjects/";
 
-        // One animation pack: the character FBX + the four clips we drive (by file name, no extension).
-        private class Pack { public string key, charName, idle, attack, hit, die; }
+        // One animation pack: the character FBX + the clips we drive (by file name, no extension).
+        // Optional clips (idle2/attack2/attack3/cast/area/victory) may be null — their state is skipped.
+        private class Pack { public string key, charName, idle, idle2, attack, attack2, attack3, cast, area, hit, die, victory; }
         // One combatant prefab: which pack it uses, whether it's a boss def, and an optional tint.
         private class Target { public string defName, packKey; public bool boss; public Color tint; }
 
         private static readonly Pack[] Packs =
         {
             new Pack { key = "Warrior", charName = "Paladin WProp J Nordstrom",
-                idle = "sword and shield idle", attack = "sword and shield slash",
-                hit = "sword and shield impact", die = "sword and shield death" },
+                idle = "sword and shield idle", idle2 = "sword and shield idle (2)",
+                attack = "sword and shield slash", attack2 = "sword and shield slash (2)", attack3 = "sword and shield slash (3)",
+                cast = "sword and shield casting", area = "sword and shield slash (4)",
+                hit = "sword and shield impact", die = "sword and shield death", victory = "sword and shield power up" },
             new Pack { key = "Mage", charName = "Ch39_nonPBR",
-                idle = "standing idle", attack = "Standing 1H Magic Attack 01",
-                hit = "Standing React Small From Front", die = "Standing React Death Forward" },
+                idle = "standing idle", idle2 = "standing idle 02",
+                attack = "Standing 1H Magic Attack 01", attack2 = "Standing 1H Magic Attack 02", attack3 = "Standing 1H Magic Attack 03",
+                cast = "Standing 2H Cast Spell 01", area = "Standing 2H Magic Area Attack 01",
+                hit = "Standing React Small From Front", die = "Standing React Death Forward", victory = "Standing 2H Magic Attack 05" },
             new Pack { key = "Archer", charName = "Arissa",
-                idle = "standing idle 01", attack = "standing aim recoil",
-                hit = "standing react small from front", die = "standing death forward 01" },
+                idle = "standing idle 01", idle2 = "standing idle 02 looking",
+                attack = "standing aim recoil", attack2 = "standing draw arrow", attack3 = "standing aim overdraw",
+                cast = null, area = "standing aim overdraw",
+                hit = "standing react small from front", die = "standing death forward 01", victory = null },
         };
 
         private static readonly Target[] Targets =
@@ -72,11 +79,20 @@ namespace RPGArena.EditorTools
                 if (avatar == null) Debug.LogWarning($"[Rigs] No Avatar generated for {p.charName} — retarget may fail.");
                 avatars[p.key] = avatar; baseMats[p.key] = urpMat;
 
-                var idle = ConfigureClip(p.idle, avatar, true);
-                var atk = ConfigureClip(p.attack, avatar, false);
-                var hit = ConfigureClip(p.hit, avatar, false);
-                var die = ConfigureClip(p.die, avatar, false);
-                controllers[p.key] = BuildController(p.key, idle, atk, hit, die);
+                var c = new Clips
+                {
+                    idle = ConfigureClip(p.idle, avatar, true),
+                    idle2 = ConfigureClip(p.idle2, avatar, true),
+                    attack = ConfigureClip(p.attack, avatar, false),
+                    attack2 = ConfigureClip(p.attack2, avatar, false),
+                    attack3 = ConfigureClip(p.attack3, avatar, false),
+                    cast = ConfigureClip(p.cast, avatar, false),
+                    area = ConfigureClip(p.area, avatar, false),
+                    hit = ConfigureClip(p.hit, avatar, false),
+                    die = ConfigureClip(p.die, avatar, false),
+                    victory = ConfigureClip(p.victory, avatar, false),
+                };
+                controllers[p.key] = BuildController(p.key, c);
             }
 
             int built = 0;
@@ -146,6 +162,7 @@ namespace RPGArena.EditorTools
         // --- animation FBX: Humanoid retarget onto the character's avatar --------------
         private static AnimationClip ConfigureClip(string clipName, Avatar avatar, bool loop)
         {
+            if (string.IsNullOrEmpty(clipName)) return null;   // optional clip — skip silently
             var path = FindFbx(clipName);
             if (path == null) { Debug.LogWarning($"[Rigs] Animation FBX not found: {clipName}"); return null; }
             var ci = (ModelImporter)AssetImporter.GetAtPath(path);
@@ -169,34 +186,69 @@ namespace RPGArena.EditorTools
             return null;
         }
 
-        // --- Animator Controller: Idle (default) <-> Attack, AnyState -> Hit/Die -------
-        private static AnimatorController BuildController(string key, AnimationClip idle, AnimationClip atk, AnimationClip hit, AnimationClip die)
+        // The retargeted clips for one class.
+        private class Clips { public AnimationClip idle, idle2, attack, attack2, attack3, cast, area, hit, die, victory; }
+
+        // --- Animator Controller: blended Idle + varied Attack + Cast/AreaAttack/Victory ----
+        // Idle is a 2-clip BlendTree (over IdleBlend) so combatants desync; Attack is a 3-variant
+        // BlendTree (over AttackVariant); Cast/AreaAttack/Victory are optional one-shot states.
+        private static AnimatorController BuildController(string key, Clips c)
         {
             string path = $"{Ctrls}/{key}.controller";
             var ctrl = AnimatorController.CreateAnimatorControllerAtPath(path);
             ctrl.AddParameter("Attack", AnimatorControllerParameterType.Trigger);
             ctrl.AddParameter("Hit", AnimatorControllerParameterType.Trigger);
             ctrl.AddParameter("Die", AnimatorControllerParameterType.Trigger);
+            ctrl.AddParameter("AttackVariant", AnimatorControllerParameterType.Float);
+            ctrl.AddParameter("IdleBlend", AnimatorControllerParameterType.Float);
+            if (c.cast != null) ctrl.AddParameter("Cast", AnimatorControllerParameterType.Trigger);
+            if (c.area != null) ctrl.AddParameter("AreaAttack", AnimatorControllerParameterType.Trigger);
+            if (c.victory != null) ctrl.AddParameter("Victory", AnimatorControllerParameterType.Trigger);
 
             var sm = ctrl.layers[0].stateMachine;
-            var sIdle = sm.AddState("Idle"); sIdle.motion = idle; sm.defaultState = sIdle;
-            var sAtk = sm.AddState("Attack"); sAtk.motion = atk;
-            var sHit = sm.AddState("Hit"); sHit.motion = hit;
-            var sDie = sm.AddState("Die"); sDie.motion = die;
 
-            var toAtk = sIdle.AddTransition(sAtk); toAtk.hasExitTime = false; toAtk.duration = 0.05f;
-            toAtk.AddCondition(AnimatorConditionMode.If, 0, "Attack");
-            var atkBack = sAtk.AddTransition(sIdle); atkBack.hasExitTime = true; atkBack.exitTime = 0.85f; atkBack.duration = 0.1f;
+            // Idle — a blend of two idles (single child if only one exists).
+            var sIdle = ctrl.CreateBlendTreeInController("Idle", out var idleTree);
+            idleTree.blendType = BlendTreeType.Simple1D; idleTree.blendParameter = "IdleBlend"; idleTree.useAutomaticThresholds = false;
+            idleTree.AddChild(c.idle != null ? c.idle : c.idle2, 0f);
+            if (c.idle != null && c.idle2 != null) idleTree.AddChild(c.idle2, 1f);
+            sm.defaultState = sIdle;
 
+            // Attack — a blend of up to three slash/shot variants.
+            var sAtk = ctrl.CreateBlendTreeInController("Attack", out var atkTree);
+            atkTree.blendType = BlendTreeType.Simple1D; atkTree.blendParameter = "AttackVariant"; atkTree.useAutomaticThresholds = false;
+            atkTree.AddChild(c.attack, 0f);
+            if (c.attack2 != null) atkTree.AddChild(c.attack2, 1f);
+            if (c.attack3 != null) atkTree.AddChild(c.attack3, 2f);
+            Oneshot(sIdle, sAtk, "Attack", 0.85f);
+
+            var sHit = sm.AddState("Hit"); sHit.motion = c.hit;
+            var sDie = sm.AddState("Die"); sDie.motion = c.die;
             var toHit = sm.AddAnyStateTransition(sHit); toHit.hasExitTime = false; toHit.duration = 0.05f; toHit.canTransitionToSelf = false;
             toHit.AddCondition(AnimatorConditionMode.If, 0, "Hit");
             var hitBack = sHit.AddTransition(sIdle); hitBack.hasExitTime = true; hitBack.exitTime = 0.7f; hitBack.duration = 0.1f;
-
             var toDie = sm.AddAnyStateTransition(sDie); toDie.hasExitTime = false; toDie.duration = 0.05f; toDie.canTransitionToSelf = false;
             toDie.AddCondition(AnimatorConditionMode.If, 0, "Die");
 
+            if (c.cast != null) { var s = sm.AddState("Cast"); s.motion = c.cast; Oneshot(sIdle, s, "Cast", 0.85f); }
+            if (c.area != null) { var s = sm.AddState("AreaAttack"); s.motion = c.area; Oneshot(sIdle, s, "AreaAttack", 0.85f); }
+            if (c.victory != null)
+            {
+                var s = sm.AddState("Victory"); s.motion = c.victory;
+                var t = sm.AddAnyStateTransition(s); t.hasExitTime = false; t.duration = 0.1f; t.canTransitionToSelf = false;
+                t.AddCondition(AnimatorConditionMode.If, 0, "Victory");   // no return — the fight is over
+            }
+
             EditorUtility.SetDirty(ctrl);
             return ctrl;
+        }
+
+        // Idle -> state on a trigger (no exit time), then state -> Idle after exitTime.
+        private static void Oneshot(AnimatorState from, AnimatorState to, string trigger, float exitTime)
+        {
+            var go = from.AddTransition(to); go.hasExitTime = false; go.duration = 0.05f;
+            go.AddCondition(AnimatorConditionMode.If, 0, trigger);
+            var back = to.AddTransition(from); back.hasExitTime = true; back.exitTime = exitTime; back.duration = 0.1f;
         }
 
         // --- prefab: normalize scale + feet, set animator, tint, AnimationDriver -------
@@ -217,7 +269,7 @@ namespace RPGArena.EditorTools
             if (rends.Length > 0)
             {
                 var b = rends[0].bounds; for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
-                if (b.size.y > 0.01f) inst.transform.localScale = Vector3.one * (1.8f / b.size.y);
+                if (b.size.y > 0.01f) inst.transform.localScale = Vector3.one * (2.1f / b.size.y);
                 rends = inst.GetComponentsInChildren<Renderer>();
                 b = rends[0].bounds; for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
                 inst.transform.localPosition -= new Vector3(0, b.min.y, 0);
