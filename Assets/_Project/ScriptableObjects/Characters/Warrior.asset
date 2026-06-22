@@ -16,7 +16,7 @@ MonoBehaviour:
   classFlavor: 
   portrait: {fileID: 21300000, guid: 9deaf404a20622a48b64201f4aafe7b6, type: 3}
   stageSprite: {fileID: 21300000, guid: 9deaf404a20622a48b64201f4aafe7b6, type: 3}
-  modelPrefab: {fileID: 0}
+  modelPrefab: {fileID: 5458507077255484349, guid: c2b1e2028765b6243a9e2ea02237cf65, type: 3}
   primaryStat: 0
   baseStats:
     STR: 28

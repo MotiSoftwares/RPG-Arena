@@ -17,6 +17,7 @@ namespace RPGArena.UI
         [Header("Channels (subscribed)")]
         public DamageResultChannel onDamageDealt;
         public EntityChannel onStaggerBroken;
+        public EntityChannel onEntityDied;
         public AbilityChannel onBossTelegraph;
 
         [Header("Hit-stop (freeze-frame on impact, §12.1)")]
@@ -75,6 +76,7 @@ namespace RPGArena.UI
             onDamageDealt?.Subscribe(OnDamage);
             onStaggerBroken?.Subscribe(OnBreak);
             onBossTelegraph?.Subscribe(OnTelegraph);
+            onEntityDied?.Subscribe(OnDied);
         }
 
         private void OnDisable()
@@ -82,7 +84,11 @@ namespace RPGArena.UI
             onDamageDealt?.Unsubscribe(OnDamage);
             onStaggerBroken?.Unsubscribe(OnBreak);
             onBossTelegraph?.Unsubscribe(OnTelegraph);
+            onEntityDied?.Unsubscribe(OnDied);
         }
+
+        // Play the death animation on a fallen combatant's rigged model (no-op for billboards).
+        private void OnDied(Characters.Entity e) => e?.GetComponentInChildren<Characters.AnimationDriver>()?.PlayDie();
 
         // --- channel handlers ---------------------------------------------------------
         private void OnDamage(DamageResult r)
@@ -106,12 +112,18 @@ namespace RPGArena.UI
                          (r.isHeal || r.absorbed) ? new Color(0.4f, 1f, 0.5f) : ElementColor(r.element),
                          r.crit ? 52 : 30);
 
-            // Procedural motion: the attacker lunges toward the target; the target recoils away.
+            // Procedural motion + rigged-model animation: the attacker lunges + plays Attack;
+            // the target recoils + plays its Hit reaction.
             if (r.hit && r.source != null && r.target != null)
             {
                 Vector3 dir = r.target.transform.position - r.source.transform.position;
                 r.source.GetComponent<Characters.CombatantMotion>()?.Lunge(dir);
-                if (!r.isHeal && !r.absorbed) r.target.GetComponent<Characters.CombatantMotion>()?.Recoil(dir);
+                r.source.GetComponentInChildren<Characters.AnimationDriver>()?.PlayAttack();
+                if (!r.isHeal && !r.absorbed)
+                {
+                    r.target.GetComponent<Characters.CombatantMotion>()?.Recoil(dir);
+                    r.target.GetComponentInChildren<Characters.AnimationDriver>()?.PlayHit();
+                }
             }
 
             // Impact feedback scales with the hit's weight.

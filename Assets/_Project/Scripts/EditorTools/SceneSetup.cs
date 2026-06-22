@@ -81,6 +81,7 @@ namespace RPGArena.EditorTools
             var juiceGo = new GameObject("JuiceController");
             var juice = juiceGo.AddComponent<JuiceController>();
             juice.onDamageDealt = cDmg; juice.onStaggerBroken = cBreak; juice.onBossTelegraph = cTele;
+            juice.onEntityDied = cDied;   // drives the death animation on rigged models
 
             // Audio bridge (presentation): routes combat events to the AudioMixer-backed service.
             DestroyIfExists("BattleAudio");

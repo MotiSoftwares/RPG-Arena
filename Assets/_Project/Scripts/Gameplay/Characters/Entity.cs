@@ -31,6 +31,7 @@ namespace RPGArena.Characters
         public ElementProfile elementProfile;
         public List<Ability> abilities = new();
         public Sprite stageSprite;              // optional full-body art billboarded on the stage
+        public GameObject modelPrefab;          // optional rigged 3D model (replaces the billboard)
 
         [Header("Stance / attunement (player toggles, §5.9)")]
         // Mage: which elemental school the attunement-following basic (Magic Bolt) uses.

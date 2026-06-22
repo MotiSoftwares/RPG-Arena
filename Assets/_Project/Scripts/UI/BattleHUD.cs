@@ -38,6 +38,8 @@ namespace RPGArena.UI
         private RectTransform bossStatusRow;
         private readonly List<RectTransform> heroStatusRows = new();
         private readonly string[] statusSigs = new string[8];   // 0 = boss, 1.. = heroes
+        private RectTransform turnOrderRow;
+        private string turnOrderSig = "";
 
         private void Awake()
         {
@@ -122,6 +124,7 @@ namespace RPGArena.UI
                     bossWeakness.text = (weaknessSeen || ctx.weaknessRevealed) ? FormatWeakness(ctx.boss) : "";
                 RefreshStatusRow(bossStatusRow, ctx.boss, 0, true);
             }
+            RefreshTurnOrder();
             for (int i = 0; i < partyTexts.Count; i++)
             {
                 if (i >= ctx.heroes.Count) { partyTexts[i].transform.parent.gameObject.SetActive(false); continue; }
@@ -134,6 +137,35 @@ namespace RPGArena.UI
                 if (i < partyHpText.Count) partyHpText[i].text = h.IsAlive ? $"{h.currentHP}/{h.stats.maxHP}" : "— KO —";
                 if (i < partyMpText.Count) partyMpText[i].text = $"MP {h.currentMP}/{h.stats.maxMP}";
                 if (i < heroStatusRows.Count) RefreshStatusRow(heroStatusRows[i], h, i + 1, false);
+            }
+        }
+
+        // --- turn-order tracker -------------------------------------------------------
+        private void RefreshTurnOrder()
+        {
+            if (turnOrderRow == null || controller.UpcomingOrder == null) return;
+            // Rebuild only when the upcoming line-up changes (cheap signature).
+            var sb = new System.Text.StringBuilder();
+            int seen = 0;
+            foreach (var e in controller.UpcomingOrder) { if (e != null && e.IsAlive) { sb.Append(e.displayName).Append('|'); if (++seen >= 6) break; } }
+            string sig = sb.ToString();
+            if (sig == turnOrderSig) return;
+            turnOrderSig = sig;
+
+            ClearChildren(turnOrderRow);
+            int i = 0;
+            foreach (var e in controller.UpcomingOrder)
+            {
+                if (e == null || !e.IsAlive) continue;
+                var chip = new GameObject("Chip"); chip.transform.SetParent(turnOrderRow, false);
+                var img = chip.AddComponent<Image>();
+                img.color = e.isBoss ? new Color(0.5f, 0.16f, 0.16f, 0.88f) : new Color(0.15f, 0.2f, 0.32f, 0.82f);
+                var rt = img.rectTransform;
+                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f); rt.pivot = new Vector2(0.5f, 1f);
+                rt.anchoredPosition = new Vector2(0, -i * 30); rt.sizeDelta = new Vector2(180, 27);
+                var t = MakeText(rt, (i == 0 ? "▶ " : $"{i + 1}. ") + e.displayName, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(172, 24), 14, TextAnchor.MiddleLeft);
+                t.color = i == 0 ? Color.yellow : Color.white;
+                if (++i >= 6) break;
             }
         }
 
@@ -322,6 +354,11 @@ namespace RPGArena.UI
             telegraph.gameObject.SetActive(false);
             // Boss status-effect badges (so Oiled/Wet/Marked/Frozen are visible for combos, §9.4).
             bossStatusRow = MakeRow(root, new Vector2(0.5f, 1f), new Vector2(0, -176), new Vector2(820, 26));
+
+            // Turn-order tracker (top-right): plan around the boss's next turn / a Break (§9.4).
+            MakePanel(root, new Vector2(1f, 1f), new Vector2(-14, -14), new Vector2(196, 232), new Color(0.04f, 0.04f, 0.07f, 0.55f));
+            MakeText(root, "TURN ORDER", new Vector2(1f, 1f), new Vector2(-112, -28), new Vector2(180, 22), 16, TextAnchor.MiddleCenter).color = new Color(0.8f, 0.85f, 1f);
+            turnOrderRow = MakeRow(root, new Vector2(1f, 1f), new Vector2(-112, -48), new Vector2(184, 184));
 
             // Party panel (bottom-left): up to 3 hero strips.
             for (int i = 0; i < 3; i++)

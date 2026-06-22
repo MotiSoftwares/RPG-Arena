@@ -17,7 +17,7 @@ MonoBehaviour:
   portrait: {fileID: 21300000, guid: 565703f50f3b3c84787153f8effaa5d4, type: 3}
   stageSprite: {fileID: 21300000, guid: 565703f50f3b3c84787153f8effaa5d4, type: 3}
   arenaBackdrop: {fileID: 21300000, guid: df603ca091aaa1e4ca3b0b468be30b98, type: 3}
-  modelPrefab: {fileID: 0}
+  modelPrefab: {fileID: 5949025444577070199, guid: 7b64d832fea0d4f46abae6c69b937a82, type: 3}
   primaryStat: 2
   baseStats:
     STR: 0

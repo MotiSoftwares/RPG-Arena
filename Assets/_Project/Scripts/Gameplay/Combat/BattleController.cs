@@ -35,6 +35,8 @@ namespace RPGArena.Combat
 
         public BattleContext Context { get; private set; }
         public int RoundsTaken { get; private set; }                  // for the victory grade (§9.6)
+        private Queue<Entity> currentOrder;
+        public IReadOnlyCollection<Entity> UpcomingOrder => currentOrder;   // next actors, for the HUD tracker
         public Entity ActiveHero { get; private set; }                // whose input we await (null otherwise)
         public bool AwaitingInput => ActiveHero != null && pendingAction == null;
         public BattleManager.Outcome Result { get; private set; } = BattleManager.Outcome.InProgress;
@@ -81,6 +83,7 @@ namespace RPGArena.Combat
             {
                 RoundsTaken = round;
                 var order = Context.turns.BuildRoundOrder(All(), Context.rng, balance.maxExtraTurnsPerEntityPerRound);
+                currentOrder = order;   // exposed to the HUD's turn-order tracker (same queue ref, drains as turns resolve)
                 while (order.Count > 0 && Result == BattleManager.Outcome.InProgress)
                 {
                     var actor = order.Dequeue();
@@ -226,21 +229,26 @@ namespace RPGArena.Combat
 
         private void PlaceCombatants()
         {
+            var bossPos = new Vector3(4.5f, 0f, 0.6f);
             for (int i = 0; i < Context.heroes.Count; i++)
             {
                 var h = Context.heroes[i];
                 h.transform.position = new Vector3(-5f + i * 1.7f, 0f, i * 0.4f);
                 h.transform.rotation = Quaternion.Euler(0, 90, 0);
-                AttachBody(h.gameObject, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i);
-                h.gameObject.AddComponent<CombatantMotion>();          // procedural idle/lunge/recoil
+                Vector3 faceBoss = bossPos - h.transform.position; faceBoss.y = 0f;
+                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss);
+                var motion = h.gameObject.AddComponent<CombatantMotion>();    // lunge/recoil (+ procedural bob if no model)
+                if (h.modelPrefab != null) motion.bobAmplitude = 0f;          // the Animator's Idle replaces the bob
             }
             if (Context.boss != null)
             {
-                Context.boss.transform.position = new Vector3(4.5f, 0f, 0.6f);
+                Context.boss.transform.position = bossPos;
                 Context.boss.transform.rotation = Quaternion.Euler(0, -90, 0);
-                AttachBody(Context.boss.gameObject, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.3f, 3.4f, 0);
+                Vector3 faceHeroes = (Context.heroes.Count > 0 ? Context.heroes[0].transform.position : Vector3.zero) - bossPos; faceHeroes.y = 0f;
+                AttachBody(Context.boss.gameObject, Context.boss.modelPrefab, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.3f, 3.4f, 0, faceHeroes);
                 var bm = Context.boss.gameObject.AddComponent<CombatantMotion>();
-                bm.bobAmplitude = 0.12f; bm.lungeDistance = 0.8f;     // a heavier-feeling boss
+                bm.lungeDistance = 0.8f;
+                bm.bobAmplitude = Context.boss.modelPrefab != null ? 0f : 0.12f;   // a heavier-feeling 2D boss bobs
             }
 
             DressStage();
@@ -311,9 +319,21 @@ namespace RPGArena.Combat
 
         // Give a combatant a visible "body". If it has a stageSprite, billboard that full-body art
         // facing the camera (the 2.5D MapleStory look); otherwise fall back to a coloured capsule.
-        private static void AttachBody(GameObject host, Sprite sprite, Color color, float width, float height, int order)
+        private static void AttachBody(GameObject host, GameObject modelPrefab, Sprite sprite, Color color, float width, float height, int order, Vector3 faceDir)
         {
             if (host.transform.Find("Body") != null) return;
+
+            // Rigged 3D model (the real animated characters) — replaces the 2D billboard when present.
+            if (modelPrefab != null)
+            {
+                var model = Instantiate(modelPrefab);
+                model.name = "Body";
+                model.transform.SetParent(host.transform, false);
+                if (faceDir.sqrMagnitude > 0.0001f)
+                    model.transform.rotation = Quaternion.LookRotation(faceDir.normalized, Vector3.up);
+                model.transform.localPosition = Vector3.zero;   // prefab pivot is already at the feet
+                return;
+            }
 
             if (sprite != null)
             {
