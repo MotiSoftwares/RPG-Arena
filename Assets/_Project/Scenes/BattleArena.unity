@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &217989876
+--- !u!1 &1262075
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,50 +127,46 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 217989878}
-  - component: {fileID: 217989877}
+  - component: {fileID: 1262077}
+  - component: {fileID: 1262076}
   m_Layer: 0
-  m_Name: JuiceController
+  m_Name: Narrative
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &217989877
+--- !u!114 &1262076
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 217989876}
+  m_GameObject: {fileID: 1262075}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 44fb439a8d485814c968bdabc9dfbb1b, type: 3}
+  m_Script: {fileID: 11500000, guid: 663bc94b9ebfec44dbb48f540de87b7e, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.JuiceController
-  onDamageDealt: {fileID: 11400000, guid: 0101cc0a17792dd41bbcc3f041516552, type: 2}
-  onStaggerBroken: {fileID: 11400000, guid: 8a35baa42a6697d4abe004e74e987e4e, type: 2}
-  onBossTelegraph: {fileID: 11400000, guid: 733f7f6ed4ac5cd45bf63f9f8cc43399, type: 2}
-  hitStopNormal: 0.04
-  hitStopCrit: 0.1
-  shakeOnHit: 0.1
-  shakeOnCrit: 0.28
-  shakeOnBreak: 0.55
-  shakeDecay: 4.5
-  flashOnCrit: 0.35
-  flashOnBreak: 0.6
-  flashDecay: 3.2
-  breakSlowMoScale: 0.35
-  breakSlowMoDuration: 0.7
-  floatLife: 0.9
-  floatRise: 90
---- !u!4 &217989878
+  m_EditorClassIdentifier: RPGArena.Narrative::RPGArena.Narrative.NarrativeRunner
+  stories:
+  - bossKey: Dragon
+    intro: {fileID: 4900000, guid: b015b7ffc89ce1a478feb610923ee415, type: 3}
+    outro: {fileID: 4900000, guid: ebb95cbfefc9a7446995c79d527c4cda, type: 3}
+  - bossKey: BlackMage
+    intro: {fileID: 4900000, guid: 5ccedf1860261514c9dfe98276e26aa2, type: 3}
+    outro: {fileID: 4900000, guid: ee1937476dec31d49a4a96344277c6ca, type: 3}
+  - bossKey: EvilWarrior
+    intro: {fileID: 4900000, guid: 750bcb4e049e15643a11f783464f46de, type: 3}
+    outro: {fileID: 4900000, guid: 1af596f5a80004045a2258538f8c2183, type: 3}
+  introJson: {fileID: 0}
+  outroJson: {fileID: 0}
+--- !u!4 &1262077
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 217989876}
+  m_GameObject: {fileID: 1262075}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -179,7 +175,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &508567314
+--- !u!1 &84285426
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -187,8 +183,223 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 508567316}
-  - component: {fileID: 508567315}
+  - component: {fileID: 84285430}
+  - component: {fileID: 84285429}
+  - component: {fileID: 84285428}
+  - component: {fileID: 84285427}
+  m_Layer: 0
+  m_Name: Ground
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!23 &84285427
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 84285426}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 57151db1b1488a14ba7d00665473c860, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 1
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &84285428
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 84285426}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!33 &84285429
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 84285426}
+  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &84285430
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 84285426}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 1.5}
+  m_LocalScale: {x: 4, y: 1, z: 1.6}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &177138361
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 177138363}
+  - component: {fileID: 177138362}
+  m_Layer: 0
+  m_Name: BattleAudio
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &177138362
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 177138361}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1108168afd38884e9cd72ccecee03b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.BattleAudio
+  onDamageDealt: {fileID: 11400000, guid: 0101cc0a17792dd41bbcc3f041516552, type: 2}
+  onStaggerBroken: {fileID: 11400000, guid: 8a35baa42a6697d4abe004e74e987e4e, type: 2}
+  onBossTelegraph: {fileID: 11400000, guid: 733f7f6ed4ac5cd45bf63f9f8cc43399, type: 2}
+  onBattleStarted: {fileID: 11400000, guid: 90c2fafe43967714391b7e5fad4e10db, type: 2}
+  onBattleWon: {fileID: 11400000, guid: 7755cb59b38f1884b8840356c088cee5, type: 2}
+  onBattleLost: {fileID: 11400000, guid: 657f440bf23332a44b9d34be3cca5dbe, type: 2}
+--- !u!4 &177138363
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 177138361}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &645690147
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 645690149}
+  - component: {fileID: 645690148}
+  m_Layer: 0
+  m_Name: BattleHUD
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &645690148
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 645690147}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf26e3096267afc4ba0e73b179a5eccd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.BattleHUD
+  controller: {fileID: 1532665464}
+  onTurnStarted: {fileID: 11400000, guid: f1037ec492552084588d630a06c461d1, type: 2}
+  onStaggerBroken: {fileID: 11400000, guid: 8a35baa42a6697d4abe004e74e987e4e, type: 2}
+  onEntityDied: {fileID: 11400000, guid: 223b9d66e21970a4688959bac1aa2718, type: 2}
+  onDamageDealt: {fileID: 11400000, guid: 0101cc0a17792dd41bbcc3f041516552, type: 2}
+  onBossTelegraph: {fileID: 11400000, guid: 733f7f6ed4ac5cd45bf63f9f8cc43399, type: 2}
+  onBattleWon: {fileID: 11400000, guid: 7755cb59b38f1884b8840356c088cee5, type: 2}
+  onBattleLost: {fileID: 11400000, guid: 657f440bf23332a44b9d34be3cca5dbe, type: 2}
+--- !u!4 &645690149
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 645690147}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &687098988
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 687098990}
+  - component: {fileID: 687098989}
   m_Layer: 0
   m_Name: LavaGlow
   m_TagString: Untagged
@@ -196,13 +407,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!108 &508567315
+--- !u!108 &687098989
 Light:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 508567314}
+  m_GameObject: {fileID: 687098988}
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 2
@@ -261,173 +472,16 @@ Light:
   m_LightUnit: 1
   m_LuxAtDistance: 1
   m_EnableSpotReflector: 1
---- !u!4 &508567316
+--- !u!4 &687098990
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 508567314}
+  m_GameObject: {fileID: 687098988}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 4.5, y: 1.2, z: 0.6}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &688917483
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 688917485}
-  - component: {fileID: 688917484}
-  m_Layer: 0
-  m_Name: BattleHUD
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &688917484
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 688917483}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bf26e3096267afc4ba0e73b179a5eccd, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.BattleHUD
-  controller: {fileID: 1407814517}
-  onTurnStarted: {fileID: 11400000, guid: f1037ec492552084588d630a06c461d1, type: 2}
-  onStaggerBroken: {fileID: 11400000, guid: 8a35baa42a6697d4abe004e74e987e4e, type: 2}
-  onEntityDied: {fileID: 11400000, guid: 223b9d66e21970a4688959bac1aa2718, type: 2}
-  onDamageDealt: {fileID: 11400000, guid: 0101cc0a17792dd41bbcc3f041516552, type: 2}
-  onBossTelegraph: {fileID: 11400000, guid: 733f7f6ed4ac5cd45bf63f9f8cc43399, type: 2}
-  onBattleWon: {fileID: 11400000, guid: 7755cb59b38f1884b8840356c088cee5, type: 2}
-  onBattleLost: {fileID: 11400000, guid: 657f440bf23332a44b9d34be3cca5dbe, type: 2}
---- !u!4 &688917485
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 688917483}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &690693109
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 690693111}
-  - component: {fileID: 690693110}
-  m_Layer: 0
-  m_Name: RunFlow
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &690693110
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 690693109}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 24e2db323cd17c0479ba0ffa865bca52, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.RunFlow
-  onBattleWon: {fileID: 11400000, guid: 7755cb59b38f1884b8840356c088cee5, type: 2}
-  onBattleLost: {fileID: 11400000, guid: 657f440bf23332a44b9d34be3cca5dbe, type: 2}
-  boonRoster:
-  - {fileID: 11400000, guid: e179e519cc6f1794382457138f3d9991, type: 2}
-  - {fileID: 11400000, guid: c8fc98a9ff5c6bb478b80eed0b1b7403, type: 2}
-  - {fileID: 11400000, guid: 1731902e8d7da3848970eb068e400e8f, type: 2}
-  - {fileID: 11400000, guid: f2534cb2cd766ea4b825a4a36b60b631, type: 2}
-  - {fileID: 11400000, guid: 2ec967a4fc2d6ff489c82bfe60b7174b, type: 2}
-  - {fileID: 11400000, guid: 404086a0975e8e84aa700c5d4e792873, type: 2}
-  - {fileID: 11400000, guid: 9a5e8efc7bebc1f43a88506456f14889, type: 2}
-  - {fileID: 11400000, guid: 641ae4a51a3d8c241b989821a9e27df1, type: 2}
-  - {fileID: 11400000, guid: 1cc5d82c145c703409dc7a96f1755db4, type: 2}
---- !u!4 &690693111
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 690693109}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &738105823
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 738105825}
-  - component: {fileID: 738105824}
-  m_Layer: 0
-  m_Name: PostFXVolume
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &738105824
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 738105823}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
-  m_IsGlobal: 1
-  priority: 1
-  blendDistance: 0
-  weight: 1
-  sharedProfile: {fileID: 11400000, guid: cc89d590c7ac9be4aa329b1969640644, type: 2}
---- !u!4 &738105825
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 738105823}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -554,6 +608,110 @@ Transform:
   m_GameObject: {fileID: 938180031}
   serializedVersion: 2
   m_LocalRotation: {x: 0.40821794, y: -0.23456973, z: 0.10938166, w: 0.8754261}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1014686158
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1014686160}
+  - component: {fileID: 1014686159}
+  m_Layer: 0
+  m_Name: PauseMenu
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1014686159
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1014686158}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02d30ae303a0f8d458ca1ca2339c6837, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.PauseMenu
+--- !u!4 &1014686160
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1014686158}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1057146269
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1057146271}
+  - component: {fileID: 1057146270}
+  m_Layer: 0
+  m_Name: JuiceController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1057146270
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1057146269}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44fb439a8d485814c968bdabc9dfbb1b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.JuiceController
+  onDamageDealt: {fileID: 11400000, guid: 0101cc0a17792dd41bbcc3f041516552, type: 2}
+  onStaggerBroken: {fileID: 11400000, guid: 8a35baa42a6697d4abe004e74e987e4e, type: 2}
+  onBossTelegraph: {fileID: 11400000, guid: 733f7f6ed4ac5cd45bf63f9f8cc43399, type: 2}
+  hitStopNormal: 0.04
+  hitStopCrit: 0.1
+  shakeOnHit: 0.1
+  shakeOnCrit: 0.28
+  shakeOnBreak: 0.55
+  shakeDecay: 4.5
+  flashOnCrit: 0.35
+  flashOnBreak: 0.6
+  flashDecay: 3.2
+  breakSlowMoScale: 0.35
+  breakSlowMoDuration: 0.7
+  floatLife: 0.9
+  floatRise: 90
+--- !u!4 &1057146271
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1057146269}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -688,7 +846,7 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
---- !u!1 &1302673832
+--- !u!1 &1260754362
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -696,112 +854,48 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1302673836}
-  - component: {fileID: 1302673835}
-  - component: {fileID: 1302673834}
-  - component: {fileID: 1302673833}
+  - component: {fileID: 1260754364}
+  - component: {fileID: 1260754363}
   m_Layer: 0
-  m_Name: Ground
+  m_Name: PostFXVolume
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!23 &1302673833
-MeshRenderer:
+--- !u!114 &1260754363
+MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1302673832}
+  m_GameObject: {fileID: 1260754362}
   m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: 57151db1b1488a14ba7d00665473c860, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 1
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_AdditionalVertexStreams: {fileID: 0}
---- !u!64 &1302673834
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1302673832}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 0
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
---- !u!33 &1302673835
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1302673832}
-  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
---- !u!4 &1302673836
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
+  m_IsGlobal: 1
+  priority: 1
+  blendDistance: 0
+  weight: 1
+  sharedProfile: {fileID: 11400000, guid: cc89d590c7ac9be4aa329b1969640644, type: 2}
+--- !u!4 &1260754364
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1302673832}
+  m_GameObject: {fileID: 1260754362}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 1.5}
-  m_LocalScale: {x: 4, y: 1, z: 1.6}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1407814516
+--- !u!1 &1532665463
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -809,8 +903,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1407814518}
-  - component: {fileID: 1407814517}
+  - component: {fileID: 1532665465}
+  - component: {fileID: 1532665464}
   m_Layer: 0
   m_Name: BattleSystem
   m_TagString: Untagged
@@ -818,13 +912,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1407814517
+--- !u!114 &1532665464
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1407814516}
+  m_GameObject: {fileID: 1532665463}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7297477348aa2fe4db22679ec6360749, type: 3}
@@ -865,13 +959,13 @@ MonoBehaviour:
   onDamageDealt: {fileID: 11400000, guid: 0101cc0a17792dd41bbcc3f041516552, type: 2}
   onBossTelegraph: {fileID: 11400000, guid: 733f7f6ed4ac5cd45bf63f9f8cc43399, type: 2}
   actionDelay: 0.55
---- !u!4 &1407814518
+--- !u!4 &1532665465
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1407814516}
+  m_GameObject: {fileID: 1532665463}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -880,7 +974,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1760714299
+--- !u!1 &1744605435
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -888,130 +982,46 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1760714301}
-  - component: {fileID: 1760714300}
+  - component: {fileID: 1744605437}
+  - component: {fileID: 1744605436}
   m_Layer: 0
-  m_Name: BattleAudio
+  m_Name: RunFlow
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1760714300
+--- !u!114 &1744605436
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1760714299}
+  m_GameObject: {fileID: 1744605435}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c1108168afd38884e9cd72ccecee03b2, type: 3}
+  m_Script: {fileID: 11500000, guid: 24e2db323cd17c0479ba0ffa865bca52, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.BattleAudio
-  onDamageDealt: {fileID: 11400000, guid: 0101cc0a17792dd41bbcc3f041516552, type: 2}
-  onStaggerBroken: {fileID: 11400000, guid: 8a35baa42a6697d4abe004e74e987e4e, type: 2}
-  onBossTelegraph: {fileID: 11400000, guid: 733f7f6ed4ac5cd45bf63f9f8cc43399, type: 2}
-  onBattleStarted: {fileID: 11400000, guid: 90c2fafe43967714391b7e5fad4e10db, type: 2}
+  m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.RunFlow
   onBattleWon: {fileID: 11400000, guid: 7755cb59b38f1884b8840356c088cee5, type: 2}
   onBattleLost: {fileID: 11400000, guid: 657f440bf23332a44b9d34be3cca5dbe, type: 2}
---- !u!4 &1760714301
+  boonRoster:
+  - {fileID: 11400000, guid: e179e519cc6f1794382457138f3d9991, type: 2}
+  - {fileID: 11400000, guid: c8fc98a9ff5c6bb478b80eed0b1b7403, type: 2}
+  - {fileID: 11400000, guid: 1731902e8d7da3848970eb068e400e8f, type: 2}
+  - {fileID: 11400000, guid: f2534cb2cd766ea4b825a4a36b60b631, type: 2}
+  - {fileID: 11400000, guid: 2ec967a4fc2d6ff489c82bfe60b7174b, type: 2}
+  - {fileID: 11400000, guid: 404086a0975e8e84aa700c5d4e792873, type: 2}
+  - {fileID: 11400000, guid: 9a5e8efc7bebc1f43a88506456f14889, type: 2}
+  - {fileID: 11400000, guid: 641ae4a51a3d8c241b989821a9e27df1, type: 2}
+  - {fileID: 11400000, guid: 1cc5d82c145c703409dc7a96f1755db4, type: 2}
+--- !u!4 &1744605437
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1760714299}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1984198510
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1984198512}
-  - component: {fileID: 1984198511}
-  m_Layer: 0
-  m_Name: Narrative
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1984198511
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1984198510}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 663bc94b9ebfec44dbb48f540de87b7e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: RPGArena.Narrative::RPGArena.Narrative.NarrativeRunner
-  introJson: {fileID: 4900000, guid: b015b7ffc89ce1a478feb610923ee415, type: 3}
-  outroJson: {fileID: 4900000, guid: ebb95cbfefc9a7446995c79d527c4cda, type: 3}
---- !u!4 &1984198512
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1984198510}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &2092629013
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2092629015}
-  - component: {fileID: 2092629014}
-  m_Layer: 0
-  m_Name: PauseMenu
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &2092629014
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2092629013}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 02d30ae303a0f8d458ca1ca2339c6837, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.PauseMenu
---- !u!4 &2092629015
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2092629013}
+  m_GameObject: {fileID: 1744605435}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -1026,13 +1036,13 @@ SceneRoots:
   m_Roots:
   - {fileID: 1208433522}
   - {fileID: 938180034}
-  - {fileID: 1407814518}
-  - {fileID: 688917485}
-  - {fileID: 2092629015}
-  - {fileID: 217989878}
-  - {fileID: 1760714301}
-  - {fileID: 1984198512}
-  - {fileID: 690693111}
-  - {fileID: 1302673836}
-  - {fileID: 508567316}
-  - {fileID: 738105825}
+  - {fileID: 1532665465}
+  - {fileID: 645690149}
+  - {fileID: 1014686160}
+  - {fileID: 1057146271}
+  - {fileID: 177138363}
+  - {fileID: 1262077}
+  - {fileID: 1744605437}
+  - {fileID: 84285430}
+  - {fileID: 687098990}
+  - {fileID: 1260754364}

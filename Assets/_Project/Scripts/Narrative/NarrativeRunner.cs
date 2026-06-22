@@ -16,7 +16,14 @@ namespace RPGArena.Narrative
     // actually happened. The BattleController waits on IsIntroDone before the first round.
     public class NarrativeRunner : MonoBehaviour, IBattleIntro
     {
-        [Header("Compiled Ink stories (.json TextAssets)")]
+        // One boss's compiled Ink stories, keyed by the boss asset name (Dragon/BlackMage/EvilWarrior).
+        [System.Serializable]
+        public class BossStory { public string bossKey = "Dragon"; public TextAsset intro; public TextAsset outro; }
+
+        [Header("Per-boss compiled Ink stories (.json TextAssets)")]
+        public List<BossStory> stories = new();
+
+        [Header("Active story (set from 'stories' by the current boss)")]
         public TextAsset introJson;
         public TextAsset outroJson;
 
@@ -42,12 +49,17 @@ namespace RPGArena.Narrative
 
         private void Start()
         {
-            // The intro is the Dragon's pre-fight scene (the first boss of a run). Later bosses in
-            // the gauntlet skip it so the fight starts immediately.
+            // Every boss now has its own pre-fight scene: pick the story for the current boss of the
+            // run (each with a gameplay-affecting choice), so the Ink<->combat hook spans the whole
+            // gauntlet, not just the Dragon (§13.3).
             var run = GameBootstrap.Instance != null ? GameBootstrap.Instance.Run : null;
-            bool firstBoss = run == null || run.CurrentBoss == "Dragon";
-            if (introJson != null && firstBoss) PlayIntro();
-            else IsIntroDone = true;       // no story (or not the first boss) => don't block the fight
+            string bossKey = run != null ? run.CurrentBoss : "Dragon";
+            var story = stories.Find(s => s != null && s.bossKey == bossKey);
+            if (story == null && stories.Count > 0) story = stories[0];   // fallback to the first authored
+            if (story != null) { introJson = story.intro; outroJson = story.outro; }
+
+            if (introJson != null) PlayIntro();
+            else IsIntroDone = true;       // no story => don't block the fight (graceful)
         }
 
         // --- intro --------------------------------------------------------------------

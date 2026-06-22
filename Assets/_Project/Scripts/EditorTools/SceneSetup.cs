@@ -95,9 +95,13 @@ namespace RPGArena.EditorTools
             DestroyIfExists("Narrative");
             var narrGo = new GameObject("Narrative");
             var narr = narrGo.AddComponent<NarrativeRunner>();
-            narr.introJson = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Ink/dragon_intro.json");
-            narr.outroJson = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Ink/dragon_outro.json");
-            if (narr.introJson == null) Debug.LogWarning("[SceneSetup] dragon_intro.json not found yet — re-run after Ink compiles.");
+            narr.stories = new List<NarrativeRunner.BossStory>
+            {
+                InkStory("Dragon", "dragon"),
+                InkStory("BlackMage", "blackmage"),
+                InkStory("EvilWarrior", "evilwarrior"),
+            };
+            if (narr.stories[0].intro == null) Debug.LogWarning("[SceneSetup] Ink JSON not found yet — re-run after Ink compiles.");
 
             // Run flow (presentation): owns boon-select between bosses, run-complete, and retry.
             DestroyIfExists("RunFlow");
@@ -244,6 +248,15 @@ namespace RPGArena.EditorTools
             }
             return list;
         }
+
+        // Loads a boss's compiled Ink intro/outro JSONs (null-safe if the Ink package hasn't
+        // compiled them yet — the runner skips a missing story gracefully).
+        private static NarrativeRunner.BossStory InkStory(string bossKey, string file) => new NarrativeRunner.BossStory
+        {
+            bossKey = bossKey,
+            intro = AssetDatabase.LoadAssetAtPath<TextAsset>($"Assets/Ink/{file}_intro.json"),
+            outro = AssetDatabase.LoadAssetAtPath<TextAsset>($"Assets/Ink/{file}_outro.json"),
+        };
 
         private static void DestroyIfExists(string name)
         {
