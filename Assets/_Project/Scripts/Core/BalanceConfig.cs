@@ -52,5 +52,9 @@ namespace RPGArena.Core
 
         // Anti-feel-bad: after this many misses in a row, the next attack is forced to hit.
         public int missStreakCap = 2;
+        [Tooltip("Each point of (Accuracy - Evasion) shifts hit chance by this. Shared by the pipeline AND the HUD preview so they never drift.")]
+        public float accuracyToPercent = 0.01f;
+        [Tooltip("Incoming damage multiplier while the target is Defending.")]
+        public float defendDamageMult = 0.5f;
     }
 }

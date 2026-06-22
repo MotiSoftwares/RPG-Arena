@@ -50,7 +50,7 @@ namespace RPGArena.Combat
             };
             float acc = src != null ? src.Accuracy : 0f;
             float eva = (tgt != null && !tgt.isStaggered) ? tgt.Evasion : 0f;
-            float hitChance = Mathf.Clamp(tierBase + (acc - eva) * 0.01f, cfg.hitFloor, cfg.hitCeiling);
+            float hitChance = Mathf.Clamp(tierBase + (acc - eva) * cfg.accuracyToPercent, cfg.hitFloor, cfg.hitCeiling);
             // Reliable abilities (basics, AoE, the Archer) NEVER miss (Appendix E.1), as do
             // explicit auto-hit / forced (pity) attacks.
             bool guaranteed = info.forceHit || info.hitTier == HitTier.Reliable;
@@ -117,8 +117,8 @@ namespace RPGArena.Combat
                     dmg *= info.ability.executeMult;
             }
 
-            // 8) DEFEND stance halves incoming damage.
-            if (tgt != null && tgt.Status.Has(StatusFlag.Defending)) dmg *= 0.5f;
+            // 8) DEFEND stance reduces incoming damage.
+            if (tgt != null && tgt.Status.Has(StatusFlag.Defending)) dmg *= cfg.defendDamageMult;
 
             // 9) CLAMP & round (never below 0).
             r.amount = Mathf.Max(0, Mathf.RoundToInt(dmg));
@@ -129,6 +129,17 @@ namespace RPGArena.Combat
                         : cfg.staggerBuildNormalHit;
             r.staggerBuilt = build + syn.bonusStaggerBuild;
             return r;
+        }
+
+        // Non-mutating preview for the action menu (informed gamble, §E.1): the min/max final
+        // damage band (variance ends, no crit) plus the element reaction, so the HUD can show
+        // "WEAK 320-410" or the all-important "ABSORB! — heals" warning before the player commits.
+        public struct Preview { public int min, max; public ElementReaction reaction; public bool absorb; }
+        public Preview PreviewDamage(DamageInfo info)
+        {
+            var lo = ComputePure(info, cfg, 0f, cfg.damageVarianceMin, 1f);   // hitRoll 0 = hits, critRoll 1 = no crit
+            var hi = ComputePure(info, cfg, 0f, cfg.damageVarianceMax, 1f);
+            return new Preview { min = lo.amount, max = hi.amount, reaction = hi.reaction, absorb = hi.absorbed };
         }
 
         // APPLY: the side-effect half. Mutates the target, updates the miss streak, builds

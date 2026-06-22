@@ -205,7 +205,7 @@ namespace RPGArena.UI
                 string label = $"{ab.displayName}";
                 if (ab.mpCost > 0) label += $"  {ab.mpCost}MP";
                 if (ab.cooldown > 0 && hero.IsOnCooldown(ab)) label += $"  (CD {hero.CooldownRemaining(ab)})";
-                if (IsDamaging(ab)) label += $"   {Mathf.RoundToInt(EstimateHit(hero, ab, ctx.boss) * 100)}%";
+                if (IsDamaging(ab)) label += BuildPreview(hero, ab, ctx);
 
                 var btn = MakeButton(actionPanel, label, new Vector2(0, -y), affordable, ab.icon);
                 if (affordable)
@@ -217,13 +217,36 @@ namespace RPGArena.UI
         // --- helpers ------------------------------------------------------------------
         private static bool IsDamaging(Ability a) => a.effectType == EffectType.Attack || a.effectType == EffectType.MultiHit;
 
+        // The action-menu preview: hit% + the damage band + reaction (§E.1 informed gamble). ABSORB
+        // is ALWAYS shown (never let the player heal the boss blind); WEAK/resist follow the
+        // progressive weakness reveal (§4.11). The band naturally hints the rest.
+        private string BuildPreview(Entity hero, Ability ab, BattleContext ctx)
+        {
+            if (ctx.boss == null || ctx.damage == null) return "";
+            ElementType el = ab.followsAttunement ? hero.currentAttunement : ab.element;
+            var info = new DamageInfo
+            {
+                source = hero, target = ctx.boss, ability = ab, element = el,
+                basePower = ab.power, isMagic = ab.isMagic, forceHit = true, hitTier = ab.hitTier
+            };
+            var pv = ctx.damage.PreviewDamage(info);
+            int hitPct = Mathf.RoundToInt(EstimateHit(hero, ab, ctx.boss) * 100);
+            bool revealed = weaknessSeen || ctx.weaknessRevealed;
+            string tag = pv.absorb ? "  ABSORB!"
+                       : revealed && pv.reaction == ElementReaction.Weak ? "  WEAK"
+                       : revealed && pv.reaction == ElementReaction.Resist ? "  resist"
+                       : revealed && pv.reaction == ElementReaction.Immune ? "  immune" : "";
+            string dmg = pv.absorb ? "heals!" : ab.hits > 1 ? $"{pv.min}-{pv.max}x{ab.hits}" : $"{pv.min}-{pv.max}";
+            return $"   {hitPct}%  {dmg}{tag}";
+        }
+
         private float EstimateHit(Entity hero, Ability a, Entity boss)
         {
             if (a.autoHit || a.hitTier == HitTier.Reliable) return 1f;
             var cfg = controller.balance;
             float tier = a.hitTier == HitTier.Risky ? cfg.riskyHitBase : cfg.standardHitBase;
             float eva = boss != null && !boss.isStaggered ? boss.Evasion : 0f;
-            return Mathf.Clamp(tier + (hero.Accuracy - eva) * 0.01f, cfg.hitFloor, cfg.hitCeiling);
+            return Mathf.Clamp(tier + (hero.Accuracy - eva) * cfg.accuracyToPercent, cfg.hitFloor, cfg.hitCeiling);
         }
 
         private Entity PickTarget(Entity hero, Ability a)
