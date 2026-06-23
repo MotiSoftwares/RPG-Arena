@@ -123,10 +123,13 @@ namespace RPGArena.Combat
             // 9) CLAMP & round (never below 0).
             r.amount = Mathf.Max(0, Mathf.RoundToInt(dmg));
 
-            // 10) STAGGER BUILD: weakness hits build most; break skills add a chunk; +synergy.
-            float build = info.isBreakSkill ? cfg.staggerBuildBreakSkill
-                        : reaction == ElementReaction.Weak ? cfg.staggerBuildWeaknessHit
-                        : cfg.staggerBuildNormalHit;
+            // 10) STAGGER BUILD — ADDITIVE so the intended line (break the boss WITH its weakness)
+            //     compounds instead of being capped: normal 8, weakness 20, break-skill 30,
+            //     weakness+break-skill ~42. (Was an exclusive if/else where a weakness break-skill
+            //     built the SAME as a non-weakness one, muting the whole "exploit the weakness" promise.)
+            float build = cfg.staggerBuildNormalHit;
+            if (reaction == ElementReaction.Weak) build += (cfg.staggerBuildWeaknessHit - cfg.staggerBuildNormalHit);
+            if (info.isBreakSkill) build += (cfg.staggerBuildBreakSkill - cfg.staggerBuildNormalHit);
             r.staggerBuilt = build + syn.bonusStaggerBuild;
             return r;
         }

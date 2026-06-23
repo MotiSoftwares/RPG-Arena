@@ -19,11 +19,11 @@ MonoBehaviour:
   targetRule: 0
   element: 2
   isMagic: 1
-  power: 1.2
+  power: 0.85
   hits: 1
   mpCost: 0
   cooldown: 0
-  mpRegenOnUse: 8
+  mpRegenOnUse: 3
   hitTier: 1
   autoHit: 0
   statusesToApply: []

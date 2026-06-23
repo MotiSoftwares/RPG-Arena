@@ -24,7 +24,7 @@ MonoBehaviour:
     INT: 30
     LUK: 8
     maxHP: 150
-    maxMP: 200
+    maxMP: 130
     baseAttack: 0
     baseMagicAttack: 12
     baseDefense: 5

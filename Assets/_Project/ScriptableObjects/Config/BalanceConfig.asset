@@ -24,10 +24,10 @@ MonoBehaviour:
   k2: 2.2
   k3: 0.5
   k4: 1
-  k5: 1
-  k6: 1
-  k7: 0.5
-  k8: 0.4
+  k5: 0.5
+  k6: 0.4
+  k7: 0.25
+  k8: 0.005
   damageVarianceMin: 0.85
   damageVarianceMax: 1.15
   reliableHitBase: 0.99
@@ -36,3 +36,6 @@ MonoBehaviour:
   hitFloor: 0.5
   hitCeiling: 0.99
   missStreakCap: 2
+  accuracyToPercent: 0.01
+  defendDamageMult: 0.5
+  mpRegenPerTurn: 5

@@ -35,8 +35,12 @@ namespace RPGArena.Combat
 
         public BattleContext Context { get; private set; }
         public int RoundsTaken { get; private set; }                  // for the victory grade (§9.6)
-        private Queue<Entity> currentOrder;
-        public IReadOnlyCollection<Entity> UpcomingOrder => currentOrder;   // next actors, for the HUD tracker
+        private List<Entity> currentOrder;          // this round's order; a bonus turn inserts mid-list
+        private int orderIndex;                      // index of the actor currently taking their turn
+        public IReadOnlyCollection<Entity> UpcomingOrder =>
+            currentOrder != null && orderIndex < currentOrder.Count
+                ? currentOrder.GetRange(orderIndex, currentOrder.Count - orderIndex)
+                : System.Array.Empty<Entity>();      // next actors, for the HUD tracker
         public Entity ActiveHero { get; private set; }                // whose input we await (null otherwise)
         public bool AwaitingInput => ActiveHero != null && pendingAction == null;
         public BattleManager.Outcome Result { get; private set; } = BattleManager.Outcome.InProgress;
@@ -49,8 +53,16 @@ namespace RPGArena.Combat
         public void SubmitAction(Ability ability, Entity target)
         {
             if (ActiveHero == null || ability == null) return;
+            // Re-validate cost/cooldown here too (not only in the HUD): an unaffordable or on-cooldown
+            // submission must NOT silently consume the hero's whole turn — reject it, keep the menu open.
+            if (!CanAfford(ActiveHero, ability)) return;
             pendingAction = new ActionRequest(ability, ActiveHero, ResolveTargets(ActiveHero, ability, target));
         }
+
+        // Single source of truth for affordability (MP + cooldown), used by BOTH the controller (to
+        // reject) and the HUD (to grey buttons out) so the two can never drift.
+        public static bool CanAfford(Entity hero, Ability a)
+            => hero != null && a != null && hero.currentMP >= a.mpCost && !hero.IsOnCooldown(a);
 
         // Convenience for a "pass/defend with no target" action.
         public void SubmitAction(Ability ability) => SubmitAction(ability, null);
@@ -82,11 +94,11 @@ namespace RPGArena.Combat
             for (int round = 1; round <= 60 && Result == BattleManager.Outcome.InProgress; round++)
             {
                 RoundsTaken = round;
-                var order = Context.turns.BuildRoundOrder(All(), Context.rng, balance.maxExtraTurnsPerEntityPerRound);
-                currentOrder = order;   // exposed to the HUD's turn-order tracker (same queue ref, drains as turns resolve)
-                while (order.Count > 0 && Result == BattleManager.Outcome.InProgress)
+                var order = new List<Entity>(Context.turns.BuildRoundOrder(All(), Context.rng, balance.maxExtraTurnsPerEntityPerRound));
+                currentOrder = order;   // exposed to the HUD's turn-order tracker
+                for (orderIndex = 0; orderIndex < order.Count && Result == BattleManager.Outcome.InProgress; orderIndex++)
                 {
-                    var actor = order.Dequeue();
+                    var actor = order[orderIndex];
                     if (actor == null || !actor.IsAlive) continue;
 
                     int dot = actor.TickStartOfTurn();
@@ -139,8 +151,14 @@ namespace RPGArena.Combat
                                 foreach (var r in Context.lastActionResults)
                                     if (r.hit && (r.reaction == ElementReaction.Weak || r.crit))
                                     {
-                                        if (Context.turns.TryGrantExtraTurn(actor, order))
+                                        // Insert the bonus turn RIGHT AFTER the current actor so the hero
+                                        // acts again immediately — before the slow boss — a real
+                                        // press-turn snowball (was queued at the tail, behind the boss).
+                                        if (Context.turns.CanGrantExtra(actor))
+                                        {
+                                            order.Insert(orderIndex + 1, actor);
                                             Context.Log($"    +1 MORE! {actor.displayName} seizes another action.");
+                                        }
                                         break;
                                     }
 
@@ -197,7 +215,7 @@ namespace RPGArena.Combat
                 echoToConsole = true,
                 // The Break window lasts at least 2 of the boss's turns so a fast party still gets
                 // a real burst round even if some heroes already acted before the Break landed (1.16).
-                BossStaggeredTurns = Mathf.Max(2, boss.staggeredTurns),
+                BossStaggeredTurns = Mathf.Max(1, boss.staggeredTurns),   // honor the boss asset's authored Break-window length
                 damage = new DamagePipeline(balance, new System.Random()),
                 stagger = new StaggerSystem(),
                 turns = new TurnSystem(),

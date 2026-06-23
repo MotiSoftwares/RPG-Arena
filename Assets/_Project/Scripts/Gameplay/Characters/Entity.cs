@@ -131,7 +131,13 @@ namespace RPGArena.Characters
         // --- Turn lifecycle -----------------------------------------------------------
         // Start of this entity's turn: tick DoTs and return the total damage they dealt
         // (so the battle log can report it).
-        public int TickStartOfTurn() => Status.TickStartOfTurn(this, balance);
+        public int TickStartOfTurn()
+        {
+            // Flat MP trickle each turn so refueling is a baseline, not something you must farm by
+            // spamming a free basic. This restores the poke-vs-burst decision on every turn (§5.6).
+            if (balance != null && balance.mpRegenPerTurn > 0) RegenMP(balance.mpRegenPerTurn);
+            return Status.TickStartOfTurn(this, balance);
+        }
 
         // Boss phases (§7.1): once HP crosses a phase threshold, apply its enrage damage
         // multiplier (each phase fires once). Both battle loops call this so the authored

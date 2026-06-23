@@ -32,7 +32,9 @@ namespace RPGArena.Core
 
         [Header("Stat derivation constants (k1..k8)")]
         // Convert primary stats (STR/DEX/INT/LUK) into derived combat stats (§5.2).
-        public float k1 = 2f, k2 = 2.2f, k3 = 0.5f, k4 = 1f, k5 = 1f, k6 = 1f, k7 = 0.5f, k8 = 0.4f;
+        // NOTE: k8 (crit-per-LUK) was 0.4 — that made Thief crit ~1060% (always crit + free bonus
+        // turn every action). Crit chance is a probability in [0,1], so per-LUK must be a few ‰.
+        public float k1 = 2f, k2 = 2.2f, k3 = 0.5f, k4 = 1f, k5 = 0.5f, k6 = 0.4f, k7 = 0.25f, k8 = 0.005f;
 
         [Header("RNG — informed-gamble layer (CLAUDE.md Appendix E.1)")]
         // Final damage is multiplied by a random value in this band, so every hit
@@ -56,5 +58,9 @@ namespace RPGArena.Core
         public float accuracyToPercent = 0.01f;
         [Tooltip("Incoming damage multiplier while the target is Defending.")]
         public float defendDamageMult = 0.5f;
+
+        [Header("MP economy")]
+        [Tooltip("Flat MP regenerated at the start of every turn, so refueling is a baseline — not something you must farm by spamming free basics. Decouples the MP faucet from damage.")]
+        public int mpRegenPerTurn = 5;
     }
 }

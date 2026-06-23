@@ -31,6 +31,7 @@ namespace RPGArena.Combat
         }
 
         // Grant one bonus turn this round (respecting the cap); it acts again later in the queue.
+        // (Used by the headless BattleManager.)
         public bool TryGrantExtraTurn(Entity e, Queue<Entity> order)
         {
             if (e == null || !e.IsAlive) return false;
@@ -38,6 +39,18 @@ namespace RPGArena.Combat
             if (used >= maxExtraPerRound) return false;
             extraTurnsThisRound[e] = used + 1;
             order.Enqueue(e);
+            return true;
+        }
+
+        // Cap check only (the live BattleController owns the List order and inserts the bonus turn
+        // RIGHT AFTER the current actor, so it acts again BEFORE the slow boss — a real press-turn
+        // snowball, instead of a useless poke queued at the tail behind the enemy).
+        public bool CanGrantExtra(Entity e)
+        {
+            if (e == null || !e.IsAlive) return false;
+            extraTurnsThisRound.TryGetValue(e, out int used);
+            if (used >= maxExtraPerRound) return false;
+            extraTurnsThisRound[e] = used + 1;
             return true;
         }
     }

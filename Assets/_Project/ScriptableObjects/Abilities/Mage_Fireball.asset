@@ -19,7 +19,7 @@ MonoBehaviour:
   targetRule: 0
   element: 1
   isMagic: 1
-  power: 1.6
+  power: 1.9
   hits: 1
   mpCost: 12
   cooldown: 0

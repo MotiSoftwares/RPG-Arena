@@ -19,14 +19,15 @@ MonoBehaviour:
   targetRule: 0
   element: 3
   isMagic: 1
-  power: 1.5
+  power: 1.8
   hits: 1
   mpCost: 12
   cooldown: 0
   mpRegenOnUse: 0
   hitTier: 1
   autoHit: 0
-  statusesToApply: []
+  statusesToApply:
+  - {fileID: 11400000, guid: be266a524d7a58d4a92c0cfd8abe6315, type: 2}
   telegraphsAbility: {fileID: 0}
   stanceAction: 0
   attunementOptions: 

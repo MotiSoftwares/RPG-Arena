@@ -38,11 +38,15 @@ namespace RPGArena.Combat.AI
                 return commit;   // AllEnemies => the manager expands targets
             }
 
-            // 2) Otherwise advance the telegraphed cycle (shorter in phase 2).
+            // 2) Otherwise advance the telegraphed cycle. The Dragon is outnumbered 3:1 and a Break
+            //    freezes its cycle progress, so a long rotation means the signature Charging-Breath
+            //    telegraph almost never fires. Keep it a tight attack -> CHARGE -> (Flame) loop so the
+            //    "break the charge / defend the breath" decision actually comes up every fight. Phase 2
+            //    drops the defensive Tail Guard beat (enrage) for pure aggression.
             bool phase2 = self.currentHP <= self.stats.maxHP * phase2HpFraction;
             var cycle = phase2
-                ? new List<Ability> { clawSwipe, chargingBreath }
-                : new List<Ability> { clawSwipe, tailGuard, chargingBreath };
+                ? new List<Ability> { chargingBreath, clawSwipe }
+                : new List<Ability> { chargingBreath, clawSwipe, tailGuard };
 
             int idx = ((self.aiCycleIndex % cycle.Count) + cycle.Count) % cycle.Count;
             self.aiCycleIndex = (idx + 1) % cycle.Count;
@@ -52,11 +56,26 @@ namespace RPGArena.Combat.AI
             if (chosen == clawSwipe && tailSweep != null && ctx.rng.NextDouble() < tailSweepChance)
                 chosen = tailSweep;
 
-            // Single-target moves pick a living hero; AoE/self moves resolve their own targets.
+            // Single-target moves now READ player state instead of firing at random; AoE/self moves
+            // resolve their own targets.
             if (chosen != null && chosen.targetRule == TargetRule.SingleEnemy)
-                target = TargetingSystem.RandomAlive(opponents, ctx.rng);
+                target = PickThreatTarget(opponents, ctx);
 
             return chosen;
+        }
+
+        // The Dragon mostly focuses the lowest-HP hero (so "protect the squishy Mage" — Guardian
+        // Taunt / Puppet / healing — finally has something to bite on), with a 30% random pick so it
+        // isn't fully solvable, and it never targets a Stealthed hero (Dark Sight = untargetable).
+        private static Entity PickThreatTarget(IReadOnlyList<Entity> heroes, BattleContext ctx)
+        {
+            var pickable = new List<Entity>();
+            foreach (var h in heroes)
+                if (h != null && h.IsAlive && !h.Status.Has(RPGArena.Combat.Status.StatusFlag.Stealthed))
+                    pickable.Add(h);
+            if (pickable.Count == 0) return TargetingSystem.RandomAlive(heroes, ctx.rng);
+            if (ctx.rng.NextDouble() < 0.3) return pickable[ctx.rng.Next(pickable.Count)];
+            return TargetingSystem.LowestHP(pickable);
         }
     }
 }

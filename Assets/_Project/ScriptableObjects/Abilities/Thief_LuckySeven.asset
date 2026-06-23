@@ -23,7 +23,7 @@ MonoBehaviour:
   hits: 2
   mpCost: 0
   cooldown: 0
-  mpRegenOnUse: 8
+  mpRegenOnUse: 3
   hitTier: 1
   autoHit: 0
   statusesToApply: []

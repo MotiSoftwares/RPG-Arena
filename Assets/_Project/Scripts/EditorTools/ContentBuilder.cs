@@ -48,28 +48,28 @@ namespace RPGArena.EditorTools
                 new StatBlock { STR = 28, maxHP = 320, maxMP = 60, baseAttack = 14, baseDefense = 18, baseSpeed = 8, baseAccuracy = 6, critDamage = 1.5f },
                 new[]
                 {
-                    Ab("Warrior_PowerStrike", "Power Strike", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 1.3f, mp: 0, regen: 8, tier: HitTier.Standard),
+                    Ab("Warrior_PowerStrike", "Power Strike", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 1.3f, mp: 0, regen: 3, tier: HitTier.Standard),
                     Ab("Warrior_SlashBlast", "Slash Blast", EffectType.MultiHit, TargetRule.SingleEnemy, ElementType.Physical, 0.6f, hits: 2, mp: 8, tier: HitTier.Standard, tags: Brk),
                     Ab("Warrior_Rage", "Rage", EffectType.Buff, TargetRule.AllAllies, ElementType.Physical, 0f, mp: 12, cd: 2, statuses: One(rage)),
                     Ab("Warrior_GuardianTaunt", "Guardian Taunt", EffectType.Defend, TargetRule.Self, ElementType.Physical, 0f, mp: 10, cd: 2, statuses: One(defending)),
                     Ab("Warrior_BerserkStance", "Berserk Stance", EffectType.Stance, TargetRule.Self, ElementType.Physical, 0f, mp: 0, stance: StanceAction.ToggleStatus, stanceStatuses: new[] { berserk, guardian }),
-                    Ab("Warrior_CrushingBlow", "Crushing Blow", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 2.2f, mp: 25, cd: 4, tier: HitTier.Risky, tags: Brk, bonusFlag: StatusFlag.Weaken, bonusMult: 1.5f),
+                    Ab("Warrior_CrushingBlow", "Crushing Blow", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 2.5f, mp: 25, cd: 4, tier: HitTier.Risky, tags: Brk, bonusFlag: StatusFlag.Weaken, bonusMult: 1.5f),
                 });
 
             // --- MAGE (INT) -----------------------------------------------------------
             var mage = Character("Mage", "Mage", PrimaryStat.INT, neutral,
-                new StatBlock { INT = 30, LUK = 8, maxHP = 150, maxMP = 200, baseMagicAttack = 12, baseDefense = 5, baseSpeed = 13, baseAccuracy = 12, baseCritChance = 0.08f, critDamage = 1.6f },
+                new StatBlock { INT = 30, LUK = 8, maxHP = 150, maxMP = 130, baseMagicAttack = 12, baseDefense = 5, baseSpeed = 13, baseAccuracy = 12, baseCritChance = 0.08f, critDamage = 1.6f },
                 new[]
                 {
-                    Ab("Mage_MagicBolt", "Magic Bolt", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Ice, 1.2f, magic: true, mp: 0, regen: 8, tier: HitTier.Standard, followsAttune: true),
+                    Ab("Mage_MagicBolt", "Magic Bolt", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Ice, 0.85f, magic: true, mp: 0, regen: 3, tier: HitTier.Standard, followsAttune: true),
                     Ab("Mage_Attunement", "Element Attunement", EffectType.Stance, TargetRule.Self, ElementType.Ice, 0f, mp: 0, stance: StanceAction.CycleAttunement, attuneOpts: new[] { ElementType.Fire, ElementType.Ice, ElementType.Lightning, ElementType.Holy }),
-                    Ab("Mage_Fireball", "Fireball", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Fire, 1.6f, magic: true, mp: 12, tier: HitTier.Standard, statuses: One(burn)),
-                    Ab("Mage_IceLance", "Ice Lance", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Ice, 1.6f, magic: true, mp: 12, tier: HitTier.Standard, tags: Brk, statuses: One(frozen)),
-                    Ab("Mage_Spark", "Spark", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Lightning, 1.5f, magic: true, mp: 12, tier: HitTier.Standard),
-                    Ab("Mage_Heal", "Heal", EffectType.Heal, TargetRule.SingleAlly, ElementType.Holy, 1.4f, magic: true, mp: 14, cd: 1),
+                    Ab("Mage_Fireball", "Fireball", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Fire, 1.9f, magic: true, mp: 12, tier: HitTier.Standard, statuses: One(burn)),
+                    Ab("Mage_IceLance", "Ice Lance", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Ice, 1.9f, magic: true, mp: 12, tier: HitTier.Standard, tags: Brk, statuses: One(frozen)),
+                    Ab("Mage_Spark", "Spark", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Lightning, 1.8f, magic: true, mp: 12, tier: HitTier.Standard, statuses: One(frozen)),
+                    Ab("Mage_Heal", "Heal", EffectType.Heal, TargetRule.SingleAlly, ElementType.Holy, 0.95f, magic: true, mp: 20, cd: 2),
                     Ab("Mage_Bless", "Bless", EffectType.Buff, TargetRule.AllAllies, ElementType.Holy, 0f, mp: 12, cd: 2, statuses: One(bless)),
                     Ab("Mage_MagicGuard", "Magic Guard", EffectType.Buff, TargetRule.Self, ElementType.Holy, 0f, mp: 10, cd: 3, statuses: One(magicGuard)),
-                    Ab("Mage_Blizzard", "Blizzard", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Ice, 2.4f, magic: true, mp: 30, cd: 4, tier: HitTier.Risky, tags: BrkFin),
+                    Ab("Mage_Blizzard", "Blizzard", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Ice, 2.5f, magic: true, mp: 30, cd: 4, tier: HitTier.Risky, tags: BrkFin),
                 });
 
             // --- THIEF (LUK) ----------------------------------------------------------
@@ -77,13 +77,13 @@ namespace RPGArena.EditorTools
                 new StatBlock { LUK = 26, DEX = 14, maxHP = 190, maxMP = 100, baseAttack = 12, baseDefense = 8, baseSpeed = 16, baseAccuracy = 10, baseEvasion = 12, baseCritChance = 0.2f, critDamage = 1.7f },
                 new[]
                 {
-                    Ab("Thief_LuckySeven", "Lucky Seven", EffectType.MultiHit, TargetRule.SingleEnemy, ElementType.Physical, 0.5f, hits: 2, mp: 0, regen: 8, tier: HitTier.Standard),
+                    Ab("Thief_LuckySeven", "Lucky Seven", EffectType.MultiHit, TargetRule.SingleEnemy, ElementType.Physical, 0.5f, hits: 2, mp: 0, regen: 3, tier: HitTier.Standard),
                     Ab("Thief_OilBomb", "Oil Bomb", EffectType.ApplyStatus, TargetRule.SingleEnemy, ElementType.Physical, 0f, mp: 8, cd: 1, statuses: One(oiled)),
                     Ab("Thief_WaterBomb", "Water Bomb", EffectType.ApplyStatus, TargetRule.SingleEnemy, ElementType.Physical, 0f, mp: 8, cd: 1, statuses: One(wet)),
                     Ab("Thief_ShadowMark", "Shadow Mark", EffectType.ApplyStatus, TargetRule.SingleEnemy, ElementType.Physical, 0f, mp: 6, cd: 1, statuses: One(marked)),
                     Ab("Thief_DarkSight", "Dark Sight", EffectType.Buff, TargetRule.Self, ElementType.Physical, 0f, mp: 6, cd: 2, statuses: One(stealth)),
                     Ab("Thief_SmokeBomb", "Smoke Bomb", EffectType.Debuff, TargetRule.SingleEnemy, ElementType.Physical, 0f, mp: 10, cd: 2, statuses: One(blind)),
-                    Ab("Thief_Assassinate", "Assassinate", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 2.0f, mp: 24, cd: 4, tier: HitTier.Risky, tags: Fin, gCrit: true, bonusFlag: StatusFlag.Marked, bonusMult: 1.6f),
+                    Ab("Thief_Assassinate", "Assassinate", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 2.3f, mp: 24, cd: 4, tier: HitTier.Risky, tags: Fin, gCrit: true, bonusFlag: StatusFlag.Marked, bonusMult: 1.6f),
                 });
 
             // --- ARCHER (DEX) ---------------------------------------------------------
@@ -91,12 +91,12 @@ namespace RPGArena.EditorTools
                 new StatBlock { DEX = 26, maxHP = 210, maxMP = 110, baseAttack = 14, baseDefense = 9, baseSpeed = 14, baseAccuracy = 22, baseCritChance = 0.12f, critDamage = 1.6f },
                 new[]
                 {
-                    Ab("Archer_DoubleShot", "Double Shot", EffectType.MultiHit, TargetRule.SingleEnemy, ElementType.Physical, 0.7f, hits: 2, mp: 0, regen: 8, tier: HitTier.Reliable),
-                    Ab("Archer_SoulArrow", "Soul Arrow", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 1.5f, mp: 10, tier: HitTier.Reliable, ignoreDef: 0.5f),
+                    Ab("Archer_DoubleShot", "Double Shot", EffectType.MultiHit, TargetRule.SingleEnemy, ElementType.Physical, 0.7f, hits: 2, mp: 0, regen: 3, tier: HitTier.Reliable),
+                    Ab("Archer_SoulArrow", "Soul Arrow", EffectType.Attack, TargetRule.SingleEnemy, ElementType.Physical, 1.75f, mp: 10, tier: HitTier.Reliable, ignoreDef: 0.5f),
                     Ab("Archer_MarkTarget", "Mark Target", EffectType.ApplyStatus, TargetRule.SingleEnemy, ElementType.Physical, 0f, mp: 6, cd: 1, statuses: One(marked)),
                     Ab("Archer_Puppet", "Puppet", EffectType.Buff, TargetRule.Self, ElementType.Physical, 0f, mp: 12, cd: 3, statuses: One(defending)),
                     Ab("Archer_EyeOfAmazon", "Eye of Amazon", EffectType.Buff, TargetRule.AllAllies, ElementType.Physical, 0f, mp: 8, cd: 2, statuses: One(bless)),
-                    Ab("Archer_ArrowRain", "Arrow Rain", EffectType.Attack, TargetRule.AllEnemies, ElementType.Physical, 2.1f, mp: 26, cd: 4, tier: HitTier.Reliable, tags: BrkFin),
+                    Ab("Archer_ArrowRain", "Arrow Rain", EffectType.Attack, TargetRule.AllEnemies, ElementType.Physical, 2.4f, mp: 26, cd: 4, tier: HitTier.Reliable, tags: BrkFin),
                 });
 
             // --- THE DRAGON -----------------------------------------------------------
@@ -114,9 +114,9 @@ namespace RPGArena.EditorTools
             var dragon = ScriptableObject.CreateInstance<BossDefinition>();
             dragon.bossName = "The Dragon"; dragon.primaryStat = PrimaryStat.STR;
             dragon.elementProfile = dragonProfile; dragon.aiBehavior = dragonAI;
-            dragon.baseStats = new StatBlock { STR = 24, maxHP = 1000, maxMP = 999, baseAttack = 26, baseDefense = 14, baseSpeed = 8, baseAccuracy = 6 };
+            dragon.baseStats = new StatBlock { STR = 24, maxHP = 980, maxMP = 999, baseAttack = 26, baseDefense = 14, baseSpeed = 8, baseAccuracy = 6 };
             dragon.abilities = new List<Ability> { dClaw, dSweep, dGuard, dCharge, dFlame };
-            dragon.staggerThreshold = 120f; dragon.staggeredTurns = 1;
+            dragon.staggerThreshold = 100f; dragon.staggeredTurns = 2;
             dragon.phases = new List<BossPhase> { new BossPhase { name = "Enrage", hpThresholdPercent = 0.4f, enrage = true, attackMultiplier = 1.3f } };
             Save(dragon, $"{Root}/Bosses/Dragon.asset");
 
