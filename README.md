@@ -112,16 +112,23 @@ No paid Asset Store packages — everything is free, included, and documented.
 
 | Asset | Source | License / notes |
 |---|---|---|
-| Hero & boss sprites (Warrior/Mage/Thief/Archer, Dragon/Black Mage/Evil Warrior) | **Pollinations.ai** (FLUX) | Free, keyless generation |
-| Background removal for sprite cutouts | **rembg** (Python) | MIT |
-| Ability icons (32) | **Pollinations.ai** (FLUX) | Free |
+| **3D hero models + animations** (Warrior, Archer, Mage) | **Pro Sword & Shield / Pro Longbow / Pro Magic** packs (Mixamo-rigged) | Unity Asset Store, free |
+| **3D Dragon boss** (rigged + animated: idle/attack/hit/die) | **"Four Evil Dragons PBR"** (Dragon for Boss Monster) | Unity Asset Store, free |
+| **Spell VFX** (fire/ice/lightning/holy/dark/heal/buff/AoE) | **ErbGameArt Fantasy effects** + **Hovl Studio Magic effects** | Unity Asset Store, free |
+| **Arena environment** (rocks/cliffs) | **Holotna Mountain — Stylized Fantasy Environment** | Unity Asset Store, free |
+| Portraits, ability icons, arena backdrops (2D UI art) | **Pollinations.ai** (FLUX) | Free, keyless generation |
 | Sound effects + music loops | **ElevenLabs** (text-to-sound-effects) | Generated, royalty-free |
 | Narrative scripting | **Ink for Unity** (inkle) | MIT |
 | Rendering / input / camera / text | URP, Input System, Cinemachine, TextMeshPro | Unity packages (free) |
 | UI font | Unity built-in `LegacyRuntime.ttf` | Unity |
 
+All imported models/VFX/environment materials are converted to **URP** (Standard/Legacy/Shader-Graph
+shaders are remapped so nothing renders magenta). Editor tools automate the integration:
+`Build Character Rigs` (heroes → Humanoid rig + Animator + prefab) and `Assign Ability VFX`; the
+Dragon boss was rigged through the same pipeline (generic rig + Idle/Attack/Hit/Die controller).
+
 ### AI-tool disclosure
-This project was built with substantial AI assistance: **Claude Code** driving the **Unity MCP** bridge for code, scenes, prefabs, and ScriptableObject authoring; generative AI for placeholder **art (Pollinations)** and **audio (ElevenLabs)**. The engineering, system design, architecture, and integration are the student's work; the disclosure is provided in the spirit of academic honesty.
+This project was built with substantial AI assistance: **Claude Code** driving the **Unity MCP** bridge for code, scenes, prefabs, ScriptableObject authoring, and the asset-integration pipeline (importing/rigging the Asset-Store 3D models, converting their materials to URP, building Animator Controllers, and wiring VFX to abilities); generative AI for some 2D **UI art (Pollinations)** and **audio (ElevenLabs)**. The engineering, system design, architecture, and integration are the student's work; the disclosure is provided in the spirit of academic honesty.
 
 ---
 
@@ -133,9 +140,15 @@ Developed Scrum-style against the milestone backlog in `CLAUDE.md` §8 (M0 scaff
 
 ## Known issues / future work
 
-- Combatant art uses generated 2D billboards (the orthographic "MapleStory" look). The Tripo 3D pipeline is wired but its API requires paid credits (the free web credits are a separate billing pool); 3D models can be dropped in later without code changes.
+- Combatants are **rigged, animated 3D models** on the orthographic 2.5D stage (heroes from the Pro
+  Mixamo packs, the Dragon from the Four Evil Dragons pack). The **Black Mage** and **Evil Warrior**
+  currently reuse the hero rigs with a dark tint; dedicated models for them are a future drop-in (the
+  pipeline assigns any model to a boss without code changes).
+- The 3D arena is the lava backdrop + rocky framing; per-boss bespoke 3D environments (void temple,
+  dark fortress) are future work.
 - Music is short looped beds (the ElevenLabs Music API is paid-tier only).
-- Future: per-boss intro dialogue for the Black Mage / Evil Warrior, a score/grade screen, difficulty modes, and an endless mode.
+- Future: a difficulty-modes / endless mode, and finer spell-VFX timing (some effects spawn on impact
+  rather than travelling from caster to target).
 
 ---
 
