@@ -96,6 +96,7 @@ namespace RPGArena.Combat
                     if (actor.CanAct)
                     {
                         ICommand cmd = null;
+                        Ability used = null; Entity[] usedTargets = null;
 
                         if (actor.Brain != null)
                         {
@@ -103,7 +104,10 @@ namespace RPGArena.Combat
                             var opponents = actor.team == Team.Heroes ? new List<Entity> { Context.boss } : Context.heroes;
                             var ability = actor.Brain.DecideAction(Context, actor, opponents, out var tgt);
                             if (ability != null)
-                                cmd = CommandFactory.Build(new ActionRequest(ability, actor, ResolveTargets(actor, ability, tgt)));
+                            {
+                                var req = new ActionRequest(ability, actor, ResolveTargets(actor, ability, tgt));
+                                used = ability; usedTargets = req.targets; cmd = CommandFactory.Build(req);
+                            }
                         }
                         else
                         {
@@ -111,7 +115,8 @@ namespace RPGArena.Combat
                             ActiveHero = actor;
                             pendingAction = null;
                             while (pendingAction == null) yield return null;
-                            cmd = CommandFactory.Build(pendingAction.Value);
+                            var req = pendingAction.Value;
+                            used = req.ability; usedTargets = req.targets; cmd = CommandFactory.Build(req);
                             ActiveHero = null;
                             pendingAction = null;
                         }
@@ -121,6 +126,12 @@ namespace RPGArena.Combat
                             Context.lastActionResults.Clear();
                             Context.Log(cmd.DescribeForLog());
                             cmd.Resolve(Context);
+
+                            // Non-damaging skills (buffs / heals / stances / defend) don't pass through
+                            // OnDamageDealt, so play their cast animation + spawn their VFX here, so
+                            // EVERY skill has presentation.
+                            if (used != null && used.effectType != EffectType.Attack && used.effectType != EffectType.MultiHit && used.effectType != EffectType.BossMove)
+                                PlayNonDamagingFx(actor, used, usedTargets);
 
                             // Action economy (§5.5): a weakness hit or crit grants the HERO one
                             // capped bonus turn (the boss never earns invisible extra turns).
@@ -321,6 +332,20 @@ namespace RPGArena.Combat
 
         // Give a combatant a visible "body". If it has a stageSprite, billboard that full-body art
         // facing the camera (the 2.5D MapleStory look); otherwise fall back to a coloured capsule.
+        // Cast animation + spell VFX for non-damaging skills (buffs / heals / stances / defend),
+        // which don't flow through the damage event. Spawns the ability's VFX at the first target
+        // (or the caster for self-buffs) and destroys it after a few seconds.
+        private void PlayNonDamagingFx(Entity caster, Ability ability, Entity[] targets)
+        {
+            caster.GetComponentInChildren<RPGArena.Characters.AnimationDriver>()?.PlayCast();
+            if (ability.vfxPrefab != null)
+            {
+                var t = (targets != null && targets.Length > 0 && targets[0] != null) ? targets[0] : caster;
+                var fx = Instantiate(ability.vfxPrefab, t.transform.position + Vector3.up * 1.1f, Quaternion.identity);
+                Destroy(fx, 4f);
+            }
+        }
+
         private static void AttachBody(GameObject host, GameObject modelPrefab, Sprite sprite, Color color, float width, float height, int order, Vector3 faceDir, float modelScale = 1f)
         {
             if (host.transform.Find("Body") != null) return;

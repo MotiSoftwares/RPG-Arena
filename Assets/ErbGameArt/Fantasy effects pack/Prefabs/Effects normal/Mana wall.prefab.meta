@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 1fc25210aae1ece4b9dcb815d505301d
+timeCreated: 1535308232
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 107068
+  packageName: Fantasy effects pack
+  packageVersion: 3.0
+  assetPath: Assets/ErbGameArt/Fantasy effects pack/Prefabs/Effects normal/Mana wall.prefab
+  uploadId: 863550

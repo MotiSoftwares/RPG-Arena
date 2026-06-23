@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: b4fb227e7ed30434ba81e5b81c714175
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 107068
+  packageName: Fantasy effects pack
+  packageVersion: 3.0
+  assetPath: Assets/ErbGameArt/Fantasy effects pack/Shaders/ManaWall.shader
+  uploadId: 863550

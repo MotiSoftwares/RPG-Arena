@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 97c443a677ce90d42a046ff06f612304
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 107068
+  packageName: Fantasy effects pack
+  packageVersion: 3.0
+  assetPath: Assets/ErbGameArt/Fantasy effects pack/Shaders/WaterOrb.shader
+  uploadId: 863550

@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: c914798df74a2eb45a3f5f83447bb85d
+timeCreated: 1515515818
+licenseType: Store
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 107068
+  packageName: Fantasy effects pack
+  packageVersion: 3.0
+  assetPath: Assets/ErbGameArt/Fantasy effects pack/Shaders/Projector_blend_FCW.shader
+  uploadId: 863550

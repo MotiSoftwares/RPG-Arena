@@ -117,11 +117,21 @@ namespace RPGArena.UI
 
             SpawnFloating(head, text, color, size);
 
-            // Elemental impact burst at the target (green for heals/absorbs).
+            // Spell VFX at the target: the ability's real effect prefab if authored, else the
+            // procedural elemental burst (green for heals/absorbs).
             if (r.hit)
-                SpawnVFX(r.target.transform.position + Vector3.up * (r.target.isBoss ? 2.0f : 1.2f),
-                         (r.isHeal || r.absorbed) ? new Color(0.4f, 1f, 0.5f) : ElementColor(r.element),
-                         r.crit ? 52 : 30);
+            {
+                Vector3 vpos = r.target.transform.position + Vector3.up * (r.target.isBoss ? 1.6f : 1.0f);
+                if (r.ability != null && r.ability.vfxPrefab != null)
+                {
+                    var fx = Instantiate(r.ability.vfxPrefab, vpos, Quaternion.identity);
+                    Destroy(fx, 4f);
+                }
+                else
+                {
+                    SpawnVFX(vpos, (r.isHeal || r.absorbed) ? new Color(0.4f, 1f, 0.5f) : ElementColor(r.element), r.crit ? 52 : 30);
+                }
+            }
 
             // Procedural motion + rigged-model animation: the attacker lunges + plays Attack;
             // the target recoils + plays its Hit reaction.
