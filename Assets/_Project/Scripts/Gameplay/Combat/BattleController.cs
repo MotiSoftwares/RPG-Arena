@@ -274,7 +274,11 @@ namespace RPGArena.Combat
             var cam = Camera.main;
             if (cam == null) return;
 
-            if (boss != null && boss.arenaBackdrop != null && GameObject.Find("Backdrop") == null)
+            // Only fall back to the flat 2D sprite backdrop when there's no real 3D environment in
+            // the scene. When an "ArenaEnvironment" (the Holotna 3D stage) is present, the skybox +
+            // 3D meadow are the background, so the 2D quad is skipped (it would clash with the models).
+            if (boss != null && boss.arenaBackdrop != null && GameObject.Find("Backdrop") == null
+                && GameObject.Find("ArenaEnvironment") == null)
             {
                 var bg = new GameObject("Backdrop");
                 var sr = bg.AddComponent<SpriteRenderer>();
