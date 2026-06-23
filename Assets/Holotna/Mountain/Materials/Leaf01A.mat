@@ -21,19 +21,18 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Leaf01A
-  m_Shader: {fileID: -6465566751694194690, guid: 222880572c15e944d8c91467cb3e9500, type: 3}
+  m_Shader: {fileID: 4800000, guid: 0fa2d10b8c3cea54db4fc1629780b5f7, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords:
+  m_ValidKeywords: []
+  m_InvalidKeywords:
   - _BUILTIN_ALPHATEST_ON
   - _BUILTIN_AlphaClip
-  m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap:
-    RenderType: TransparentCutout
+  stringTagMap: {}
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -100,6 +99,7 @@ Material:
     - _BUILTIN_ZTest: 4
     - _BUILTIN_ZWrite: 1
     - _BUILTIN_ZWriteControl: 0
+    - _BaseShade: 0.6
     - _Bend_Distortion: 0.1
     - _Bend_Speed: 1
     - _Bend_Strength: 4
@@ -127,7 +127,8 @@ Material:
     - _Bend_Direction: {r: 1, g: 1, b: 0, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _Primary_Color: {r: 0.1764706, g: 0.42352942, b: 0.050980393, a: 1}
-    - _Secondary_Color: {r: 0.25490198, g: 0.20392157, b: 0.10980392, a: 1}
+    - _Primary_Color: {r: 0.17647055, g: 0.4235294, b: 0.050980374, a: 1}
+    - _Secondary_Color: {r: 0.25490195, g: 0.20392153, b: 0.10980389, a: 1}
     - _Tertiary_Color: {r: 0, g: 0, b: 0, a: 1}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1

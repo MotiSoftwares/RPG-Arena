@@ -21,7 +21,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Trunk01A
-  m_Shader: {fileID: -6465566751694194690, guid: 0d66c57dd28db734687761930a457daf, type: 3}
+  m_Shader: {fileID: 4800000, guid: 0d231940841471745b36195593c0236c, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -29,9 +29,8 @@ Material:
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2000
-  stringTagMap:
-    RenderType: Opaque
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -98,6 +97,7 @@ Material:
     - _BUILTIN_ZTest: 4
     - _BUILTIN_ZWrite: 1
     - _BUILTIN_ZWriteControl: 0
+    - _BaseShade: 0.55
     - _Bend_Distortion: 0.1
     - _Bend_Speed: 1
     - _Bend_Strength: 4
@@ -123,6 +123,7 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _Bend_Direction: {r: 1, g: 1, b: 0, a: 0}
-    - _Color: {r: 0.4627451, g: 0.36862746, b: 0.20784314, a: 1}
+    - _Color: {r: 0.462745, g: 0.36862743, b: 0.2078431, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1
