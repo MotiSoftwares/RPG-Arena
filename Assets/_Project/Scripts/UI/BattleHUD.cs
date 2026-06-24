@@ -497,10 +497,12 @@ namespace RPGArena.UI
             var brt = bgImg.rectTransform; brt.anchorMin = brt.anchorMax = anchor; brt.pivot = anchor; brt.anchoredPosition = pos; brt.sizeDelta = size;
             // Ghost ("chip") layer behind the real fill: a pale bar that trails to reveal lost HP.
             var gh = new GameObject("BarGhost"); gh.transform.SetParent(bg.transform, false);
-            var ghImg = gh.AddComponent<Image>(); ghImg.color = new Color(1f, 1f, 1f, 0.55f); ghImg.type = Image.Type.Filled; ghImg.fillMethod = Image.FillMethod.Horizontal; ghImg.fillOrigin = 0; ghImg.fillAmount = 1f;
+            var ghImg = gh.AddComponent<Image>(); ghImg.color = new Color(1f, 1f, 1f, 0.55f); ghImg.sprite = RoundedSprite(); ghImg.type = Image.Type.Filled; ghImg.fillMethod = Image.FillMethod.Horizontal; ghImg.fillOrigin = 0; ghImg.fillAmount = 1f;
             var grt = ghImg.rectTransform; grt.anchorMin = Vector2.zero; grt.anchorMax = Vector2.one; grt.offsetMin = new Vector2(3, 3); grt.offsetMax = new Vector2(-3, -3);
             var fg = new GameObject("BarFill"); fg.transform.SetParent(bg.transform, false);
-            var img = fg.AddComponent<Image>(); img.color = color; img.type = Image.Type.Filled; img.fillMethod = Image.FillMethod.Horizontal; img.fillOrigin = 0; img.fillAmount = 1f;
+            // A SOURCE SPRITE is REQUIRED for Image.Type.Filled to honour fillAmount — without it Unity
+            // draws the full quad and the bar never visibly drops (the HP-bar bug). Rounded caps too.
+            var img = fg.AddComponent<Image>(); img.color = color; img.sprite = RoundedSprite(); img.type = Image.Type.Filled; img.fillMethod = Image.FillMethod.Horizontal; img.fillOrigin = 0; img.fillAmount = 1f;
             var frt = img.rectTransform; frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one; frt.offsetMin = new Vector2(3, 3); frt.offsetMax = new Vector2(-3, -3);
             ghostOf[img] = ghImg; targetFill[img] = 1f;
             return img;
