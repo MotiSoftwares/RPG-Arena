@@ -525,6 +525,8 @@ namespace RPGArena.UI
             var cb = btn.colors; cb.normalColor = Color.white; cb.disabledColor = Color.white;
             cb.highlightedColor = new Color(0.72f, 0.86f, 1f); cb.pressedColor = new Color(0.55f, 0.68f, 0.85f);
             cb.fadeDuration = 0.08f; btn.colors = cb;
+            // Click feedback on EVERY combat button (Attack/Move were silent while menu buttons clicked).
+            if (enabled) btn.onClick.AddListener(() => GameBootstrap.Instance?.Audio?.PlaySfx("ui_click"));
 
             float textLeft = 10f;
             if (icon != null)

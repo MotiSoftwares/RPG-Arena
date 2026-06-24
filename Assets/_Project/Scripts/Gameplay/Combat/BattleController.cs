@@ -92,7 +92,12 @@ namespace RPGArena.Combat
                 if (intro.RevealWeak)
                 {
                     Context.weaknessRevealed = true;        // HUD reveals weak/absorb elements now
-                    Context.Log("You studied the Dragon: weak to ICE, absorbs FIRE.");
+                    // Derive the reveal from the ACTUAL boss profile (was hardcoded to the Dragon's
+                    // ICE/FIRE, which would be wrong for every other boss in the gauntlet).
+                    var prof = Context.boss != null ? Context.boss.elementProfile : null;
+                    string weak = prof != null && prof.weakTo != null && prof.weakTo.Length > 0 ? string.Join("/", prof.weakTo) : "nothing obvious";
+                    string absorb = prof != null && prof.absorbs != null && prof.absorbs.Length > 0 ? string.Join("/", prof.absorbs) : "nothing";
+                    Context.Log($"You study {Context.boss.displayName}: weak to {weak}; absorbs {absorb}.");
                 }
             }
 
