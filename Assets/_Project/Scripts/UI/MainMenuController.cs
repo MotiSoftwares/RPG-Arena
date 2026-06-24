@@ -4,9 +4,10 @@ using RPGArena.Core;
 
 namespace RPGArena.UI
 {
-    // Tiny M0 main-menu behaviour: a "Start" button calls StartGame(), which asks the
-    // persistent bootstrap to load the battle scene through the faded SceneLoader. The full
-    // menu (How to Play, Settings, Credits, character select) arrives in Milestone 3.
+    // DEPRECATED M0 placeholder. The shipping front-end is MainMenuUI (wired by SceneSetup);
+    // this single-Start-button behaviour is unused. Kept only as reference — do NOT wire it into
+    // a scene or the player lands in a one-button menu with no party select. Remove once confirmed.
+    [System.Obsolete("Use MainMenuUI (the real menu + party select). MainMenuController is the dead M0 placeholder.")]
     public class MainMenuController : MonoBehaviour
     {
         [SerializeField] private string battleSceneName = "BattleArena";
