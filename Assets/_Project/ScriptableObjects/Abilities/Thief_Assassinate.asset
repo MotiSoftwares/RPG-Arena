@@ -26,6 +26,10 @@ MonoBehaviour:
   mpRegenOnUse: 0
   hitTier: 2
   autoHit: 0
+  rollsRiskDie: 1
+  riskFloor: 0
+  backfireKind: 1
+  backfireStatus: {fileID: 0}
   statusesToApply: []
   telegraphsAbility: {fileID: 0}
   stanceAction: 0

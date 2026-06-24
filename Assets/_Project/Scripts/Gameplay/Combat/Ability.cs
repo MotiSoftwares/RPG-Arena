@@ -54,6 +54,8 @@ namespace RPGArena.Combat
         [Header("Risk die (the SPECIAL skill — a visible d20 gamble)")]
         [Tooltip("This (and only this) ability rolls the risk die: low = backfire/whiff, high = big/jackpot.")]
         public bool rollsRiskDie = false;
+        [Tooltip("Clamp the risk roll to at least this (0..1). A higher floor = a SAFER special that rarely backfires — e.g. the Archer's reliable Arrow Rain closer.")]
+        [Range(0f, 1f)] public float riskFloor = 0f;
         [Tooltip("What a Backfire (low roll) does to the caster.")]
         public BackfireKind backfireKind = BackfireKind.None;
         [Tooltip("EmboldenBoss backfire: the buff applied to the boss on a backfire.")]

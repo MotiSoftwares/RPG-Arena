@@ -71,7 +71,7 @@ namespace RPGArena.Combat.Commands
                         source = caster, target = target, ability = a, element = element,
                         basePower = a.power, isMagic = a.isMagic, forceHit = a.autoHit,
                         isBreakSkill = a.HasTag("BreakSkill"), hitTier = a.hitTier,
-                        rollsRiskDie = a.rollsRiskDie, backfireKind = a.backfireKind
+                        rollsRiskDie = a.rollsRiskDie, riskFloor = a.riskFloor, backfireKind = a.backfireKind
                     };
                     var result = ctx.damage.Compute(info);
                     ctx.damage.Apply(result, ctx);

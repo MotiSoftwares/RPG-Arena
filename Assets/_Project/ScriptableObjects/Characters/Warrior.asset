@@ -36,8 +36,7 @@ MonoBehaviour:
   abilities:
   - {fileID: 11400000, guid: ce23e8e3963242d4baa2393de5b94e05, type: 2}
   - {fileID: 11400000, guid: 7ba79cb9dcc3cd246b4e7ae7874fabab, type: 2}
-  - {fileID: 11400000, guid: edc80a0a9d7dc724d9e1bae1b4a51516, type: 2}
   - {fileID: 11400000, guid: 75c9207ad1a7b784cbe54d21c4650225, type: 2}
-  - {fileID: 11400000, guid: 2813c0c0e608713498e089eb12d26b5c, type: 2}
+  - {fileID: 11400000, guid: edc80a0a9d7dc724d9e1bae1b4a51516, type: 2}
   - {fileID: 11400000, guid: 75891d683f74e7649a74f0f7abf108f1, type: 2}
   elementProfile: {fileID: 11400000, guid: ede49bfb01d99f34ab2f5013353588ba, type: 2}

@@ -19,13 +19,17 @@ MonoBehaviour:
   targetRule: 0
   element: 0
   isMagic: 0
-  power: 1.3
+  power: 1.15
   hits: 1
   mpCost: 0
   cooldown: 0
   mpRegenOnUse: 0
   hitTier: 1
   autoHit: 0
+  rollsRiskDie: 0
+  riskFloor: 0
+  backfireKind: 0
+  backfireStatus: {fileID: 0}
   statusesToApply: []
   telegraphsAbility: {fileID: 0}
   stanceAction: 0

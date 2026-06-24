@@ -35,10 +35,8 @@ MonoBehaviour:
     critDamage: 1.7
   abilities:
   - {fileID: 11400000, guid: 6779fdec0f59da147aae86e0bba341dc, type: 2}
-  - {fileID: 11400000, guid: f1ba14e9b85f4594c8ef49cc2ae0103f, type: 2}
   - {fileID: 11400000, guid: 9cb8067c5e90f5f4fb96cd9e9dab80d3, type: 2}
   - {fileID: 11400000, guid: ff3bd5c0429e1af4e87dcfe06303ca80, type: 2}
   - {fileID: 11400000, guid: 56c201f8418019c458a2394d65617ccc, type: 2}
-  - {fileID: 11400000, guid: 182ca574619bece4394082bf9787a87c, type: 2}
   - {fileID: 11400000, guid: f6daa52086de696448b4dc14fff884d6, type: 2}
   elementProfile: {fileID: 11400000, guid: ede49bfb01d99f34ab2f5013353588ba, type: 2}

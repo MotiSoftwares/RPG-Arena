@@ -19,13 +19,17 @@ MonoBehaviour:
   targetRule: 0
   element: 0
   isMagic: 0
-  power: 2.5
+  power: 2.4
   hits: 1
   mpCost: 25
   cooldown: 5
   mpRegenOnUse: 0
   hitTier: 2
   autoHit: 0
+  rollsRiskDie: 1
+  riskFloor: 0
+  backfireKind: 1
+  backfireStatus: {fileID: 0}
   statusesToApply: []
   telegraphsAbility: {fileID: 0}
   stanceAction: 0
@@ -40,8 +44,8 @@ MonoBehaviour:
   buffDurationTurns: 3
   ignoreDefensePercent: 0
   guaranteedCrit: 0
-  bonusVsFlag: 7
-  bonusVsFlagMult: 1.5
+  bonusVsFlag: 4
+  bonusVsFlagMult: 1.6
   executeBelowHpPct: 0
   executeMult: 1.6
   vfxPrefab: {fileID: 1664554866138106, guid: cdf5105e83ab35f4e929972c34b34ed3, type: 3}

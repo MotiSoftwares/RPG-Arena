@@ -19,6 +19,7 @@ namespace RPGArena.Combat
         public bool isBreakSkill;      // adds extra stagger build
         public HitTier hitTier;        // reliability tier for the hit roll
         public bool rollsRiskDie;      // this is a SPECIAL: draw the risk die
+        public float riskFloor;        // clamp the risk roll to >= this (a safer special)
         public BackfireKind backfireKind;  // what a backfire does to the caster
     }
 
