@@ -302,9 +302,10 @@ namespace RPGArena.Combat
                 Context.boss.transform.position = bossPos;
                 Context.boss.transform.rotation = Quaternion.Euler(0, -90, 0);
                 Vector3 faceHeroes = (Context.heroes.Count > 0 ? Context.heroes[0].transform.position : Vector3.zero) - bossPos; faceHeroes.y = 0f;
-                // The dragon looms: auto-scaled to ~6.5 world units tall (≈3.5× the heroes) so the boss
-                // dominates the stage no matter the source model's native size.
-                AttachBody(Context.boss.gameObject, Context.boss.modelPrefab, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.0f, 3.0f, 0, faceHeroes, 1f, 6.5f);
+                // The dragon LOOMS: auto-scaled to ~9.5 world units tall — taller than the forest's
+                // 6–8u trees and ≈3.7× the heroes — so the boss clearly dominates the stage and reads
+                // as a threat, not a same-size lizard, no matter the source model's native size.
+                AttachBody(Context.boss.gameObject, Context.boss.modelPrefab, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.0f, 3.0f, 0, faceHeroes, 1f, 9.5f);
                 var bm = Context.boss.gameObject.AddComponent<CombatantMotion>();
                 bm.lungeDistance = 0.8f;
                 bm.bobAmplitude = Context.boss.modelPrefab != null ? 0f : 0.12f;   // a heavier-feeling 2D boss bobs
@@ -433,6 +434,9 @@ namespace RPGArena.Combat
                     }
                 }
                 model.transform.localPosition = Vector3.zero;   // prefab pivot is already at the feet
+                // Safety net for imported clips with big vertical hip root-motion (Generic rigs sink
+                // into the floor when applyRootMotion is off) — clamps the hips to ~bind height.
+                model.AddComponent<Characters.HipHeightLock>();
                 return;
             }
 
