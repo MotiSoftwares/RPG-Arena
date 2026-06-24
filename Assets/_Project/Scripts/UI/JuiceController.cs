@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using RPGArena.Characters;
 using RPGArena.Combat;
 using RPGArena.Combat.Events;
@@ -64,16 +65,30 @@ namespace RPGArena.UI
         private Canvas canvas;
         private RectTransform canvasRect;
         private Image flashImage;
-        private Text breakBanner;
-        private Font font;
-        private readonly Queue<Text> pool = new();   // reuse popups instead of churning GC
+        private TMP_Text breakBanner;
+        [SerializeField] private TMP_FontAsset uiFont;     // SlimUI Poppins-Bold (wired in scene); falls back to TMP default
+        private TMP_FontAsset font;
+        private Material popupMat;                          // shared outlined SDF material so numbers read over the scene
+        private readonly Queue<TMP_Text> pool = new();     // reuse popups instead of churning GC
 
         private void Awake()
         {
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            font = uiFont != null ? uiFont : TMP_Settings.defaultFontAsset;
+            popupMat = BuildOutlineMaterial(font);
             cam = Camera.main;
             if (cam != null) { camBasePos = cam.transform.localPosition; camBaseFov = cam.fieldOfView; }
             BuildCanvas();
+        }
+
+        // A crisp dark outline so floating numbers stay legible over the bright meadow without a panel.
+        private static Material BuildOutlineMaterial(TMP_FontAsset f)
+        {
+            if (f == null || f.material == null) return null;
+            var m = new Material(f.material);
+            m.EnableKeyword("OUTLINE_ON");
+            m.SetFloat("_OutlineWidth", 0.22f);
+            m.SetColor("_OutlineColor", new Color(0f, 0f, 0f, 0.92f));
+            return m;
         }
 
         private void OnEnable()
@@ -480,7 +495,7 @@ namespace RPGArena.UI
             StartCoroutine(AnimatePopup(t, worldPos));
         }
 
-        private IEnumerator AnimatePopup(Text t, Vector3 worldPos)
+        private IEnumerator AnimatePopup(TMP_Text t, Vector3 worldPos)
         {
             float life = 0f;
             var rt = t.rectTransform;
@@ -502,15 +517,15 @@ namespace RPGArena.UI
             pool.Enqueue(t);
         }
 
-        private Text MakePopup()
+        private TMP_Text MakePopup()
         {
             var go = new GameObject("Popup");
             go.transform.SetParent(canvasRect, false);
-            var t = go.AddComponent<Text>();
-            t.font = font; t.fontStyle = FontStyle.Bold; t.alignment = TextAnchor.MiddleCenter;
-            t.horizontalOverflow = HorizontalWrapMode.Overflow; t.verticalOverflow = VerticalWrapMode.Overflow;
-            var outline = go.AddComponent<Outline>(); outline.effectColor = new Color(0, 0, 0, 0.85f); outline.effectDistance = new Vector2(2, -2);
-            t.rectTransform.sizeDelta = new Vector2(300, 60);
+            var t = go.AddComponent<TextMeshProUGUI>();
+            t.font = font; t.fontStyle = FontStyles.Bold; t.alignment = TextAlignmentOptions.Center;
+            t.enableWordWrapping = false; t.overflowMode = TextOverflowModes.Overflow; t.raycastTarget = false;
+            if (popupMat != null) t.fontSharedMaterial = popupMat;
+            t.rectTransform.sizeDelta = new Vector2(320, 64);
             return t;
         }
 
@@ -536,13 +551,13 @@ namespace RPGArena.UI
             // Centre "BREAK!" banner (hidden until a stagger break).
             var bg = new GameObject("BreakBanner");
             bg.transform.SetParent(canvasRect, false);
-            breakBanner = bg.AddComponent<Text>();
-            breakBanner.font = font; breakBanner.fontSize = 110; breakBanner.fontStyle = FontStyle.Bold;
-            breakBanner.alignment = TextAnchor.MiddleCenter; breakBanner.text = "BREAK!";
+            breakBanner = bg.AddComponent<TextMeshProUGUI>();
+            breakBanner.font = font; breakBanner.fontSize = 110; breakBanner.fontStyle = FontStyles.Bold;
+            breakBanner.alignment = TextAlignmentOptions.Center; breakBanner.text = "BREAK!";
             breakBanner.color = new Color(1f, 0.85f, 0.2f);
             breakBanner.raycastTarget = false;
-            breakBanner.horizontalOverflow = HorizontalWrapMode.Overflow; breakBanner.verticalOverflow = VerticalWrapMode.Overflow;
-            var bo = bg.AddComponent<Outline>(); bo.effectColor = new Color(0.4f, 0.1f, 0f, 0.9f); bo.effectDistance = new Vector2(4, -4);
+            breakBanner.enableWordWrapping = false; breakBanner.overflowMode = TextOverflowModes.Overflow;
+            if (popupMat != null) breakBanner.fontSharedMaterial = popupMat;
             var brt = breakBanner.rectTransform; brt.anchorMin = brt.anchorMax = new Vector2(0.5f, 0.5f); brt.pivot = new Vector2(0.5f, 0.5f);
             brt.anchoredPosition = new Vector2(0, 60); brt.sizeDelta = new Vector2(900, 200);
             bg.SetActive(false);

@@ -143872,6 +143872,7 @@ MonoBehaviour:
   breakSlowMoDuration: 0.7
   floatLife: 0.9
   floatRise: 90
+  uiFont: {fileID: 11400000, guid: 59ee34472c5892a4196858080cc2141e, type: 2}
 --- !u!4 &939583426
 Transform:
   m_ObjectHideFlags: 0
