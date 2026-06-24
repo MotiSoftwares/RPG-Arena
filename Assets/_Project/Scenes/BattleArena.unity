@@ -173629,6 +173629,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 02d30ae303a0f8d458ca1ca2339c6837, type: 3}
   m_Name: 
   m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.PauseMenu
+  uiFont: {fileID: 11400000, guid: 59ee34472c5892a4196858080cc2141e, type: 2}
 --- !u!4 &1136701594
 Transform:
   m_ObjectHideFlags: 0

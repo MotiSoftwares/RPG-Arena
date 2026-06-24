@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
+using TMPro;
 using RPGArena.Core;
 
 namespace RPGArena.UI
@@ -10,13 +11,14 @@ namespace RPGArena.UI
     // path avoids the "stuck paused after restart" failure the rubric warns about.
     public class PauseMenu : MonoBehaviour
     {
-        private Font font;
+        [SerializeField] private TMP_FontAsset uiFont;   // SlimUI Poppins-Bold SDF (wired in scene); falls back to TMP default
+        private TMP_FontAsset font;
         private GameObject panel;
         private bool paused;
 
         private void Awake()
         {
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            font = uiFont != null ? uiFont : TMP_Settings.defaultFontAsset;
             BuildUI();
             panel.SetActive(false);
         }
@@ -71,7 +73,8 @@ namespace RPGArena.UI
         private void Label(RectTransform parent, string text, float anchorY, int size)
         {
             var go = new GameObject("Label"); go.transform.SetParent(parent, false);
-            var t = go.AddComponent<Text>(); t.font = font; t.text = text; t.fontSize = size; t.alignment = TextAnchor.MiddleCenter; t.color = Color.white;
+            var t = go.AddComponent<TextMeshProUGUI>(); t.font = font; t.text = text; t.fontSize = size;
+            t.alignment = TextAlignmentOptions.Center; t.color = Color.white; t.fontStyle = FontStyles.Bold; t.raycastTarget = false;
             var rt = t.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(0.5f, anchorY); rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = new Vector2(600, size + 20);
         }
 
@@ -82,7 +85,8 @@ namespace RPGArena.UI
             var rt = img.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(0.5f, anchorY); rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = new Vector2(360, 56);
             var btn = go.AddComponent<Button>(); btn.targetGraphic = img; btn.onClick.AddListener(onClick);
             var t = new GameObject("Text"); t.transform.SetParent(go.transform, false);
-            var txt = t.AddComponent<Text>(); txt.font = font; txt.text = label; txt.fontSize = 24; txt.alignment = TextAnchor.MiddleCenter; txt.color = Color.white;
+            var txt = t.AddComponent<TextMeshProUGUI>(); txt.font = font; txt.text = label; txt.fontSize = 24;
+            txt.alignment = TextAlignmentOptions.Center; txt.color = Color.white; txt.raycastTarget = false;
             var trt = txt.rectTransform; trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = Vector2.zero; trt.offsetMax = Vector2.zero;
         }
     }
