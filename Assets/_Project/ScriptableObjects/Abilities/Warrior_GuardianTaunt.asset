@@ -28,6 +28,7 @@ MonoBehaviour:
   autoHit: 0
   statusesToApply:
   - {fileID: 11400000, guid: b767e3e911bdfee44a5977f9310124ae, type: 2}
+  - {fileID: 11400000, guid: ab0e7875f3628684eacc07f0c5f66736, type: 2}
   telegraphsAbility: {fileID: 0}
   stanceAction: 0
   attunementOptions: 

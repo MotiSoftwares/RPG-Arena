@@ -74,6 +74,14 @@ namespace RPGArena.Combat.AI
                 if (h != null && h.IsAlive && !h.Status.Has(RPGArena.Combat.Status.StatusFlag.Stealthed))
                     pickable.Add(h);
             if (pickable.Count == 0) return TargetingSystem.RandomAlive(heroes, ctx.rng);
+
+            // A TAUNTING hero (Warrior's Guardian Taunt) FORCES the Dragon's single-target aggro onto
+            // the taunter(s) — the tank can finally peel for the squishy Mage (§6). We RESTRICT the pool
+            // (not invert lethality), so total damage is unchanged and the trio-clear test still holds;
+            // only WHO gets hit changes. Taunt overrides even the front/back row preference below.
+            var taunters = new List<Entity>();
+            foreach (var h in pickable) if (h.Status.Has(RPGArena.Combat.Status.StatusFlag.Taunting)) taunters.Add(h);
+            if (taunters.Count > 0) pickable = taunters;
             // Positioning: the FRONT line draws the Dragon's single-target aggro; it only reaches the
             // back row once the front has fallen — so a tank up front shields the squishy casters.
             var front = new List<Entity>();
