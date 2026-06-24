@@ -14,10 +14,10 @@ namespace RPGArena.UI
         // The four classes (name + one-line role) shown on the select cards.
         private static readonly (string name, string blurb)[] Classes =
         {
-            ("Warrior", "STR — tanky anchor; taunts, Berserk/Guardian stance, big finishers"),
-            ("Mage", "INT — elemental nuker + healer; attune Fire/Ice/Lightning/Holy"),
-            ("Thief", "LUK — combo enabler; Oil/Wet/Mark setup, crit, Dark Sight"),
-            ("Archer", "DEX — ranged precision; never misses, Puppet decoy, Arrow Rain"),
+            ("Warrior", "TANK — soaks hits and TAUNTS the boss off your casters; breaks it with big physical finishers."),
+            ("Mage", "MAGE — the ONLY hero who can exploit a boss's elemental WEAKNESS (the core mechanic) — and your healer."),
+            ("Thief", "SETUP — Oil / Wet / Mark to enable cross-class combos; high crit; vanish with Dark Sight."),
+            ("Archer", "RANGED — never misses; Puppet decoy to peel; Arrow Rain hits the whole field."),
         };
 
         [Header("Art")]
@@ -130,6 +130,8 @@ namespace RPGArena.UI
             var sp = (RectTransform)selectPanel.transform;
             Label(sp, "CHOOSE YOUR PARTY", new Vector2(0.5f, 0.88f), 40, TextAnchor.MiddleCenter, 1200);
             selectHint = Label(sp, "Pick exactly 3 heroes  (0/3 chosen)", new Vector2(0.5f, 0.80f), 22, TextAnchor.MiddleCenter, 1000);
+            Label(sp, "Tip: a Mage covers elemental WEAKNESS — most parties want one.", new Vector2(0.5f, 0.755f), 17, TextAnchor.MiddleCenter, 1100)
+                .color = new Color(0.72f, 0.85f, 1f);
             for (int i = 0; i < Classes.Length; i++)
             {
                 var c = Classes[i];
