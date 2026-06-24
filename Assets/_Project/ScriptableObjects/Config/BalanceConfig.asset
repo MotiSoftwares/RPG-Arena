@@ -39,4 +39,20 @@ MonoBehaviour:
   accuracyToPercent: 0.01
   defendDamageMult: 0.5
   backRowMeleeMult: 0.55
-  mpRegenPerTurn: 5
+  mpRegenPerTurn: 4
+  riskBackfireThreshold: 0.15
+  riskWhiffThreshold: 0.3
+  riskBigThreshold: 0.75
+  riskJackpotThreshold: 0.95
+  riskBackfireDamageMult: 0.5
+  riskWhiffDamageMult: 0.7
+  riskBigDamageMult: 1.5
+  riskJackpotDamageMult: 2
+  riskSelfRecoilPct: 0.12
+  valorMax: 100
+  valorPerPlainHit: 2
+  valorPerComboHit: 18
+  valorPerSetup: 10
+  valorPerSupport: 8
+  overdriveHeroTurns: 3
+  overdriveDamageMult: 1.35

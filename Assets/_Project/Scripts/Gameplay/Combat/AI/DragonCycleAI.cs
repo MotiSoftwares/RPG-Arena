@@ -19,10 +19,12 @@ namespace RPGArena.Combat.AI
         public Ability tailGuard;
         public Ability chargingBreath;
         public Ability flameBreath;
+        public Ability wingBuffet;          // a second AoE — phase-2+ pressure on a spread party
 
         [Header("Tuning")]
         [Range(0f, 1f)] public float tailSweepChance = 0.2f;
-        [Range(0f, 1f)] public float phase2HpFraction = 0.4f;
+        [Range(0f, 1f)] public float phase2HpFraction = 0.5f;
+        [Range(0f, 1f)] public float phase3HpFraction = 0.15f;
 
         public override Ability DecideAction(BattleContext ctx, Entity self,
                                              IReadOnlyList<Entity> opponents, out Entity target)
@@ -38,15 +40,24 @@ namespace RPGArena.Combat.AI
                 return commit;   // AllEnemies => the manager expands targets
             }
 
-            // 2) Otherwise advance the telegraphed cycle. The Dragon is outnumbered 3:1 and a Break
-            //    freezes its cycle progress, so a long rotation means the signature Charging-Breath
-            //    telegraph almost never fires. Keep it a tight attack -> CHARGE -> (Flame) loop so the
-            //    "break the charge / defend the breath" decision actually comes up every fight. Phase 2
-            //    drops the defensive Tail Guard beat (enrage) for pure aggression.
-            bool phase2 = self.currentHP <= self.stats.maxHP * phase2HpFraction;
-            var cycle = phase2
-                ? new List<Ability> { chargingBreath, clawSwipe }
-                : new List<Ability> { chargingBreath, clawSwipe, tailGuard };
+            // 2) Otherwise advance a telegraphed rotation that ESCALATES as the Dragon bloodies (§7.1).
+            //    Three HP-gated phases give the fight a real arc instead of a flat loop:
+            //      STALKING (>50%): patient — Claw, a defensive Tail Guard, the Charge->Flame telegraph,
+            //                       and a Tail Sweep. The window to build Valor/Break.
+            //      ENRAGED (<=50%): drops Tail Guard, adds Wing Buffet AoE and a second Charge — the
+            //                       "spread party can't out-heal the AoE" pressure.
+            //      FINAL FURY (<=15%): a sprint of Charge->Flame + Wing Buffet + Claw at x1.7 that
+            //                       punishes a party that hasn't closed the kill.
+            //    The telegraph commit/cancel path (step 1 above) is unchanged, so Break-cancels-Flame holds.
+            float hpFrac = self.stats.maxHP > 0 ? (float)self.currentHP / self.stats.maxHP : 1f;
+            var wing = wingBuffet != null ? wingBuffet : tailSweep;   // graceful fallback if unassigned
+            List<Ability> cycle;
+            if (hpFrac <= phase3HpFraction)
+                cycle = new List<Ability> { chargingBreath, wing, clawSwipe };
+            else if (hpFrac <= phase2HpFraction)
+                cycle = new List<Ability> { clawSwipe, wing, chargingBreath, clawSwipe, chargingBreath };
+            else
+                cycle = new List<Ability> { clawSwipe, tailGuard, chargingBreath, tailSweep };
 
             int idx = ((self.aiCycleIndex % cycle.Count) + cycle.Count) % cycle.Count;
             self.aiCycleIndex = (idx + 1) % cycle.Count;

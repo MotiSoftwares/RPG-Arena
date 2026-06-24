@@ -17,5 +17,7 @@ MonoBehaviour:
   tailGuard: {fileID: 11400000, guid: c341649ab8b49284d95f79ebf273892f, type: 2}
   chargingBreath: {fileID: 11400000, guid: 6cd2334ee429d25488b1301be963d96a, type: 2}
   flameBreath: {fileID: 11400000, guid: 3a801d386b05f2a4e935b183ad772751, type: 2}
+  wingBuffet: {fileID: 11400000, guid: da85898901b109d469dab1a9a360080e, type: 2}
   tailSweepChance: 0.2
-  phase2HpFraction: 0.4
+  phase2HpFraction: 0.5
+  phase3HpFraction: 0.15
