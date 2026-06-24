@@ -25,9 +25,9 @@ namespace RPGArena.UI
         public Core.Events.VoidChannel onBattleWon, onBattleLost;
 
         private Font font;
-        private Text bossName, bossHpText, log, telegraph, bossWeakness, bossStaggerText, coachCaption;
+        private Text bossName, bossHpText, log, telegraph, bossWeakness, bossStaggerText, coachCaption, valorText;
         private bool coachDone;          // one-shot "how to read the menu" teach on the first input
-        private Image bossHpFill, bossStaggerFill;
+        private Image bossHpFill, bossStaggerFill, valorFill;
         private GameObject telegraphPanel;
         private Sprite roundedSprite;
         private bool weaknessSeen;          // a weakness hit has landed (or the player studied)
@@ -162,6 +162,21 @@ namespace RPGArena.UI
                 bool charging = ctx.boss.telegraphedAbility != null;
                 if (!charging && telegraph != null && telegraph.gameObject.activeSelf) HideTelegraphNow();
             }
+
+            // Party VALOR / Overdrive meter — fills through coordination; pulses gold when ready.
+            var charge = ctx.charge;
+            if (valorFill != null && charge != null)
+            {
+                SetFill(valorFill, charge.valor, charge.max);
+                if (valorText != null)
+                    valorText.text = charge.overdriveActive ? $"★  OVERDRIVE  {charge.overdriveTurnsLeft}  ★"
+                                   : charge.IsFull ? "VALOR FULL — unleash OVERDRIVE!"
+                                   : $"VALOR  {Mathf.RoundToInt(charge.valor)} / {Mathf.RoundToInt(charge.max)}";
+                valorFill.color = (charge.IsFull || charge.overdriveActive)
+                    ? Color.Lerp(new Color(1f, 0.85f, 0.3f), Color.white, Mathf.PingPong(Time.unscaledTime * 4f, 1f))
+                    : new Color(1f, 0.78f, 0.2f);
+            }
+
             RefreshTurnOrder();
             for (int i = 0; i < partyTexts.Count; i++)
             {
@@ -280,6 +295,16 @@ namespace RPGArena.UI
                 var btn = MakeButton(actionPanel, label, new Vector2(0, -y), affordable, ab.icon);
                 if (affordable)
                     btn.onClick.AddListener(() => controller.SubmitAction(ab, PickTarget(hero, ab)));
+                y += 30f;
+            }
+            // OVERDRIVE: shown ONLY when the party Valor meter is full. A FREE activation — surge the
+            // party, then still act this turn. Keeps the per-class menu at exactly 5 skills + Move.
+            var charge = ctx != null ? ctx.charge : null;
+            if (charge != null && charge.IsFull)
+            {
+                var odBtn = MakeButton(actionPanel, "★ OVERDRIVE — surge the party!", new Vector2(0, -y), true, null);
+                var odImg = odBtn.GetComponent<Image>(); if (odImg != null) odImg.color = new Color(0.9f, 0.68f, 0.12f, 0.96f);
+                odBtn.onClick.AddListener(() => { controller.SubmitOverdrive(); BuildActionMenu(hero); });   // free: surge, then re-open the menu to act
                 y += 30f;
             }
             // Positioning: swap the active hero's row (front <-> back). Spends the turn.
@@ -470,6 +495,12 @@ namespace RPGArena.UI
                                     new Vector2(1f, 0f), new Vector2(-20, 398), new Vector2(396, 52), 14, TextAnchor.LowerCenter);
             coachCaption.color = new Color(1f, 0.95f, 0.55f); coachCaption.fontStyle = FontStyle.Bold;
             coachCaption.gameObject.SetActive(false);
+
+            // Party VALOR meter (bottom-centre): fills through COORDINATION; at full an OVERDRIVE
+            // button appears in the action menu to spend it on the party-wide damage surge.
+            valorFill = MakeBar(root, new Vector2(0.5f, 0f), new Vector2(0, 12), new Vector2(470, 22), new Color(1f, 0.78f, 0.2f));
+            valorText = MakeText(root, "VALOR", new Vector2(0.5f, 0f), new Vector2(0, 12), new Vector2(470, 22), 13, TextAnchor.MiddleCenter);
+            valorText.color = Color.white; valorText.fontStyle = FontStyle.Bold;
 
             // Combat log (left-middle): a short color-coded ticker on a solid-reading backing.
             MakePanel(root, new Vector2(0f, 0.5f), new Vector2(16, -64), new Vector2(420, 150), new Color(0.04f, 0.04f, 0.07f, 0.62f));

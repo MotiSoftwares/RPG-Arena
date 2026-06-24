@@ -75,6 +75,11 @@ namespace RPGArena.Combat
         // The HUD calls this when the active hero chooses to reposition (swap front/back row).
         public void SubmitReposition() { if (ActiveHero != null) pendingReposition = true; }
 
+        // The HUD's gold OVERDRIVE button: spend a FULL Valor meter on the party-wide damage surge.
+        // A free activation — the hero still takes their action this turn (now surge-boosted), so you
+        // "charge up, unleash, then dump a Shatter in the Break window" for the biggest reliable hit.
+        public void SubmitOverdrive() { if (ActiveHero != null) Context?.charge?.SpendOverdrive(Context, ActiveHero); }
+
         private IEnumerator RunBattle()
         {
             PresentationBusyUntil = 0f;

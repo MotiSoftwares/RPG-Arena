@@ -168,6 +168,21 @@ namespace RPGArena.UI
             else { text = r.amount.ToString(); color = CNormal; size = 36; }
             SpawnFloating(head, text, color, size);
 
+            // The SPECIAL's risk-die reveal — a colour-coded d20 result floats off the gambler, and
+            // the camera/flash sell the swing: a Jackpot punches in, a Backfire flashes red + shakes.
+            if (r.risked)
+            {
+                Color dc = r.riskBand == RiskBand.Backfire ? new Color(1f, 0.32f, 0.32f)
+                         : r.riskBand == RiskBand.Whiff ? new Color(0.72f, 0.72f, 0.72f)
+                         : r.riskBand == RiskBand.Big ? new Color(1f, 0.85f, 0.3f)
+                         : r.riskBand == RiskBand.Jackpot ? new Color(0.45f, 1f, 1f) : Color.white;
+                Vector3 dicePos = r.source != null ? r.source.transform.position + Vector3.up * 2.3f : head + Vector3.up * 0.7f;
+                bool loud = r.riskBand == RiskBand.Jackpot || r.riskBand == RiskBand.Backfire;
+                SpawnFloating(dicePos, $"d20: {r.riskFace}  {r.riskBand.ToString().ToUpper()}", dc, loud ? 40 : 30);
+                if (r.riskBand == RiskBand.Backfire) { flashAmount = Mathf.Max(flashAmount, 0.3f); shakeAmount = Mathf.Max(shakeAmount, shakeOnCrit); }
+                else if (r.riskBand == RiskBand.Jackpot) fovPunch = Mathf.Max(fovPunch, 12f);
+            }
+
             if (r.hit)
             {
                 // Always spawn a reliable elemental impact BURST on the target body — guarantees a
