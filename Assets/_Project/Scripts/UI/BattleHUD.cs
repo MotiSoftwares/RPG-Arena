@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using RPGArena.Core;
 using RPGArena.Characters;
 using RPGArena.Combat;
@@ -9,14 +10,19 @@ using RPGArena.Combat.Events;
 
 namespace RPGArena.UI
 {
-    // The in-battle HUD. It is pure PRESENTATION: it reads runtime state and subscribes to the
-    // SO event channels, and it only ever talks back to combat through BattleController.SubmitAction
-    // (§4.2). Built entirely in code (no fragile scene wiring) with the built-in font, so it works
-    // without TMP Essentials; the M4/M5 passes add TMP, icons, juice, and a click target-picker.
+    // The in-battle HUD. Pure PRESENTATION: it reads runtime state and subscribes to the SO event
+    // channels, and only talks back to combat through BattleController.SubmitAction (§4.2). Built
+    // entirely in code (no fragile scene wiring) and reskinned in a cohesive SlimUI-style theme —
+    // TextMeshPro SDF fonts (Poppins/Rubik), a dark-slate palette with teal/gold accents, rounded
+    // framed panels, two-line ability cards, and animated chip-away bars.
     public class BattleHUD : MonoBehaviour
     {
         [Header("Wiring")]
         public BattleController controller;     // found in the scene if left empty
+
+        [Header("Fonts (SlimUI SDF; falls back to the TMP default if unset)")]
+        public TMP_FontAsset fontHeader;        // Poppins-Bold SDF — names / headers
+        public TMP_FontAsset fontBody;          // Rubik-Medium SDF — values / body
 
         [Header("Channels (subscribed)")]
         public EntityChannel onTurnStarted, onStaggerBroken, onEntityDied;
@@ -24,35 +30,48 @@ namespace RPGArena.UI
         public AbilityChannel onBossTelegraph;
         public Core.Events.VoidChannel onBattleWon, onBattleLost;
 
-        private Font font;
-        private Text bossName, bossHpText, log, telegraph, bossWeakness, bossStaggerText, coachCaption, valorText;
-        private bool coachDone;          // one-shot "how to read the menu" teach on the first input
+        // ---- Theme -------------------------------------------------------------------
+        static readonly Color Panel    = new Color(0.055f, 0.07f, 0.105f, 0.90f);   // dark slate
+        static readonly Color PanelLit = new Color(0.10f, 0.13f, 0.19f, 0.94f);     // raised card
+        static readonly Color Stroke   = new Color(0.55f, 0.70f, 0.95f, 0.10f);     // hairline edge
+        static readonly Color TxtMain  = new Color(0.92f, 0.95f, 0.99f);
+        static readonly Color TxtMuted = new Color(0.56f, 0.62f, 0.74f);
+        static readonly Color Accent   = new Color(0.27f, 0.78f, 0.92f);            // teal
+        static readonly Color Gold     = new Color(0.98f, 0.80f, 0.32f);
+        static readonly Color Danger   = new Color(0.90f, 0.32f, 0.27f);
+        static readonly Color HpGreen  = new Color(0.36f, 0.82f, 0.46f);
+        static readonly Color MpBlue   = new Color(0.34f, 0.56f, 0.96f);
+        static readonly Color Track    = new Color(0f, 0f, 0f, 0.55f);
+
+        private TMP_Text bossName, bossHpText, log, telegraph, bossWeakness, bossStaggerText, coachCaption, valorText, menuTitle;
+        private bool coachDone;
         private Image bossHpFill, bossStaggerFill, valorFill;
-        private GameObject telegraphPanel;
-        private Sprite roundedSprite;
-        private bool weaknessSeen;          // a weakness hit has landed (or the player studied)
-        private readonly List<Text> partyTexts = new();
+        private GameObject telegraphPanel, coachPanel;
+        private Sprite roundedSprite, softSprite;
+        private bool weaknessSeen;
+        private readonly List<TMP_Text> partyName = new();
         private readonly List<Image> partyHpFill = new();
         private readonly List<Image> partyMpFill = new();
-        private readonly List<Text> partyHpText = new();
-        private readonly List<Text> partyMpText = new();
+        private readonly List<TMP_Text> partyHpText = new();
+        private readonly List<TMP_Text> partyMpText = new();
+        private readonly List<Image> partyActiveStripe = new();
+        private readonly List<Image> partyCardBg = new();
         private RectTransform actionPanel;
         private struct LogEntry { public string text; public Color color; }
         private readonly List<LogEntry> logEntries = new();
         private RectTransform bossStatusRow;
         private readonly List<RectTransform> heroStatusRows = new();
-        private readonly string[] statusSigs = new string[8];   // 0 = boss, 1.. = heroes
+        private readonly string[] statusSigs = new string[8];
         private RectTransform turnOrderRow;
         private string turnOrderSig = "";
-        // Animated "chip-away" bars: each coloured fill has a pale ghost behind it that trails on a
-        // hit (the visible gap is the damage chunk), and both ease toward a target instead of snapping.
         private readonly Dictionary<Image, Image> ghostOf = new();
         private readonly Dictionary<Image, float> targetFill = new();
 
         private void Awake()
         {
             if (controller == null) controller = FindFirstObjectByType<BattleController>();
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (fontHeader == null) fontHeader = TMP_Settings.defaultFontAsset;
+            if (fontBody == null) fontBody = fontHeader;
             BuildUI();
         }
 
@@ -62,8 +81,6 @@ namespace RPGArena.UI
             onStaggerBroken?.Subscribe(OnBreak);
             onBossTelegraph?.Subscribe(OnTelegraph);
             onEntityDied?.Subscribe(OnDied);
-            // Win/lose end-screens are owned by RunFlow (boon select / run complete / retry), so
-            // the HUD no longer shows its own result panel.
         }
 
         private void OnDisable()
@@ -82,18 +99,18 @@ namespace RPGArena.UI
             RefreshBars();
             AnimateBars();
 
-            // (Re)build the action menu when a player hero is awaiting input.
             if (controller.AwaitingInput && controller.ActiveHero != lastMenuHero)
             {
                 lastMenuHero = controller.ActiveHero;
                 BuildActionMenu(controller.ActiveHero);
-                if (!coachDone && coachCaption != null) coachCaption.gameObject.SetActive(true);   // teach on the very first input
+                if (!coachDone && coachPanel != null) coachPanel.SetActive(true);
             }
             else if (!controller.AwaitingInput && lastMenuHero != null)
             {
                 lastMenuHero = null;
                 ClearChildren(actionPanel);
-                if (!coachDone && coachCaption != null) { coachCaption.gameObject.SetActive(false); coachDone = true; }   // they acted — lesson learned
+                if (menuTitle != null) menuTitle.text = "";
+                if (!coachDone && coachPanel != null) { coachPanel.SetActive(false); coachDone = true; }
             }
         }
 
@@ -101,18 +118,18 @@ namespace RPGArena.UI
         private void OnDamage(DamageResult r)
         {
             string who = r.target != null ? r.target.displayName : "?";
-            if (!r.hit) AddLog($"{who}  miss", new Color(0.60f, 0.60f, 0.64f));
+            if (!r.hit) AddLog($"{who}  miss", TxtMuted);
             else if (r.absorbed) AddLog($"{who}  ABSORBED {r.amount} — healed", new Color(0.55f, 0.80f, 1f));
-            else if (r.isHeal) AddLog($"{who}  +{r.amount} HP", new Color(0.45f, 0.85f, 0.42f));
+            else if (r.isHeal) AddLog($"{who}  +{r.amount} HP", HpGreen);
             else
             {
                 string suffix = (r.reaction == ElementReaction.Weak ? "  WEAK" : "") + (r.crit ? "  CRIT" : "");
-                Color c = r.crit ? new Color(1f, 0.82f, 0.25f)                       // gold = crit
-                        : r.reaction == ElementReaction.Weak ? new Color(0.40f, 0.85f, 1f)  // cyan = weakness
-                        : new Color(0.84f, 0.86f, 0.90f);                            // muted = plain hit
+                Color c = r.crit ? Gold
+                        : r.reaction == ElementReaction.Weak ? Accent
+                        : new Color(0.84f, 0.86f, 0.90f);
                 AddLog($"{who}  -{r.amount}{suffix}", c);
             }
-            if (r.reaction == ElementReaction.Weak) weaknessSeen = true;   // reveal it in the HUD
+            if (r.reaction == ElementReaction.Weak) weaknessSeen = true;
         }
 
         private void OnBreak(Entity boss) => AddLog($"BREAK!  {boss.displayName} staggered", new Color(1f, 0.68f, 0.18f));
@@ -122,16 +139,9 @@ namespace RPGArena.UI
         {
             if (telegraph == null) return;
             telegraph.text = $"⚠  DRAGON IS CHARGING: {a.displayName.ToUpper()}  —  BREAK IT OR DEFEND  ⚠";
-            telegraph.gameObject.SetActive(true);
             if (telegraphPanel != null) telegraphPanel.SetActive(true);
-            // Visibility is now STATE-driven (see RefreshBars): the banner stays up across the
-            // multiple hero turns until the Dragon unleashes the move or it is Broken — not a timer.
         }
-        private void HideTelegraphNow()
-        {
-            if (telegraph != null) telegraph.gameObject.SetActive(false);
-            if (telegraphPanel != null) telegraphPanel.SetActive(false);
-        }
+        private void HideTelegraphNow() { if (telegraphPanel != null) telegraphPanel.SetActive(false); }
 
         // --- per-frame UI refresh -----------------------------------------------------
         private void RefreshBars()
@@ -142,9 +152,7 @@ namespace RPGArena.UI
                 bossName.text = ctx.boss.displayName;
                 SetFill(bossHpFill, ctx.boss.currentHP, ctx.boss.stats.maxHP);
                 SetFill(bossStaggerFill, ctx.boss.isStaggered ? ctx.boss.staggerThreshold : ctx.boss.staggerMeter, ctx.boss.staggerThreshold);
-                bossHpText.text = $"HP {ctx.boss.currentHP}/{ctx.boss.stats.maxHP}";
-                // Stagger meter: labelled, and it visibly changes state (pulses white) while Broken so
-                // the headline Break window is legible, not a decorative underline.
+                bossHpText.text = $"{ctx.boss.currentHP} / {ctx.boss.stats.maxHP}";
                 if (bossStaggerText != null)
                     bossStaggerText.text = ctx.boss.isStaggered
                         ? "★  BROKEN  ★"
@@ -152,18 +160,15 @@ namespace RPGArena.UI
                 if (bossStaggerFill != null)
                     bossStaggerFill.color = ctx.boss.isStaggered
                         ? Color.Lerp(new Color(1f, 0.96f, 0.6f), Color.white, Mathf.PingPong(Time.unscaledTime * 4f, 1f))
-                        : new Color(0.95f, 0.8f, 0.2f);
+                        : Gold;
                 if (bossWeakness != null)
-                    bossWeakness.text = (weaknessSeen || ctx.weaknessRevealed) ? FormatWeakness(ctx.boss) : "";
+                    bossWeakness.text = (weaknessSeen || ctx.weaknessRevealed) ? FormatWeakness(ctx.boss) : "<color=#7A8398>study the dragon to reveal its weakness</color>";
                 RefreshStatusRow(bossStatusRow, ctx.boss, 0, true);
 
-                // Telegraph banner stays up until the charged move FIRES or is BROKEN (state-driven,
-                // not a 3.5s timer that vanished before the player could react across slow boss turns).
                 bool charging = ctx.boss.telegraphedAbility != null;
-                if (!charging && telegraph != null && telegraph.gameObject.activeSelf) HideTelegraphNow();
+                if (!charging && telegraphPanel != null && telegraphPanel.activeSelf) HideTelegraphNow();
             }
 
-            // Party VALOR / Overdrive meter — fills through coordination; pulses gold when ready.
             var charge = ctx.charge;
             if (valorFill != null && charge != null)
             {
@@ -171,24 +176,28 @@ namespace RPGArena.UI
                 if (valorText != null)
                     valorText.text = charge.overdriveActive ? $"★  OVERDRIVE  {charge.overdriveTurnsLeft}  ★"
                                    : charge.IsFull ? "VALOR FULL — unleash OVERDRIVE!"
-                                   : $"VALOR  {Mathf.RoundToInt(charge.valor)} / {Mathf.RoundToInt(charge.max)}";
+                                   : $"VALOR   {Mathf.RoundToInt(charge.valor)} / {Mathf.RoundToInt(charge.max)}";
                 valorFill.color = (charge.IsFull || charge.overdriveActive)
-                    ? Color.Lerp(new Color(1f, 0.85f, 0.3f), Color.white, Mathf.PingPong(Time.unscaledTime * 4f, 1f))
-                    : new Color(1f, 0.78f, 0.2f);
+                    ? Color.Lerp(Gold, Color.white, Mathf.PingPong(Time.unscaledTime * 4f, 1f))
+                    : Gold;
             }
 
             RefreshTurnOrder();
-            for (int i = 0; i < partyTexts.Count; i++)
+            for (int i = 0; i < partyName.Count; i++)
             {
-                if (i >= ctx.heroes.Count) { partyTexts[i].transform.parent.gameObject.SetActive(false); continue; }
+                if (i >= ctx.heroes.Count) { partyName[i].transform.parent.gameObject.SetActive(false); continue; }
                 var h = ctx.heroes[i];
                 bool active = controller.ActiveHero == h;
-                partyTexts[i].text = $"{(active ? "> " : "")}{h.displayName}   [{(h.backRow ? "BACK" : "FRONT")}]";
-                partyTexts[i].color = h.IsAlive ? (active ? Color.yellow : Color.white) : new Color(0.5f, 0.5f, 0.5f);
+                partyName[i].text = $"{h.displayName}  <size=60%><color=#7A8398>{(h.backRow ? "BACK" : "FRONT")}</color></size>";
+                partyName[i].color = h.IsAlive ? (active ? Gold : TxtMain) : TxtMuted;
                 SetFill(partyHpFill[i], h.currentHP, h.stats.maxHP);
                 SetFill(partyMpFill[i], h.currentMP, h.stats.maxMP);
-                if (i < partyHpText.Count) partyHpText[i].text = h.IsAlive ? $"{h.currentHP}/{h.stats.maxHP}" : "— KO —";
-                if (i < partyMpText.Count) partyMpText[i].text = $"MP {h.currentMP}/{h.stats.maxMP}";
+                if (i < partyHpText.Count) partyHpText[i].text = h.IsAlive ? $"{h.currentHP}/{h.stats.maxHP}" : "KO";
+                if (i < partyMpText.Count) partyMpText[i].text = $"{h.currentMP}/{h.stats.maxMP}";
+                if (i < partyActiveStripe.Count && partyActiveStripe[i] != null)
+                    partyActiveStripe[i].color = active ? Gold : new Color(Gold.r, Gold.g, Gold.b, 0f);
+                if (i < partyCardBg.Count && partyCardBg[i] != null)
+                    partyCardBg[i].color = active ? PanelLit : Panel;
                 if (i < heroStatusRows.Count) RefreshStatusRow(heroStatusRows[i], h, i + 1, false);
             }
         }
@@ -197,7 +206,6 @@ namespace RPGArena.UI
         private void RefreshTurnOrder()
         {
             if (turnOrderRow == null || controller.UpcomingOrder == null) return;
-            // Rebuild only when the upcoming line-up changes (cheap signature).
             var sb = new System.Text.StringBuilder();
             int seen = 0;
             foreach (var e in controller.UpcomingOrder) { if (e != null && e.IsAlive) { sb.Append(e.displayName).Append('|'); if (++seen >= 6) break; } }
@@ -211,19 +219,26 @@ namespace RPGArena.UI
             {
                 if (e == null || !e.IsAlive) continue;
                 var chip = new GameObject("Chip"); chip.transform.SetParent(turnOrderRow, false);
-                var img = chip.AddComponent<Image>();
-                img.color = e.isBoss ? new Color(0.5f, 0.16f, 0.16f, 0.88f) : new Color(0.15f, 0.2f, 0.32f, 0.82f);
+                var img = chip.AddComponent<Image>(); Soft(img);
+                img.color = i == 0 ? new Color(Gold.r, Gold.g, Gold.b, 0.22f)
+                          : e.isBoss ? new Color(0.5f, 0.16f, 0.16f, 0.55f) : new Color(0.15f, 0.2f, 0.32f, 0.55f);
                 var rt = img.rectTransform;
                 rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f); rt.pivot = new Vector2(0.5f, 1f);
-                rt.anchoredPosition = new Vector2(0, -i * 30); rt.sizeDelta = new Vector2(180, 27);
-                var t = MakeText(rt, (i == 0 ? "▶ " : $"{i + 1}. ") + e.displayName, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(172, 24), 14, TextAnchor.MiddleLeft);
-                t.color = i == 0 ? Color.yellow : Color.white;
+                rt.anchoredPosition = new Vector2(0, -i * 30); rt.sizeDelta = new Vector2(166, 27);
+                // accent dot
+                var dot = new GameObject("Dot"); dot.transform.SetParent(rt, false);
+                var dimg = dot.AddComponent<Image>(); Soft(dimg);
+                dimg.color = e.isBoss ? Danger : (i == 0 ? Gold : Accent);
+                var drt = dimg.rectTransform; drt.anchorMin = drt.anchorMax = new Vector2(0f, 0.5f); drt.pivot = new Vector2(0f, 0.5f);
+                drt.anchoredPosition = new Vector2(10, 0); drt.sizeDelta = new Vector2(8, 8);
+                var t = MakeText(rt, (i == 0 ? "NOW  " : $"{i + 1}.  ") + e.displayName, fontBody, 14, TextAlignmentOptions.MidlineLeft, new Vector2(0, 1), new Vector2(0, 1));
+                var trt = t.rectTransform; trt.anchorMin = new Vector2(0, 0); trt.anchorMax = new Vector2(1, 1); trt.offsetMin = new Vector2(24, 0); trt.offsetMax = new Vector2(-4, 0);
+                t.color = i == 0 ? Gold : TxtMain;
                 if (++i >= 6) break;
             }
         }
 
         // --- status-effect badges -----------------------------------------------------
-        // Rebuild a combatant's status badge row only when its set of statuses changes (cheap sig).
         private void RefreshStatusRow(RectTransform row, Entity e, int sigKey, bool big)
         {
             if (row == null || e == null) return;
@@ -232,34 +247,34 @@ namespace RPGArena.UI
             statusSigs[sigKey] = sig;
             ClearChildren(row);
             var fx = e.Status.Effects;
-            float step = big ? 62f : 46f;
+            float step = big ? 64f : 48f;
             float startX = big ? Mathf.Max(0f, (row.sizeDelta.x - fx.Count * step) / 2f) : 0f;
             for (int i = 0; i < fx.Count; i++) MakeBadge(row, fx[i], startX + i * step, big);
         }
 
         private void MakeBadge(RectTransform parent, StatusEffectContainer.Active a, float x, bool big)
         {
-            float w = big ? 58f : 42f, h = big ? 22f : 15f;
+            float w = big ? 60f : 44f, h = big ? 22f : 16f;
             var go = new GameObject("Badge"); go.transform.SetParent(parent, false);
-            var img = go.AddComponent<Image>(); img.color = KindColor(a.def.kind);
+            var img = go.AddComponent<Image>(); Soft(img); img.color = KindColor(a.def.kind);
             var rt = img.rectTransform;
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f); rt.pivot = new Vector2(0f, 0.5f);
             rt.anchoredPosition = new Vector2(x, 0f); rt.sizeDelta = new Vector2(w, h);
             string lbl = Abbrev(a.def.displayName) + (a.stacks > 1 ? a.stacks.ToString() : "") + (a.remaining < 90 ? " " + a.remaining : "");
-            var t = MakeText(rt, lbl, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(w, h), big ? 12 : 10, TextAnchor.MiddleCenter);
+            var t = MakeText(rt, lbl, fontBody, big ? 12 : 10, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);
+            Stretch(t, 0, 0, 0, 0);
             t.color = Color.white;
         }
 
         private static string Abbrev(string name) =>
             string.IsNullOrEmpty(name) ? "?" : name.Substring(0, Mathf.Min(3, name.Length)).ToUpper();
 
-        // Colour-codes the badge by kind (paired with the abbreviation for colourblind safety, §9.8).
         private static Color KindColor(StatusKind k) =>
             k == StatusKind.Buff ? new Color(0.24f, 0.66f, 0.34f, 0.92f) :
             k == StatusKind.Debuff ? new Color(0.8f, 0.3f, 0.3f, 0.92f) :
             k == StatusKind.DoT ? new Color(0.9f, 0.55f, 0.2f, 0.92f) :
             k == StatusKind.Control ? new Color(0.55f, 0.35f, 0.85f, 0.92f) :
-            new Color(0.28f, 0.6f, 0.85f, 0.92f);   // Flag
+            new Color(0.28f, 0.6f, 0.85f, 0.92f);
 
         private string StatusSig(Entity e)
         {
@@ -272,54 +287,117 @@ namespace RPGArena.UI
 
         private RectTransform MakeRow(RectTransform parent, Vector2 anchor, Vector2 pos, Vector2 size)
         {
-            var go = new GameObject("StatusRow"); go.transform.SetParent(parent, false);
+            var go = new GameObject("Row"); go.transform.SetParent(parent, false);
             var rt = go.AddComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = anchor; rt.pivot = anchor; rt.anchoredPosition = pos; rt.sizeDelta = size;
             return rt;
         }
 
+        // --- action menu --------------------------------------------------------------
         private void BuildActionMenu(Entity hero)
         {
             ClearChildren(actionPanel);
             var ctx = controller.Context;
+            if (menuTitle != null) menuTitle.text = $"{hero.displayName.ToUpper()} — CHOOSE A SKILL";
             float y = 0f;
+            const float row = 50f;
             foreach (var ability in hero.abilities)
             {
                 var ab = ability;
                 bool affordable = hero.currentMP >= ab.mpCost && !hero.IsOnCooldown(ab);
-                string label = $"{ab.displayName}";
-                if (ab.mpCost > 0) label += $"  {ab.mpCost}MP";
-                if (ab.cooldown > 0 && hero.IsOnCooldown(ab)) label += $"  (CD {hero.CooldownRemaining(ab)})";
-                if (IsDamaging(ab)) label += BuildPreview(hero, ab, ctx);
-
-                var btn = MakeButton(actionPanel, label, new Vector2(0, -y), affordable, ab.icon);
-                if (affordable)
-                    btn.onClick.AddListener(() => controller.SubmitAction(ab, PickTarget(hero, ab)));
-                y += 30f;
+                MakeAbilityButton(actionPanel, hero, ab, ctx, new Vector2(0, -y), affordable);
+                y += row;
             }
-            // OVERDRIVE: shown ONLY when the party Valor meter is full. A FREE activation — surge the
-            // party, then still act this turn. Keeps the per-class menu at exactly 5 skills + Move.
             var charge = ctx != null ? ctx.charge : null;
             if (charge != null && charge.IsFull)
             {
-                var odBtn = MakeButton(actionPanel, "★ OVERDRIVE — surge the party!", new Vector2(0, -y), true, null);
-                var odImg = odBtn.GetComponent<Image>(); if (odImg != null) odImg.color = new Color(0.9f, 0.68f, 0.12f, 0.96f);
-                odBtn.onClick.AddListener(() => { controller.SubmitOverdrive(); BuildActionMenu(hero); });   // free: surge, then re-open the menu to act
-                y += 30f;
+                var od = MakeSimpleButton(actionPanel, "★  OVERDRIVE — surge the party!", new Vector2(0, -y), Gold, true);
+                od.onClick.AddListener(() => { controller.SubmitOverdrive(); BuildActionMenu(hero); });
+                y += 38f;
             }
-            // Positioning: swap the active hero's row (front <-> back). Spends the turn.
-            var moveBtn = MakeButton(actionPanel, $"↕ Move to {(hero.backRow ? "FRONT" : "BACK")} row", new Vector2(0, -y), true, null);
-            moveBtn.onClick.AddListener(() => controller.SubmitReposition());
+            var move = MakeSimpleButton(actionPanel, $"↕  Move to {(hero.backRow ? "FRONT" : "BACK")} row", new Vector2(0, -y), Accent, true);
+            move.onClick.AddListener(() => controller.SubmitReposition());
+        }
+
+        private void MakeAbilityButton(RectTransform parent, Entity hero, Ability ab, BattleContext ctx, Vector2 pos, bool affordable)
+        {
+            var go = new GameObject("Ability"); go.transform.SetParent(parent, false);
+            var img = go.AddComponent<Image>(); Soft(img);
+            img.color = affordable ? new Color(0.13f, 0.18f, 0.27f, 0.95f) : new Color(0.12f, 0.13f, 0.16f, 0.80f);
+            var rt = img.rectTransform;
+            rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(0, 1);
+            rt.anchoredPosition = pos; rt.sizeDelta = new Vector2(0, 46);
+            rt.offsetMin = new Vector2(6, rt.offsetMin.y); rt.offsetMax = new Vector2(-6, rt.offsetMax.y);
+
+            var btn = go.AddComponent<Button>(); btn.targetGraphic = img; btn.interactable = affordable;
+            var cb = btn.colors; cb.normalColor = Color.white; cb.disabledColor = Color.white;
+            cb.highlightedColor = new Color(1.25f, 1.25f, 1.25f); cb.pressedColor = new Color(0.8f, 0.85f, 0.95f);
+            cb.fadeDuration = 0.07f; btn.colors = cb;
+
+            // accent edge: risky specials glow gold, everything else teal
+            var edge = new GameObject("Edge"); edge.transform.SetParent(rt, false);
+            var eimg = edge.AddComponent<Image>(); Soft(eimg);
+            eimg.color = !affordable ? new Color(0.4f, 0.4f, 0.4f, 0.5f) : ab.rollsRiskDie ? Gold : Accent;
+            var ert = eimg.rectTransform; ert.anchorMin = new Vector2(0, 0); ert.anchorMax = new Vector2(0, 1);
+            ert.pivot = new Vector2(0, 0.5f); ert.sizeDelta = new Vector2(4, 0); ert.anchoredPosition = new Vector2(0, 0);
+
+            float textLeft = 14f;
+            if (ab.icon != null)
+            {
+                var ig = new GameObject("Icon"); ig.transform.SetParent(rt, false);
+                var iimg = ig.AddComponent<Image>(); iimg.sprite = ab.icon; iimg.preserveAspect = true;
+                if (!affordable) iimg.color = new Color(1, 1, 1, 0.4f);
+                var irt = iimg.rectTransform; irt.anchorMin = new Vector2(0, 0.5f); irt.anchorMax = new Vector2(0, 0.5f);
+                irt.pivot = new Vector2(0, 0.5f); irt.anchoredPosition = new Vector2(10, 0); irt.sizeDelta = new Vector2(30, 30);
+                textLeft = 46f;
+            }
+
+            // line 1: name (left) + cost/cooldown (right)
+            var name = MakeText(rt, ab.displayName, fontHeader, 16, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
+            Stretch(name, textLeft, 22, 86, 3);
+            name.color = affordable ? TxtMain : TxtMuted;
+            name.enableWordWrapping = false; name.overflowMode = TextOverflowModes.Overflow;
+
+            string costStr = ab.cooldown > 0 && hero.IsOnCooldown(ab) ? $"CD {hero.CooldownRemaining(ab)}"
+                           : ab.mpCost > 0 ? $"{ab.mpCost} MP" : "free";
+            var cost = MakeText(rt, costStr, fontBody, 13, TextAlignmentOptions.MidlineRight, Vector2.zero, Vector2.zero);
+            Stretch(cost, 0, 22, 12, 3);
+            cost.color = !affordable ? Danger : ab.mpCost > 0 ? MpBlue : TxtMuted;
+
+            // line 2: hit% · damage band · reaction tag
+            var detail = MakeText(rt, BuildPreview(hero, ab, ctx), fontBody, 12, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
+            Stretch(detail, textLeft, 3, 12, 24);
+            detail.color = TxtMuted;
+            detail.richText = true;
+
+            if (affordable) btn.onClick.AddListener(() => { GameBootstrap.Instance?.Audio?.PlaySfx("ui_click"); controller.SubmitAction(ab, PickTarget(hero, ab)); });
+        }
+
+        private Button MakeSimpleButton(RectTransform parent, string label, Vector2 pos, Color accent, bool enabled)
+        {
+            var go = new GameObject("Button"); go.transform.SetParent(parent, false);
+            var img = go.AddComponent<Image>(); Soft(img);
+            img.color = new Color(accent.r * 0.35f, accent.g * 0.35f, accent.b * 0.35f, 0.92f);
+            var rt = img.rectTransform;
+            rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(0, 1);
+            rt.anchoredPosition = pos; rt.sizeDelta = new Vector2(0, 34);
+            rt.offsetMin = new Vector2(6, rt.offsetMin.y); rt.offsetMax = new Vector2(-6, rt.offsetMax.y);
+            var btn = go.AddComponent<Button>(); btn.targetGraphic = img; btn.interactable = enabled;
+            var cb = btn.colors; cb.highlightedColor = new Color(1.3f, 1.3f, 1.3f); cb.fadeDuration = 0.07f; btn.colors = cb;
+            var t = MakeText(rt, label, fontBody, 15, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);
+            Stretch(t, 0, 0, 0, 0); t.color = accent;
+            if (enabled) btn.onClick.AddListener(() => GameBootstrap.Instance?.Audio?.PlaySfx("ui_click"));
+            return btn;
         }
 
         // --- helpers ------------------------------------------------------------------
         private static bool IsDamaging(Ability a) => a.effectType == EffectType.Attack || a.effectType == EffectType.MultiHit;
 
-        // The action-menu preview: hit% + the damage band + reaction (§E.1 informed gamble). ABSORB
-        // is ALWAYS shown (never let the player heal the boss blind); WEAK/resist follow the
-        // progressive weakness reveal (§4.11). The band naturally hints the rest.
         private string BuildPreview(Entity hero, Ability ab, BattleContext ctx)
         {
+            if (!IsDamaging(ab))
+                return ab.targetRule == TargetRule.SingleAlly || ab.targetRule == TargetRule.Self
+                    ? "<color=#5FD17A>support</color>" : "<color=#9AA3B5>utility</color>";
             if (ctx.boss == null || ctx.damage == null) return "";
             ElementType el = ab.followsAttunement ? hero.currentAttunement : ab.element;
             var info = new DamageInfo
@@ -330,12 +408,14 @@ namespace RPGArena.UI
             var pv = ctx.damage.PreviewDamage(info);
             int hitPct = Mathf.RoundToInt(EstimateHit(hero, ab, ctx.boss) * 100);
             bool revealed = weaknessSeen || ctx.weaknessRevealed;
-            string tag = pv.absorb ? "  ABSORB!"
-                       : revealed && pv.reaction == ElementReaction.Weak ? "  WEAK"
-                       : revealed && pv.reaction == ElementReaction.Resist ? "  resist"
-                       : revealed && pv.reaction == ElementReaction.Immune ? "  immune" : "";
-            string dmg = pv.absorb ? "heals!" : ab.hits > 1 ? $"{pv.min}-{pv.max}x{ab.hits}" : $"{pv.min}-{pv.max}";
-            return $"   {hitPct}%  {dmg}{tag}";
+            string tag = pv.absorb ? "  <color=#FF6B6B>ABSORB!</color>"
+                       : revealed && pv.reaction == ElementReaction.Weak ? "  <color=#46C8E6>WEAK</color>"
+                       : revealed && pv.reaction == ElementReaction.Resist ? "  <color=#8A95A8>resist</color>"
+                       : revealed && pv.reaction == ElementReaction.Immune ? "  <color=#8A95A8>immune</color>" : "";
+            string dmg = pv.absorb ? "<color=#5FD17A>heals!</color>" : ab.hits > 1 ? $"{pv.min}-{pv.max}×{ab.hits}" : $"{pv.min}-{pv.max}";
+            string risk = ab.rollsRiskDie ? "  <color=#F2C14E>d20!</color>" : "";
+            string hitCol = hitPct >= 85 ? "#7FD08A" : hitPct >= 70 ? "#E6C84A" : "#E08A6B";
+            return $"<color={hitCol}>{hitPct}%</color>  <color=#C2C8D4>{dmg}</color>{tag}{risk}";
         }
 
         private float EstimateHit(Entity hero, Ability a, Entity boss)
@@ -354,14 +434,10 @@ namespace RPGArena.UI
             {
                 case TargetRule.SingleAlly: return TargetingSystem.LowestHP(ctx.heroes);
                 case TargetRule.Self: return hero;
-                default: return ctx.boss;   // SingleEnemy / AoE resolved by the controller
+                default: return ctx.boss;
             }
         }
 
-        private void AddLog(string line) => AddLog(line, new Color(0.82f, 0.84f, 0.88f));
-
-        // A short, color-coded event ticker (not a debug console): newest line at the bottom and
-        // fully bright, older lines fade out — so the eye lands on what just happened.
         private void AddLog(string line, Color color)
         {
             logEntries.Add(new LogEntry { text = line, color = color });
@@ -375,7 +451,7 @@ namespace RPGArena.UI
             int n = logEntries.Count;
             for (int i = 0; i < n; i++)
             {
-                float a = n <= 1 ? 1f : Mathf.Lerp(0.35f, 1f, (float)i / (n - 1));   // oldest dim -> newest bright
+                float a = n <= 1 ? 1f : Mathf.Lerp(0.35f, 1f, (float)i / (n - 1));
                 var c = logEntries[i].color; c.a = a;
                 sb.Append("<color=#").Append(ColorUtility.ToHtmlStringRGBA(c)).Append('>')
                   .Append(logEntries[i].text).Append("</color>");
@@ -384,15 +460,11 @@ namespace RPGArena.UI
             return sb.ToString();
         }
 
-        // Record the bar's target fill; the coloured fill + pale ghost ease toward it in AnimateBars().
         private void SetFill(Image img, float cur, float max)
         {
             if (img) targetFill[img] = max > 0 ? Mathf.Clamp01(cur / max) : 0f;
         }
 
-        // Drive every bar toward its target (responsive, not the old per-frame snap): the coloured
-        // fill drops quickly on a hit, the pale ghost trails behind to show the lost-HP chunk drain.
-        // Uses unscaled time so the bars keep animating during the hit-stop freeze-frame.
         private void AnimateBars()
         {
             float dt = Time.unscaledDeltaTime;
@@ -404,20 +476,19 @@ namespace RPGArena.UI
                 if (ghostOf.TryGetValue(fill, out var ghost) && ghost != null)
                 {
                     if (ghost.fillAmount > t) ghost.fillAmount = Mathf.MoveTowards(ghost.fillAmount, t, dt * 0.55f);
-                    else ghost.fillAmount = fill.fillAmount;   // healing / refill: ghost rises with the fill
+                    else ghost.fillAmount = fill.fillAmount;
                 }
             }
         }
 
-        // Build the "Weak: Ice • Absorbs: Fire" hint from the boss's element profile.
         private static string FormatWeakness(Entity boss)
         {
             if (boss == null || boss.elementProfile == null) return "";
             string weak = Join(boss.elementProfile.weakTo);
             string absorb = Join(boss.elementProfile.absorbs);
             string s = "";
-            if (weak.Length > 0) s += $"Weak: {weak}";
-            if (absorb.Length > 0) s += (s.Length > 0 ? "     " : "") + $"Absorbs: {absorb}";
+            if (weak.Length > 0) s += $"<color=#46C8E6>Weak: {weak}</color>";
+            if (absorb.Length > 0) s += (s.Length > 0 ? "      " : "") + $"<color=#FF6B6B>Absorbs: {absorb}</color>";
             return s;
         }
 
@@ -427,7 +498,6 @@ namespace RPGArena.UI
         // ============================ UI construction ================================
         private void BuildUI()
         {
-            // Ensure an EventSystem exists so the buttons are clickable (new Input System).
             if (FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
             {
                 var es = new GameObject("EventSystem");
@@ -441,100 +511,141 @@ namespace RPGArena.UI
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = canvasGo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            // Lower reference resolution => the whole HUD renders ~1.5x larger (was rendering tiny).
             scaler.referenceResolution = new Vector2(1280, 720);
             scaler.matchWidthOrHeight = 0.5f;
             canvasGo.AddComponent<GraphicRaycaster>();
             var root = canvasGo.GetComponent<RectTransform>();
 
-            // Boss panel (top) — dark backing so it reads over the arena backdrop.
-            MakePanel(root, new Vector2(0.5f, 1f), new Vector2(0, -6), new Vector2(840, 148), new Color(0.04f, 0.04f, 0.07f, 0.55f));
-            bossName = MakeText(root, "Boss", new Vector2(0.5f, 1f), new Vector2(0, -34), new Vector2(780, 44), 34, TextAnchor.MiddleCenter);
-            bossName.color = new Color(1f, 0.58f, 0.48f); bossName.fontStyle = FontStyle.Bold;
-            bossHpFill = MakeBar(root, new Vector2(0.5f, 1f), new Vector2(0, -80), new Vector2(780, 28), new Color(0.85f, 0.18f, 0.18f));
-            bossHpText = MakeText(root, "HP", new Vector2(0.5f, 1f), new Vector2(0, -80), new Vector2(780, 28), 16, TextAnchor.MiddleCenter);
-            bossStaggerFill = MakeBar(root, new Vector2(0.5f, 1f), new Vector2(0, -110), new Vector2(780, 14), new Color(0.95f, 0.8f, 0.2f));
-            bossStaggerText = MakeText(root, "BREAK", new Vector2(0.5f, 1f), new Vector2(0, -110), new Vector2(780, 14), 11, TextAnchor.MiddleCenter);
-            bossStaggerText.color = Color.white; bossStaggerText.fontStyle = FontStyle.Bold;
-            bossWeakness = MakeText(root, "", new Vector2(0.5f, 1f), new Vector2(0, -126), new Vector2(700, 22), 16, TextAnchor.MiddleCenter);
-            bossWeakness.color = new Color(0.4f, 0.9f, 1f);
-            // Telegraph WARNING banner: a saturated red bar behind bold amber text. High contrast and
-            // state-driven so the "break it / defend it" decision is loud and persistent.
-            telegraphPanel = MakePanel(root, new Vector2(0.5f, 1f), new Vector2(0, -152), new Vector2(760, 40), new Color(0.55f, 0.06f, 0.06f, 0.93f));
-            telegraph = MakeText(root, "", new Vector2(0.5f, 1f), new Vector2(0, -152), new Vector2(900, 38), 22, TextAnchor.MiddleCenter);
-            telegraph.color = new Color(1f, 0.93f, 0.4f); telegraph.fontStyle = FontStyle.Bold;
+            // ---- BOSS (top center) ----
+            MakePanel(root, new Vector2(0.5f, 1f), new Vector2(0, -8), new Vector2(720, 116), Panel);
+            bossName = MakeText(root, "Boss", fontHeader, 30, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
+            Place(bossName, new Vector2(0, -30), new Vector2(680, 38)); bossName.color = new Color(1f, 0.62f, 0.52f);
+            bossHpFill = MakeBar(root, new Vector2(0.5f, 1f), new Vector2(0, -62), new Vector2(672, 24), Danger);
+            bossHpText = MakeText(root, "HP", fontBody, 14, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
+            Place(bossHpText, new Vector2(0, -62), new Vector2(672, 24));
+            bossStaggerFill = MakeBar(root, new Vector2(0.5f, 1f), new Vector2(0, -88), new Vector2(672, 11), Gold);
+            bossStaggerText = MakeText(root, "BREAK", fontBody, 10, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
+            Place(bossStaggerText, new Vector2(0, -88), new Vector2(672, 12)); bossStaggerText.color = new Color(0.1f, 0.08f, 0f);
+            bossWeakness = MakeText(root, "", fontBody, 14, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
+            Place(bossWeakness, new Vector2(0, -104), new Vector2(700, 20));
+            // boss status badges
+            bossStatusRow = MakeRow(root, new Vector2(0.5f, 1f), new Vector2(0, -126), new Vector2(720, 26));
+
+            // telegraph banner (rarely shown — boss attacks every turn now, but kept for the charged variant)
+            telegraphPanel = MakePanel(root, new Vector2(0.5f, 1f), new Vector2(0, -150), new Vector2(760, 38), new Color(0.55f, 0.06f, 0.06f, 0.94f));
+            telegraph = MakeText(root, "", fontHeader, 20, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
+            Place(telegraph, new Vector2(0, -150), new Vector2(900, 36)); telegraph.color = new Color(1f, 0.93f, 0.4f);
             telegraphPanel.SetActive(false);
-            telegraph.gameObject.SetActive(false);
-            // Boss status-effect badges (so Oiled/Wet/Marked/Frozen are visible for combos, §9.4).
-            bossStatusRow = MakeRow(root, new Vector2(0.5f, 1f), new Vector2(0, -176), new Vector2(820, 26));
 
-            // Turn-order tracker (top-right): plan around the boss's next turn / a Break (§9.4).
-            MakePanel(root, new Vector2(1f, 1f), new Vector2(-14, -14), new Vector2(196, 232), new Color(0.04f, 0.04f, 0.07f, 0.55f));
-            MakeText(root, "TURN ORDER", new Vector2(1f, 1f), new Vector2(-112, -28), new Vector2(180, 22), 16, TextAnchor.MiddleCenter).color = new Color(0.8f, 0.85f, 1f);
-            turnOrderRow = MakeRow(root, new Vector2(1f, 1f), new Vector2(-112, -48), new Vector2(184, 184));
+            // ---- TURN ORDER (top right) ----
+            var toPanel = MakePanel(root, new Vector2(1f, 1f), new Vector2(-12, -12), new Vector2(184, 236), Panel).GetComponent<RectTransform>();
+            var toTitle = PanelTitle(toPanel, "TURN ORDER", 14, 8, 20); toTitle.color = Accent; toTitle.characterSpacing = 6;
+            turnOrderRow = MakeRow(root, new Vector2(1f, 1f), new Vector2(-104, -44), new Vector2(172, 188));
 
-            // Party panel (bottom-left): up to 3 hero strips.
+            // ---- PARTY (bottom left): 3 hero cards ----
             for (int i = 0; i < 3; i++)
             {
-                var strip = MakePanel(root, new Vector2(0f, 0f), new Vector2(20, 36 + i * 92), new Vector2(360, 86), new Color(0.05f, 0.06f, 0.1f, 0.62f));
-                var st = strip.GetComponent<RectTransform>();
-                partyTexts.Add(MakeText(st, "Hero", new Vector2(0f, 1f), new Vector2(110, -4), new Vector2(240, 22), 18, TextAnchor.MiddleLeft));
-                partyHpFill.Add(MakeBar(st, new Vector2(0f, 1f), new Vector2(118, -30), new Vector2(230, 16), new Color(0.3f, 0.8f, 0.3f)));
-                partyMpFill.Add(MakeBar(st, new Vector2(0f, 1f), new Vector2(118, -52), new Vector2(230, 12), new Color(0.3f, 0.5f, 0.9f)));
-                partyHpText.Add(MakeText(st, "", new Vector2(0f, 1f), new Vector2(118, -30), new Vector2(230, 16), 12, TextAnchor.MiddleCenter));
-                partyMpText.Add(MakeText(st, "", new Vector2(0f, 1f), new Vector2(118, -52), new Vector2(230, 12), 10, TextAnchor.MiddleCenter));
-                heroStatusRows.Add(MakeRow(st, new Vector2(0f, 0f), new Vector2(116, 6), new Vector2(240, 16)));
+                var card = MakePanel(root, new Vector2(0f, 0f), new Vector2(16, 16 + i * 96), new Vector2(366, 88), Panel);
+                partyCardBg.Add(card.GetComponent<Image>());
+                var st = card.GetComponent<RectTransform>();
+                // active stripe (left edge)
+                var stripe = new GameObject("Stripe"); stripe.transform.SetParent(st, false);
+                var simg = stripe.AddComponent<Image>(); Soft(simg); simg.color = new Color(Gold.r, Gold.g, Gold.b, 0f);
+                var srt = simg.rectTransform; srt.anchorMin = new Vector2(0, 0); srt.anchorMax = new Vector2(0, 1); srt.pivot = new Vector2(0, 0.5f);
+                srt.sizeDelta = new Vector2(4, -8); srt.anchoredPosition = new Vector2(4, 0);
+                partyActiveStripe.Add(simg);
+
+                partyName.Add(MakeText(st, "Hero", fontHeader, 18, TextAlignmentOptions.MidlineLeft, new Vector2(0f, 1f), new Vector2(0f, 1f)));
+                Place(partyName[i], new Vector2(16, -6), new Vector2(300, 24));
+                // HP
+                partyHpFill.Add(MakeBar(st, new Vector2(0f, 1f), new Vector2(16, -34), new Vector2(338, 16), HpGreen));
+                partyHpText.Add(MakeText(st, "", fontBody, 11, TextAlignmentOptions.MidlineRight, new Vector2(0f, 1f), new Vector2(0f, 1f)));
+                Place(partyHpText[i], new Vector2(16, -34), new Vector2(330, 16)); partyHpText[i].color = Color.white;
+                // MP
+                partyMpFill.Add(MakeBar(st, new Vector2(0f, 1f), new Vector2(16, -54), new Vector2(338, 12), MpBlue));
+                partyMpText.Add(MakeText(st, "", fontBody, 10, TextAlignmentOptions.MidlineRight, new Vector2(0f, 1f), new Vector2(0f, 1f)));
+                Place(partyMpText[i], new Vector2(16, -54), new Vector2(330, 12)); partyMpText[i].color = new Color(0.85f, 0.9f, 1f);
+                heroStatusRows.Add(MakeRow(st, new Vector2(0f, 0f), new Vector2(16, 6), new Vector2(330, 16)));
             }
 
-            // Action menu (bottom-right).
-            var menu = MakePanel(root, new Vector2(1f, 0f), new Vector2(-20, 30), new Vector2(390, 330), new Color(0.05f, 0.06f, 0.1f, 0.62f));
-            actionPanel = menu.GetComponent<RectTransform>();
+            // ---- ACTION MENU (bottom right) ----
+            var menuPanel = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 16), new Vector2(424, 352), Panel).GetComponent<RectTransform>();
+            menuTitle = PanelTitle(menuPanel, "", 14, 8, 20); menuTitle.color = Accent; menuTitle.characterSpacing = 3;
+            var menuInner = MakeRow(menuPanel, new Vector2(0f, 1f), new Vector2(10, -34), new Vector2(404, 312));
+            menuInner.anchorMin = new Vector2(0f, 1f); menuInner.anchorMax = new Vector2(1f, 1f);
+            menuInner.offsetMin = new Vector2(10, -346); menuInner.offsetMax = new Vector2(-10, -34);
+            menuInner.pivot = new Vector2(0.5f, 1f);
+            actionPanel = menuInner;
 
-            // One-shot coach caption above the menu — teaches how to read it on the very first input.
-            coachCaption = MakeText(root, "▼ Pick an ability:  % = hit chance,  the colour tag = element reaction  (WEAK is good — exploit it!)",
-                                    new Vector2(1f, 0f), new Vector2(-20, 398), new Vector2(396, 52), 14, TextAnchor.LowerCenter);
-            coachCaption.color = new Color(1f, 0.95f, 0.55f); coachCaption.fontStyle = FontStyle.Bold;
-            coachCaption.gameObject.SetActive(false);
+            // coach hint (above the menu, first input only)
+            coachPanel = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 376), new Vector2(424, 40), new Color(0.10f, 0.13f, 0.05f, 0.9f));
+            coachCaption = MakeText(coachPanel.GetComponent<RectTransform>(),
+                                    "Pick a skill:  <color=#7FD08A>%</color> = hit chance · the band = damage · <color=#46C8E6>WEAK</color> is good · <color=#F2C14E>d20!</color> = a risky gamble",
+                                    fontBody, 12.5f, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);
+            Stretch(coachCaption, 10, 4, 10, 4); coachCaption.color = new Color(1f, 0.95f, 0.7f);
+            coachPanel.SetActive(false);
 
-            // Party VALOR meter (bottom-centre): fills through COORDINATION; at full an OVERDRIVE
-            // button appears in the action menu to spend it on the party-wide damage surge.
-            valorFill = MakeBar(root, new Vector2(0.5f, 0f), new Vector2(0, 12), new Vector2(470, 22), new Color(1f, 0.78f, 0.2f));
-            valorText = MakeText(root, "VALOR", new Vector2(0.5f, 0f), new Vector2(0, 12), new Vector2(470, 22), 13, TextAnchor.MiddleCenter);
-            valorText.color = Color.white; valorText.fontStyle = FontStyle.Bold;
+            // ---- VALOR (bottom center) ----
+            MakePanel(root, new Vector2(0.5f, 0f), new Vector2(0, 14), new Vector2(456, 28), Panel);
+            valorFill = MakeBar(root, new Vector2(0.5f, 0f), new Vector2(0, 14), new Vector2(448, 24), Gold);
+            valorText = MakeText(root, "VALOR", fontHeader, 13, TextAlignmentOptions.Center, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f));
+            Place(valorText, new Vector2(0, 14), new Vector2(448, 24)); valorText.color = new Color(0.1f, 0.08f, 0f);
 
-            // Combat log (left-middle): a short color-coded ticker on a solid-reading backing.
-            MakePanel(root, new Vector2(0f, 0.5f), new Vector2(16, -64), new Vector2(420, 150), new Color(0.04f, 0.04f, 0.07f, 0.62f));
-            log = MakeText(root, "", new Vector2(0f, 0.5f), new Vector2(28, 18), new Vector2(396, 132), 16, TextAnchor.LowerLeft);
-            log.supportRichText = true; log.lineSpacing = 1.15f;
-            // (End-of-battle screens are owned by RunFlow, driven by OnBattleWon/OnBattleLost.)
+            // ---- LOG (mid left) ----
+            MakePanel(root, new Vector2(0f, 0.5f), new Vector2(16, 86), new Vector2(360, 140), Panel);
+            log = MakeText(root, "", fontBody, 15, TextAlignmentOptions.BottomLeft, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f));
+            Place(log, new Vector2(28, 96), new Vector2(338, 120)); log.richText = true; log.lineSpacing = 6f;
         }
 
-        private Text MakeText(RectTransform parent, string content, Vector2 anchor, Vector2 pos, Vector2 size, int fontSize, TextAnchor align)
+        // Position a TMP text by anchored pos + size (anchor/pivot already set by MakeText).
+        private static void Place(TMP_Text t, Vector2 pos, Vector2 size)
+        {
+            var rt = t.rectTransform; rt.anchoredPosition = pos; rt.sizeDelta = size;
+        }
+
+        // Stretch a TMP text to fill its parent with (left, bottom, right, top) insets — used for
+        // labels INSIDE a button/badge rect (MakeText's point-anchor doesn't honour offsets).
+        private static void Stretch(TMP_Text t, float left, float bottom, float right, float top)
+        {
+            var rt = t.rectTransform;
+            rt.anchorMin = new Vector2(0, 0); rt.anchorMax = new Vector2(1, 1);
+            rt.offsetMin = new Vector2(left, bottom); rt.offsetMax = new Vector2(-right, -top);
+        }
+
+        // A title bar pinned to the TOP of a panel (full width), so it never drifts off the panel.
+        private TMP_Text PanelTitle(RectTransform panel, string text, float size, float topInset, float height)
+        {
+            var t = MakeText(panel, text, fontHeader, size, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);
+            var rt = t.rectTransform;
+            rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1);
+            rt.offsetMin = new Vector2(8, -(topInset + height)); rt.offsetMax = new Vector2(-8, -topInset);
+            return t;
+        }
+
+        private TMP_Text MakeText(RectTransform parent, string content, TMP_FontAsset fontAsset, float size,
+                                  TextAlignmentOptions align, Vector2 anchor, Vector2 pivot)
         {
             var go = new GameObject("Text"); go.transform.SetParent(parent, false);
-            var t = go.AddComponent<Text>();
-            t.font = font; t.text = content; t.fontSize = fontSize; t.alignment = align; t.color = Color.white;
-            t.horizontalOverflow = HorizontalWrapMode.Overflow; t.verticalOverflow = VerticalWrapMode.Overflow;
-            var rt = t.rectTransform; rt.anchorMin = rt.anchorMax = anchor; rt.pivot = anchor; rt.anchoredPosition = pos; rt.sizeDelta = size;
-            // A dark outline keeps text legible over the busy arena backdrop.
-            var o = go.AddComponent<Outline>(); o.effectColor = new Color(0, 0, 0, 0.85f); o.effectDistance = new Vector2(1.5f, -1.5f);
+            var t = go.AddComponent<TextMeshProUGUI>();
+            t.font = fontAsset != null ? fontAsset : TMP_Settings.defaultFontAsset;
+            t.text = content; t.fontSize = size; t.alignment = align; t.color = TxtMain;
+            t.richText = true; t.raycastTarget = false;
+            t.enableWordWrapping = true; t.overflowMode = TextOverflowModes.Overflow;
+            var rt = t.rectTransform; rt.anchorMin = rt.anchorMax = anchor; rt.pivot = pivot;
             return t;
         }
 
         private Image MakeBar(RectTransform parent, Vector2 anchor, Vector2 pos, Vector2 size, Color color)
         {
             var bg = new GameObject("BarBG"); bg.transform.SetParent(parent, false);
-            var bgImg = bg.AddComponent<Image>(); bgImg.color = new Color(0, 0, 0, 0.6f); Style(bgImg);
+            var bgImg = bg.AddComponent<Image>(); bgImg.color = Track; Soft(bgImg);
             var brt = bgImg.rectTransform; brt.anchorMin = brt.anchorMax = anchor; brt.pivot = anchor; brt.anchoredPosition = pos; brt.sizeDelta = size;
-            // Ghost ("chip") layer behind the real fill: a pale bar that trails to reveal lost HP.
-            var gh = new GameObject("BarGhost"); gh.transform.SetParent(bg.transform, false);
-            var ghImg = gh.AddComponent<Image>(); ghImg.color = new Color(1f, 1f, 1f, 0.55f); ghImg.sprite = RoundedSprite(); ghImg.type = Image.Type.Filled; ghImg.fillMethod = Image.FillMethod.Horizontal; ghImg.fillOrigin = 0; ghImg.fillAmount = 1f;
-            var grt = ghImg.rectTransform; grt.anchorMin = Vector2.zero; grt.anchorMax = Vector2.one; grt.offsetMin = new Vector2(3, 3); grt.offsetMax = new Vector2(-3, -3);
-            var fg = new GameObject("BarFill"); fg.transform.SetParent(bg.transform, false);
-            // A SOURCE SPRITE is REQUIRED for Image.Type.Filled to honour fillAmount — without it Unity
-            // draws the full quad and the bar never visibly drops (the HP-bar bug). Rounded caps too.
+            var gh = new GameObject("Ghost"); gh.transform.SetParent(bg.transform, false);
+            var ghImg = gh.AddComponent<Image>(); ghImg.color = new Color(1f, 1f, 1f, 0.5f); ghImg.sprite = RoundedSprite(); ghImg.type = Image.Type.Filled; ghImg.fillMethod = Image.FillMethod.Horizontal; ghImg.fillOrigin = 0; ghImg.fillAmount = 1f;
+            var grt = ghImg.rectTransform; grt.anchorMin = Vector2.zero; grt.anchorMax = Vector2.one; grt.offsetMin = new Vector2(2, 2); grt.offsetMax = new Vector2(-2, -2);
+            var fg = new GameObject("Fill"); fg.transform.SetParent(bg.transform, false);
             var img = fg.AddComponent<Image>(); img.color = color; img.sprite = RoundedSprite(); img.type = Image.Type.Filled; img.fillMethod = Image.FillMethod.Horizontal; img.fillOrigin = 0; img.fillAmount = 1f;
-            var frt = img.rectTransform; frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one; frt.offsetMin = new Vector2(3, 3); frt.offsetMax = new Vector2(-3, -3);
+            var frt = img.rectTransform; frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one; frt.offsetMin = new Vector2(2, 2); frt.offsetMax = new Vector2(-2, -2);
             ghostOf[img] = ghImg; targetFill[img] = 1f;
             return img;
         }
@@ -542,44 +653,16 @@ namespace RPGArena.UI
         private GameObject MakePanel(RectTransform parent, Vector2 anchor, Vector2 pos, Vector2 size, Color color)
         {
             var go = new GameObject("Panel"); go.transform.SetParent(parent, false);
-            var img = go.AddComponent<Image>(); img.color = color; Style(img);
+            var img = go.AddComponent<Image>(); img.color = color; Soft(img);
             var rt = img.rectTransform; rt.anchorMin = rt.anchorMax = anchor; rt.pivot = anchor; rt.anchoredPosition = pos; rt.sizeDelta = size;
+            // hairline stroke for a crisper framed edge
+            var edge = new GameObject("Edge"); edge.transform.SetParent(rt, false);
+            var eimg = edge.AddComponent<Image>(); eimg.color = Stroke; eimg.sprite = RoundedSprite(); eimg.type = Image.Type.Sliced; eimg.raycastTarget = false;
+            var ert = eimg.rectTransform; ert.anchorMin = Vector2.zero; ert.anchorMax = Vector2.one; ert.offsetMin = Vector2.zero; ert.offsetMax = Vector2.zero;
             return go;
         }
 
-        private Button MakeButton(RectTransform parent, string label, Vector2 pos, bool enabled, Sprite icon = null)
-        {
-            var go = new GameObject("Button"); go.transform.SetParent(parent, false);
-            var img = go.AddComponent<Image>(); img.color = enabled ? new Color(0.16f, 0.3f, 0.5f, 0.9f) : new Color(0.25f, 0.25f, 0.25f, 0.7f); Style(img);
-            var rt = img.rectTransform; rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(0, 1);
-            rt.anchoredPosition = pos; rt.sizeDelta = new Vector2(0, 28); rt.offsetMin = new Vector2(6, rt.offsetMin.y); rt.offsetMax = new Vector2(-6, rt.offsetMax.y);
-            var btn = go.AddComponent<Button>(); btn.targetGraphic = img; btn.interactable = enabled;
-            // Tint on hover/press so the menu feels responsive (normal/disabled keep the base color).
-            var cb = btn.colors; cb.normalColor = Color.white; cb.disabledColor = Color.white;
-            cb.highlightedColor = new Color(0.72f, 0.86f, 1f); cb.pressedColor = new Color(0.55f, 0.68f, 0.85f);
-            cb.fadeDuration = 0.08f; btn.colors = cb;
-            // Click feedback on EVERY combat button (Attack/Move were silent while menu buttons clicked).
-            if (enabled) btn.onClick.AddListener(() => GameBootstrap.Instance?.Audio?.PlaySfx("ui_click"));
-
-            float textLeft = 10f;
-            if (icon != null)
-            {
-                var ig = new GameObject("Icon"); ig.transform.SetParent(rt, false);
-                var iimg = ig.AddComponent<Image>(); iimg.sprite = icon; iimg.preserveAspect = true;
-                var irt = iimg.rectTransform; irt.anchorMin = new Vector2(0, 0.5f); irt.anchorMax = new Vector2(0, 0.5f); irt.pivot = new Vector2(0, 0.5f);
-                irt.anchoredPosition = new Vector2(4, 0); irt.sizeDelta = new Vector2(24, 24);
-                textLeft = 32f;
-            }
-
-            var t = MakeText(rt, label, new Vector2(0, 0.5f), new Vector2(textLeft, 0), new Vector2(340, 26), 15, TextAnchor.MiddleLeft);
-            t.rectTransform.anchorMin = new Vector2(0, 0); t.rectTransform.anchorMax = new Vector2(1, 1);
-            t.rectTransform.offsetMin = new Vector2(textLeft, 0); t.rectTransform.offsetMax = new Vector2(-6, 0);
-            return btn;
-        }
-
-        // Apply a soft rounded-rectangle frame to any HUD Image (9-sliced so corners never stretch).
-        // One shared sprite replaces the hard 90-degree opaque rectangles that read as programmer-art.
-        private void Style(Image img)
+        private void Soft(Image img)
         {
             if (img == null) return;
             img.sprite = RoundedSprite();
@@ -589,16 +672,15 @@ namespace RPGArena.UI
         private Sprite RoundedSprite()
         {
             if (roundedSprite != null) return roundedSprite;
-            const int s = 32, r = 6;
+            const int s = 32, r = 7;
             var tex = new Texture2D(s, s, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
             for (int y = 0; y < s; y++)
                 for (int x = 0; x < s; x++)
                 {
-                    // distance into the nearest rounded corner (0 along the straight edges)
                     float dx = Mathf.Max(Mathf.Max(r - x, x - (s - 1 - r)), 0f);
                     float dy = Mathf.Max(Mathf.Max(r - y, y - (s - 1 - r)), 0f);
                     float d = Mathf.Sqrt(dx * dx + dy * dy);
-                    float a = Mathf.Clamp01(r - d + 0.5f);   // solid inside, 1px anti-aliased corner falloff
+                    float a = Mathf.Clamp01(r - d + 0.5f);
                     tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
                 }
             tex.Apply();

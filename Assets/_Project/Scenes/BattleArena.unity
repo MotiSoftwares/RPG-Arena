@@ -215284,6 +215284,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.BattleHUD
   controller: {fileID: 1100984723}
+  fontHeader: {fileID: 11400000, guid: 59ee34472c5892a4196858080cc2141e, type: 2}
+  fontBody: {fileID: 11400000, guid: 9d24e6b3ecd1d2b479a31d3d0e7b1f9e, type: 2}
   onTurnStarted: {fileID: 11400000, guid: f1037ec492552084588d630a06c461d1, type: 2}
   onStaggerBroken: {fileID: 11400000, guid: 8a35baa42a6697d4abe004e74e987e4e, type: 2}
   onEntityDied: {fileID: 11400000, guid: 223b9d66e21970a4688959bac1aa2718, type: 2}
