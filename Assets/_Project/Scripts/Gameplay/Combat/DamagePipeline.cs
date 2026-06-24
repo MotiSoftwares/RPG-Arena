@@ -115,6 +115,7 @@ namespace RPGArena.Combat
             // 6) SYNERGY (Oiled+Fire, Wet+Lightning, Marked, Shatter, ...).
             var syn = SynergyResolver.Resolve(tgt != null ? tgt.Status : null, info.element);
             dmg *= syn.damageMultiplier;
+            r.synergyNote = syn.note;   // surfaced as a combo callout by presentation
             // A PAID hit that cashes in a setup (a Shatter detonation, or any blow on a Marked target)
             // earns the press-turn bonus too — so the physical classes aren't locked out of the action
             // economy that the Mage's Ice-weakness would otherwise monopolise (§5.5).

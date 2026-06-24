@@ -183,6 +183,15 @@ namespace RPGArena.UI
             else { text = r.amount.ToString(); color = CNormal; size = 36; }
             SpawnFloating(head, text, color, size);
 
+            // COMBO CALLOUT: when a synergy fires, announce it in gold above the number so the player
+            // LEARNS the combo web (SHATTER / BRITTLE / WET+PHYSICAL / FREEZE) — the heart of the design.
+            if (r.hit && !string.IsNullOrEmpty(r.synergyNote))
+            {
+                bool big = r.synergyNote.Contains("SHATTER") || r.synergyNote.Contains("Brittle");
+                SpawnFloating(head + Vector3.up * 0.7f, r.synergyNote.ToUpper(), new Color(1f, 0.84f, 0.32f), big ? 38 : 30);
+                if (big) { shakeAmount = Mathf.Max(shakeAmount, shakeOnCrit * 0.7f); fovPunch = Mathf.Max(fovPunch, 6f); }
+            }
+
             // The SPECIAL's risk-die reveal — a colour-coded d20 result floats off the gambler, and
             // the camera/flash sell the swing: a Jackpot punches in, a Backfire flashes red + shakes.
             if (r.risked)

@@ -41,6 +41,7 @@ namespace RPGArena.Combat
         public float hitChance;        // the chance we rolled against (shown pre-commit)
         public float staggerBuilt;     // how much stagger this hit added to the target
         public bool comboDetonated;    // this paid hit cashed in a setup (Shatter / Marked) — earns a bonus turn for physical classes too
+        public string synergyNote;     // the combo that fired ("SHATTER!", "Brittle!", "Wet+Physical"...) — presentation shows it as a callout
         public bool risked;            // a risk die was rolled for this hit (the SPECIAL)
         public int riskFace;           // the d20 face (1..20) for the flourish
         public RiskBand riskBand;      // Backfire / Whiff / Normal / Big / Jackpot
