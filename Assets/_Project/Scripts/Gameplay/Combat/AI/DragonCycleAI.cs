@@ -74,8 +74,13 @@ namespace RPGArena.Combat.AI
                 if (h != null && h.IsAlive && !h.Status.Has(RPGArena.Combat.Status.StatusFlag.Stealthed))
                     pickable.Add(h);
             if (pickable.Count == 0) return TargetingSystem.RandomAlive(heroes, ctx.rng);
-            if (ctx.rng.NextDouble() < 0.3) return pickable[ctx.rng.Next(pickable.Count)];
-            return TargetingSystem.LowestHP(pickable);
+            // Positioning: the FRONT line draws the Dragon's single-target aggro; it only reaches the
+            // back row once the front has fallen — so a tank up front shields the squishy casters.
+            var front = new List<Entity>();
+            foreach (var h in pickable) if (!h.backRow) front.Add(h);
+            var pool = front.Count > 0 ? front : pickable;
+            if (ctx.rng.NextDouble() < 0.3) return pool[ctx.rng.Next(pool.Count)];
+            return TargetingSystem.LowestHP(pool);
         }
     }
 }

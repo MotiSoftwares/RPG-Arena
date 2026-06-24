@@ -46,6 +46,11 @@ namespace RPGArena.Combat
         public BattleManager.Outcome Result { get; private set; } = BattleManager.Outcome.InProgress;
 
         private ActionRequest? pendingAction;
+        private bool pendingReposition;          // HUD requested a row swap (front<->back) this turn
+
+        // Set by the presentation layer (JuiceController) to the time the current strike's juice
+        // finishes; the battle loop waits on it so the next turn never starts mid-animation.
+        public static float PresentationBusyUntil;
 
         private void Start() => StartCoroutine(RunBattle());
 
@@ -67,8 +72,12 @@ namespace RPGArena.Combat
         // Convenience for a "pass/defend with no target" action.
         public void SubmitAction(Ability ability) => SubmitAction(ability, null);
 
+        // The HUD calls this when the active hero chooses to reposition (swap front/back row).
+        public void SubmitReposition() { if (ActiveHero != null) pendingReposition = true; }
+
         private IEnumerator RunBattle()
         {
+            PresentationBusyUntil = 0f;
             BuildContext();
 
             // Narrative intro (Ink): if a NarrativeRunner is present, wait for the player's
@@ -123,14 +132,25 @@ namespace RPGArena.Combat
                         }
                         else
                         {
-                            // Player hero: open the action menu and wait for the HUD to submit.
+                            // Player hero: open the action menu and wait for the HUD to submit an
+                            // ability OR a reposition (swap row).
                             ActiveHero = actor;
                             pendingAction = null;
-                            while (pendingAction == null) yield return null;
-                            var req = pendingAction.Value;
-                            used = req.ability; usedTargets = req.targets; cmd = CommandFactory.Build(req);
-                            ActiveHero = null;
-                            pendingAction = null;
+                            pendingReposition = false;
+                            while (pendingAction == null && !pendingReposition) yield return null;
+                            if (pendingReposition)
+                            {
+                                pendingReposition = false;
+                                Reposition(actor);     // spends the turn; cmd stays null so no attack resolves
+                                ActiveHero = null;
+                            }
+                            else
+                            {
+                                var req = pendingAction.Value;
+                                used = req.ability; usedTargets = req.targets; cmd = CommandFactory.Build(req);
+                                ActiveHero = null;
+                                pendingAction = null;
+                            }
                         }
 
                         if (cmd != null)
@@ -145,11 +165,13 @@ namespace RPGArena.Combat
                             if (used != null && used.effectType != EffectType.Attack && used.effectType != EffectType.MultiHit && used.effectType != EffectType.BossMove)
                                 PlayNonDamagingFx(actor, used, usedTargets);
 
-                            // Action economy (§5.5): a weakness hit or crit grants the HERO one
-                            // capped bonus turn (the boss never earns invisible extra turns).
+                            // Action economy (§5.5): ONLY a weakness hit — exploiting the boss's
+                            // element (e.g. Ice on the Dragon) — grants the HERO one capped bonus
+                            // turn. Random crits no longer snowball, so extra turns are a TACTICAL
+                            // reward for correct targeting, not luck. (The boss never earns them.)
                             if (actor.team == Team.Heroes)
                                 foreach (var r in Context.lastActionResults)
-                                    if (r.hit && (r.reaction == ElementReaction.Weak || r.crit))
+                                    if (r.hit && r.reaction == ElementReaction.Weak)
                                     {
                                         // Insert the bonus turn RIGHT AFTER the current actor so the hero
                                         // acts again immediately — before the slow boss — a real
@@ -162,7 +184,7 @@ namespace RPGArena.Combat
                                         break;
                                     }
 
-                            yield return Wait();
+                            yield return WaitForPresentation();
                         }
                     }
                     else
@@ -258,11 +280,13 @@ namespace RPGArena.Combat
 
         private void PlaceCombatants()
         {
-            var bossPos = new Vector3(4.5f, 0f, 1.2f);   // pushed back so the 2D Dragon doesn't dwarf the heroes
+            var bossPos = new Vector3(4.0f, 0f, 0.6f);   // boss anchor (tighter face-off so both party + boss frame well)
             for (int i = 0; i < Context.heroes.Count; i++)
             {
                 var h = Context.heroes[i];
-                h.transform.position = new Vector3(-3.6f + i * 1.5f, 0f, i * 0.4f);   // grouped tighter for the closer frame
+                h.backRow = h.primaryStat != PrimaryStat.STR;                          // STR melee = front line; casters/ranged = back
+                float rowZ = h.backRow ? 1.5f : -0.6f;                                 // formation: back row stands behind the front
+                h.transform.position = new Vector3(-2.5f + i * 1.2f, 0f, rowZ);
                 h.transform.rotation = Quaternion.Euler(0, 90, 0);
                 Vector3 faceBoss = bossPos - h.transform.position; faceBoss.y = 0f;
                 float scale = h.modelPrefab != null ? 1.2f : 1f;     // make the 3D heroes read larger
@@ -275,8 +299,9 @@ namespace RPGArena.Combat
                 Context.boss.transform.position = bossPos;
                 Context.boss.transform.rotation = Quaternion.Euler(0, -90, 0);
                 Vector3 faceHeroes = (Context.heroes.Count > 0 ? Context.heroes[0].transform.position : Vector3.zero) - bossPos; faceHeroes.y = 0f;
-                // Smaller billboard (3.0 vs 3.4) so the 2D Dragon is imposing but not overwhelming next to the heroes.
-                AttachBody(Context.boss.gameObject, Context.boss.modelPrefab, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.0f, 3.0f, 0, faceHeroes);
+                // The dragon looms: auto-scaled to ~6.5 world units tall (≈3.5× the heroes) so the boss
+                // dominates the stage no matter the source model's native size.
+                AttachBody(Context.boss.gameObject, Context.boss.modelPrefab, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.0f, 3.0f, 0, faceHeroes, 1f, 6.5f);
                 var bm = Context.boss.gameObject.AddComponent<CombatantMotion>();
                 bm.lungeDistance = 0.8f;
                 bm.bobAmplitude = Context.boss.modelPrefab != null ? 0f : 0.12f;   // a heavier-feeling 2D boss bobs
@@ -368,7 +393,7 @@ namespace RPGArena.Combat
             }
         }
 
-        private static void AttachBody(GameObject host, GameObject modelPrefab, Sprite sprite, Color color, float width, float height, int order, Vector3 faceDir, float modelScale = 1f)
+        private static void AttachBody(GameObject host, GameObject modelPrefab, Sprite sprite, Color color, float width, float height, int order, Vector3 faceDir, float modelScale = 1f, float targetModelHeight = 0f)
         {
             if (host.transform.Find("Body") != null) return;
 
@@ -388,6 +413,18 @@ namespace RPGArena.Combat
                     : (faceFoe.sqrMagnitude > 0.0001f ? faceFoe.normalized : Vector3.forward);
                 model.transform.rotation = Quaternion.LookRotation(look, Vector3.up);
                 if (modelScale > 0f && !Mathf.Approximately(modelScale, 1f)) model.transform.localScale *= modelScale;
+                // Auto-scale to a target world height (used to make the boss dragon big and looming
+                // regardless of the source model's native size). Measured from the model's renderers.
+                if (targetModelHeight > 0f)
+                {
+                    var rends = model.GetComponentsInChildren<Renderer>();
+                    if (rends.Length > 0)
+                    {
+                        var b = rends[0].bounds;
+                        for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+                        if (b.size.y > 0.001f) model.transform.localScale *= targetModelHeight / b.size.y;
+                    }
+                }
                 model.transform.localPosition = Vector3.zero;   // prefab pivot is already at the feet
                 return;
             }
@@ -441,6 +478,19 @@ namespace RPGArena.Combat
             }
         }
 
+        // Swap a hero between the front and back row mid-battle (the positioning move). Slides the
+        // model to the new row and re-bases its procedural motion so it holds the new spot.
+        private void Reposition(Entity hero)
+        {
+            if (hero == null) return;
+            hero.backRow = !hero.backRow;
+            var p = hero.transform.position;
+            var np = new Vector3(p.x, 0f, hero.backRow ? 1.5f : -0.6f);
+            hero.transform.position = np;
+            hero.GetComponent<CombatantMotion>()?.MoveBase(np);
+            Context.Log($"{hero.displayName} repositions to the {(hero.backRow ? "back" : "front")} row.");
+        }
+
         private List<Entity> All()
         {
             var all = new List<Entity>(Context.heroes);
@@ -463,5 +513,16 @@ namespace RPGArena.Combat
         }
 
         private WaitForSeconds Wait() => new WaitForSeconds(actionDelay);
+
+        // Pace an action by the base beat AND the presentation layer's juice, so the strike's
+        // approach -> impact -> recovery finishes before the next turn. Capped so a stuck flag
+        // (e.g. a missing JuiceController) can never hang the fight.
+        private IEnumerator WaitForPresentation()
+        {
+            yield return Wait();
+            float guard = Time.time + 2.5f;
+            while (Time.time < PresentationBusyUntil && Time.time < guard) yield return null;
+            yield return new WaitForSeconds(0.12f);
+        }
     }
 }

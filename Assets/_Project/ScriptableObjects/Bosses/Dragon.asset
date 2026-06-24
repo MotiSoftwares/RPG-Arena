@@ -17,18 +17,18 @@ MonoBehaviour:
   portrait: {fileID: 21300000, guid: ba594585f0b7b614588e918bd17a7c09, type: 3}
   stageSprite: {fileID: 21300000, guid: ba594585f0b7b614588e918bd17a7c09, type: 3}
   arenaBackdrop: {fileID: 21300000, guid: 7e95ec612b9a70749aebbbda1725dddc, type: 3}
-  modelPrefab: {fileID: 5244573842016957752, guid: 5c34c84c75d89b24fafde53c45b92f3d, type: 3}
+  modelPrefab: {fileID: 130416, guid: 70f277dcf2cdfdd4db7ee0ca76e07767, type: 3}
   primaryStat: 0
   baseStats:
     STR: 24
     DEX: 0
     INT: 0
     LUK: 0
-    maxHP: 980
+    maxHP: 1500
     maxMP: 999
     baseAttack: 26
     baseMagicAttack: 0
-    baseDefense: 14
+    baseDefense: 22
     baseSpeed: 8
     baseAccuracy: 6
     baseEvasion: 0

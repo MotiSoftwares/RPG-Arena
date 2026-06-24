@@ -40,6 +40,10 @@ namespace RPGArena.UI
         private readonly string[] statusSigs = new string[8];   // 0 = boss, 1.. = heroes
         private RectTransform turnOrderRow;
         private string turnOrderSig = "";
+        // Animated "chip-away" bars: each coloured fill has a pale ghost behind it that trails on a
+        // hit (the visible gap is the damage chunk), and both ease toward a target instead of snapping.
+        private readonly Dictionary<Image, Image> ghostOf = new();
+        private readonly Dictionary<Image, float> targetFill = new();
 
         private void Awake()
         {
@@ -72,6 +76,7 @@ namespace RPGArena.UI
         {
             if (controller == null || controller.Context == null) return;
             RefreshBars();
+            AnimateBars();
 
             // (Re)build the action menu when a player hero is awaiting input.
             if (controller.AwaitingInput && controller.ActiveHero != lastMenuHero)
@@ -130,7 +135,7 @@ namespace RPGArena.UI
                 if (i >= ctx.heroes.Count) { partyTexts[i].transform.parent.gameObject.SetActive(false); continue; }
                 var h = ctx.heroes[i];
                 bool active = controller.ActiveHero == h;
-                partyTexts[i].text = $"{(active ? "> " : "")}{h.displayName}  ({h.currentAttunement})";
+                partyTexts[i].text = $"{(active ? "> " : "")}{h.displayName}   [{(h.backRow ? "BACK" : "FRONT")}]";
                 partyTexts[i].color = h.IsAlive ? (active ? Color.yellow : Color.white) : new Color(0.5f, 0.5f, 0.5f);
                 SetFill(partyHpFill[i], h.currentHP, h.stats.maxHP);
                 SetFill(partyMpFill[i], h.currentMP, h.stats.maxMP);
@@ -244,6 +249,9 @@ namespace RPGArena.UI
                     btn.onClick.AddListener(() => controller.SubmitAction(ab, PickTarget(hero, ab)));
                 y += 30f;
             }
+            // Positioning: swap the active hero's row (front <-> back). Spends the turn.
+            var moveBtn = MakeButton(actionPanel, $"↕ Move to {(hero.backRow ? "FRONT" : "BACK")} row", new Vector2(0, -y), true, null);
+            moveBtn.onClick.AddListener(() => controller.SubmitReposition());
         }
 
         // --- helpers ------------------------------------------------------------------
@@ -299,9 +307,29 @@ namespace RPGArena.UI
             if (log) log.text = string.Join("\n", logLines);
         }
 
-        private static void SetFill(Image img, float cur, float max)
+        // Record the bar's target fill; the coloured fill + pale ghost ease toward it in AnimateBars().
+        private void SetFill(Image img, float cur, float max)
         {
-            if (img) img.fillAmount = max > 0 ? Mathf.Clamp01(cur / max) : 0f;
+            if (img) targetFill[img] = max > 0 ? Mathf.Clamp01(cur / max) : 0f;
+        }
+
+        // Drive every bar toward its target (responsive, not the old per-frame snap): the coloured
+        // fill drops quickly on a hit, the pale ghost trails behind to show the lost-HP chunk drain.
+        // Uses unscaled time so the bars keep animating during the hit-stop freeze-frame.
+        private void AnimateBars()
+        {
+            float dt = Time.unscaledDeltaTime;
+            foreach (var kv in targetFill)
+            {
+                var fill = kv.Key; if (fill == null) continue;
+                float t = kv.Value;
+                fill.fillAmount = Mathf.MoveTowards(fill.fillAmount, t, dt * 1.7f);
+                if (ghostOf.TryGetValue(fill, out var ghost) && ghost != null)
+                {
+                    if (ghost.fillAmount > t) ghost.fillAmount = Mathf.MoveTowards(ghost.fillAmount, t, dt * 0.55f);
+                    else ghost.fillAmount = fill.fillAmount;   // healing / refill: ghost rises with the fill
+                }
+            }
         }
 
         // Build the "Weak: Ice • Absorbs: Fire" hint from the boss's element profile.
@@ -336,7 +364,9 @@ namespace RPGArena.UI
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = canvasGo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920, 1080);
+            // Lower reference resolution => the whole HUD renders ~1.5x larger (was rendering tiny).
+            scaler.referenceResolution = new Vector2(1280, 720);
+            scaler.matchWidthOrHeight = 0.5f;
             canvasGo.AddComponent<GraphicRaycaster>();
             var root = canvasGo.GetComponent<RectTransform>();
 
@@ -400,9 +430,14 @@ namespace RPGArena.UI
             var bg = new GameObject("BarBG"); bg.transform.SetParent(parent, false);
             var bgImg = bg.AddComponent<Image>(); bgImg.color = new Color(0, 0, 0, 0.6f);
             var brt = bgImg.rectTransform; brt.anchorMin = brt.anchorMax = anchor; brt.pivot = anchor; brt.anchoredPosition = pos; brt.sizeDelta = size;
+            // Ghost ("chip") layer behind the real fill: a pale bar that trails to reveal lost HP.
+            var gh = new GameObject("BarGhost"); gh.transform.SetParent(bg.transform, false);
+            var ghImg = gh.AddComponent<Image>(); ghImg.color = new Color(1f, 1f, 1f, 0.55f); ghImg.type = Image.Type.Filled; ghImg.fillMethod = Image.FillMethod.Horizontal; ghImg.fillOrigin = 0; ghImg.fillAmount = 1f;
+            var grt = ghImg.rectTransform; grt.anchorMin = Vector2.zero; grt.anchorMax = Vector2.one; grt.offsetMin = Vector2.zero; grt.offsetMax = Vector2.zero;
             var fg = new GameObject("BarFill"); fg.transform.SetParent(bg.transform, false);
             var img = fg.AddComponent<Image>(); img.color = color; img.type = Image.Type.Filled; img.fillMethod = Image.FillMethod.Horizontal; img.fillOrigin = 0; img.fillAmount = 1f;
             var frt = img.rectTransform; frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one; frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero;
+            ghostOf[img] = ghImg; targetFill[img] = 1f;
             return img;
         }
 

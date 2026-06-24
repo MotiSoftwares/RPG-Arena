@@ -21,8 +21,8 @@ MonoBehaviour:
   isMagic: 1
   power: 1.9
   hits: 1
-  mpCost: 12
-  cooldown: 0
+  mpCost: 16
+  cooldown: 2
   mpRegenOnUse: 0
   hitTier: 1
   autoHit: 0

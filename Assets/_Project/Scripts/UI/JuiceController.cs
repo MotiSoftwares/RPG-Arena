@@ -102,44 +102,44 @@ namespace RPGArena.UI
         }
 
         // --- channel handlers ---------------------------------------------------------
+        private static float nextBeat;   // shared timeline so multi-hit impacts play in sequence
+
+        // Presentation is a timed SEQUENCE (anticipation/wind-up + extended recovery): the attacker
+        // approaches + winds up, THEN the spell/impact VFX + damage number + hit-stop land on the
+        // contact beat, THEN the target reacts. The combat loop waits on
+        // BattleController.PresentationBusyUntil so the next turn doesn't start mid-strike.
         private void OnDamage(DamageResult r)
         {
             if (r.target == null) return;
-            Vector3 head = r.target.transform.position + Vector3.up * (r.target.isBoss ? 3.6f : 2.2f);
+            StartCoroutine(AttackBeat(r));
+        }
 
-            string text; Color color; float size;
-            if (!r.hit) { text = "MISS"; color = CResist; size = 26; }
-            else if (r.isHeal || r.absorbed) { text = (r.absorbed ? "ABSORB +" : "+") + r.amount; color = CHeal; size = 30; }
-            else if (r.crit) { text = r.amount + "!"; color = CCrit; size = 44; }
-            else if (r.reaction == ElementReaction.Weak) { text = r.amount + "  WEAK!"; color = CWeak; size = 40; }
-            else if (r.reaction == ElementReaction.Resist) { text = r.amount.ToString(); color = CResist; size = 26; }
-            else { text = r.amount.ToString(); color = CNormal; size = 32; }
+        private IEnumerator AttackBeat(DamageResult r)
+        {
+            // Schedule on a shared timeline so several hits resolved in one frame play one-by-one.
+            float start = Mathf.Max(Time.time, nextBeat);
+            nextBeat = start + 0.24f;
+            BattleController.PresentationBusyUntil = Mathf.Max(BattleController.PresentationBusyUntil, start + 0.75f);
+            float lead = start - Time.time;
+            if (lead > 0f) yield return new WaitForSeconds(lead);
 
-            SpawnFloating(head, text, color, size);
+            TargetAnchors(r.target, r.target.isBoss ? 1.6f : 1.0f, r.target.isBoss ? 3.6f : 2.2f, out Vector3 bodyCenter, out Vector3 head);
+            Vector3 dir = r.source != null ? (r.target.transform.position - r.source.transform.position) : Vector3.forward;
 
-            // Spell VFX at the target: the ability's real effect prefab if authored, else the
-            // procedural elemental burst (green for heals/absorbs).
-            if (r.hit)
+            // APPROACH + WIND-UP: melee attackers dash in; ranged/magic stay put. Play the swing/cast.
+            bool melee = false;
+            if (r.hit && r.source != null)
             {
-                Vector3 vpos = r.target.transform.position + Vector3.up * (r.target.isBoss ? 1.6f : 1.0f);
-                if (r.ability != null && r.ability.vfxPrefab != null)
+                var srcMotion = r.source.GetComponent<Characters.CombatantMotion>();
+                melee = r.ability != null && !r.ability.isMagic
+                        && r.ability.targetRule != TargetRule.AllEnemies
+                        && r.source.team != r.target.team;
+                if (melee && srcMotion != null)
                 {
-                    var fx = Instantiate(r.ability.vfxPrefab, vpos, Quaternion.identity);
-                    Destroy(fx, 4f);
+                    float gap = new Vector2(dir.x, dir.z).magnitude;
+                    srcMotion.DashStrike(dir, Mathf.Max(0.6f, gap - 2.4f));   // RUN in to the foe, strike, run back
                 }
-                else
-                {
-                    SpawnVFX(vpos, (r.isHeal || r.absorbed) ? new Color(0.4f, 1f, 0.5f) : ElementColor(r.element), r.crit ? 52 : 30);
-                }
-            }
-
-            // Procedural motion + rigged-model animation: the attacker lunges + plays Attack;
-            // the target recoils + plays its Hit reaction.
-            if (r.hit && r.source != null && r.target != null)
-            {
-                Vector3 dir = r.target.transform.position - r.source.transform.position;
-                r.source.GetComponent<Characters.CombatantMotion>()?.Lunge(dir);
-                // Pick the attacker's animation from the ability: AoE -> area, magic -> cast, else attack.
+                else srcMotion?.Lunge(dir);
                 var drv = r.source.GetComponentInChildren<Characters.AnimationDriver>();
                 if (drv != null)
                 {
@@ -147,20 +147,69 @@ namespace RPGArena.UI
                     else if (r.ability != null && r.ability.isMagic) drv.PlayCast();
                     else drv.PlayAttack();
                 }
-                if (!r.isHeal && !r.absorbed)
+            }
+
+            // Wind-up window before contact (attacker mid-swing / projectile in flight).
+            yield return new WaitForSeconds(melee ? 0.17f : 0.22f);
+
+            // IMPACT beat: VFX blooms on the target body, damage number pops, hit-stop + shake fire.
+            string text; Color color; float size;
+            if (!r.hit) { text = "MISS"; color = CResist; size = 26; }
+            else if (r.isHeal || r.absorbed) { text = (r.absorbed ? "ABSORB +" : "+") + r.amount; color = CHeal; size = 32; }
+            else if (r.crit) { text = r.amount + "!"; color = CCrit; size = 48; }
+            else if (r.reaction == ElementReaction.Weak) { text = r.amount + "  WEAK!"; color = CWeak; size = 44; }
+            else if (r.reaction == ElementReaction.Resist) { text = r.amount.ToString(); color = CResist; size = 28; }
+            else { text = r.amount.ToString(); color = CNormal; size = 36; }
+            SpawnFloating(head, text, color, size);
+
+            if (r.hit)
+            {
+                // Always spawn a reliable elemental impact BURST on the target body — guarantees a
+                // visible hit even when the ability's authored prefab is a fly-by projectile.
+                Color burstCol = (r.isHeal || r.absorbed) ? new Color(0.4f, 1f, 0.5f) : ElementColor(r.element);
+                SpawnVFX(bodyCenter, burstCol, r.crit ? 64 : 44, r.target.isBoss ? 2.4f : 1.25f);
+                // Layer the ability's authored effect on top (impact/explosion prefabs read strongly here).
+                if (r.ability != null && r.ability.vfxPrefab != null)
                 {
-                    r.target.GetComponent<Characters.CombatantMotion>()?.Recoil(dir);
-                    r.target.GetComponentInChildren<Characters.AnimationDriver>()?.PlayHit();
+                    var fx = Instantiate(r.ability.vfxPrefab, bodyCenter, Quaternion.identity);
+                    fx.transform.localScale *= r.target.isBoss ? 1.6f : 1.25f;
+                    Destroy(fx, 4f);
                 }
             }
 
-            // Impact feedback scales with the hit's weight.
-            if (r.hit && !r.isHeal && !r.absorbed)
+            if (r.hit && !r.isHeal && !r.absorbed && r.source != null)
             {
+                r.target.GetComponent<Characters.CombatantMotion>()?.Recoil(dir);
+                r.target.GetComponentInChildren<Characters.AnimationDriver>()?.PlayHit();
                 HitStop(r.crit ? hitStopCrit : hitStopNormal);
                 shakeAmount = Mathf.Max(shakeAmount, r.crit ? shakeOnCrit : (r.reaction == ElementReaction.Weak ? shakeOnCrit * 0.8f : shakeOnHit));
                 if (r.crit) flashAmount = Mathf.Max(flashAmount, flashOnCrit);
             }
+        }
+
+        // World anchors for presentation on a target: where its spell VFX lands (the model's bounds
+        // centre) and where its damage number floats (just above the model). Measured from the
+        // renderers so both auto-scale with the combatant's size — so effects land ON a much-bigger
+        // boss dragon instead of at its feet. Falls back to fixed offsets when there are no renderers.
+        private static void TargetAnchors(Entity e, float vfxFallbackUp, float textFallbackUp, out Vector3 vfxPos, out Vector3 textPos)
+        {
+            var body = e.transform.Find("Body");
+            if (body != null)
+            {
+                var rends = body.GetComponentsInChildren<Renderer>();
+                if (rends.Length > 0)
+                {
+                    var b = rends[0].bounds;
+                    for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+                    // Bias the VFX up toward the upper torso — the geometric centre sits low on
+                    // bottom-heavy models (e.g. the dragon), which would land effects at its belly.
+                    vfxPos = new Vector3(b.center.x, Mathf.Lerp(b.center.y, b.max.y, 0.45f), b.center.z);
+                    textPos = new Vector3(b.center.x, b.max.y + 0.5f, b.center.z);
+                    return;
+                }
+            }
+            vfxPos = e.transform.position + Vector3.up * vfxFallbackUp;
+            textPos = e.transform.position + Vector3.up * textFallbackUp;
         }
 
         private void OnBreak(Entity boss)
@@ -260,7 +309,7 @@ namespace RPGArena.UI
 
         // A short-lived, self-destroying particle burst tinted to the element. Built in code so it
         // needs no imported VFX assets; uses a soft glow texture on a URP-safe sprite shader.
-        private void SpawnVFX(Vector3 pos, Color color, int count)
+        private void SpawnVFX(Vector3 pos, Color color, int count, float scale = 1f)
         {
             var go = new GameObject("VFX");
             go.transform.position = pos;
@@ -268,34 +317,73 @@ namespace RPGArena.UI
             ps.Stop();
 
             var main = ps.main;
-            main.duration = 0.6f; main.loop = false; main.playOnAwake = false;
-            main.startLifetime = 0.55f; main.startSpeed = 3.2f;
-            main.startSize = 0.45f; main.startColor = color;
-            main.maxParticles = 80; main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.duration = 0.7f; main.loop = false; main.playOnAwake = false;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.3f * scale, 0.6f * scale);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(2.5f * scale, 6.5f * scale);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.18f * scale, 0.5f * scale);
+            main.startColor = color;
+            main.maxParticles = 250; main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.stopAction = ParticleSystemStopAction.Destroy;
-            main.gravityModifier = 0.15f;
+            main.gravityModifier = 0.6f;
 
             var emission = ps.emission;
             emission.rateOverTime = 0f;
             emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)count) });
 
             var shape = ps.shape;
-            shape.shapeType = ParticleSystemShapeType.Sphere; shape.radius = 0.35f;
+            shape.shapeType = ParticleSystemShapeType.Sphere; shape.radius = 0.2f * scale;
 
+            // Bright hot core that cools to the element colour, then fades — gives the hit a "flash".
             var col = ps.colorOverLifetime; col.enabled = true;
             var grad = new Gradient();
             grad.SetKeys(
-                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.5f), new GradientAlphaKey(0f, 1f) });
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.Lerp(color, Color.white, 0.5f), 0.2f), new GradientColorKey(color, 1f) },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.45f), new GradientAlphaKey(0f, 1f) });
             col.color = grad;
 
+            // Pop big on contact, then shrink.
             var sol = ps.sizeOverLifetime; sol.enabled = true;
-            sol.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 1f, 1f, 0.1f));
+            sol.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 1.25f, 1f, 0f));
+
+            // Streaky spark trails for energy.
+            var trails = ps.trails; trails.enabled = true; trails.mode = ParticleSystemTrailMode.PerParticle;
+            trails.lifetime = new ParticleSystem.MinMaxCurve(0.25f); trails.dieWithParticles = true; trails.ratio = 0.7f;
+            trails.widthOverTrail = new ParticleSystem.MinMaxCurve(0.4f); trails.inheritParticleColor = true;
 
             var rend = ps.GetComponent<ParticleSystemRenderer>();
             rend.material = VfxMaterial();
+            rend.trailMaterial = VfxMaterial();
             rend.sortingOrder = 10;
 
+            ps.Play();
+
+            SpawnFlash(pos, color, 1.5f * scale);   // a bright flash disc at the contact point
+        }
+
+        // A short, bright disc that pops then fades — the impact flash that sells the hit.
+        private void SpawnFlash(Vector3 pos, Color color, float size)
+        {
+            var go = new GameObject("Flash");
+            go.transform.position = pos;
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop();
+            var main = ps.main;
+            main.duration = 0.3f; main.loop = false; main.playOnAwake = false;
+            main.startLifetime = 0.18f; main.startSpeed = 0f;
+            main.startSize = size; main.startColor = Color.Lerp(color, Color.white, 0.6f);
+            main.maxParticles = 2; main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.stopAction = ParticleSystemStopAction.Destroy;
+            var emission = ps.emission; emission.rateOverTime = 0f; emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)1) });
+            var shape = ps.shape; shape.enabled = false;
+            var sol = ps.sizeOverLifetime; sol.enabled = true;
+            sol.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.4f, 1f, 1.7f));
+            var col = ps.colorOverLifetime; col.enabled = true;
+            var grad = new Gradient();
+            grad.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(color, 1f) },
+                         new[] { new GradientAlphaKey(0.85f, 0f), new GradientAlphaKey(0f, 1f) });
+            col.color = grad;
+            var rend = ps.GetComponent<ParticleSystemRenderer>();
+            rend.material = VfxMaterial(); rend.sortingOrder = 11;
             ps.Play();
         }
 

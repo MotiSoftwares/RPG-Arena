@@ -58,6 +58,8 @@ namespace RPGArena.Core
         public float accuracyToPercent = 0.01f;
         [Tooltip("Incoming damage multiplier while the target is Defending.")]
         public float defendDamageMult = 0.5f;
+        [Tooltip("Positioning: damage a BACK-ROW hero takes from a single-target physical (melee) blow.")]
+        public float backRowMeleeMult = 0.55f;
 
         [Header("MP economy")]
         [Tooltip("Flat MP regenerated at the start of every turn, so refueling is a baseline — not something you must farm by spamming free basics. Decouples the MP faucet from damage.")]

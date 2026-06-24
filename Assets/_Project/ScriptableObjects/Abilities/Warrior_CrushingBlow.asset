@@ -22,7 +22,7 @@ MonoBehaviour:
   power: 2.5
   hits: 1
   mpCost: 25
-  cooldown: 4
+  cooldown: 5
   mpRegenOnUse: 0
   hitTier: 2
   autoHit: 0

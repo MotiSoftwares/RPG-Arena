@@ -90,6 +90,13 @@ namespace RPGArena.Combat
             float def = tgt != null ? tgt.Defense * (1f - pierce) : 0f;
             dmg *= (1f - def / (def + cfg.defenseK));
 
+            // 4b) POSITIONING: a BACK-ROW hero is shielded from single-target PHYSICAL (melee) blows —
+            //     the front line takes the brunt. AoE and ranged/magic ignore rows (so turtling the
+            //     whole party in the back still gets punished by the Dragon's Flame Breath AoE).
+            if (tgt != null && tgt.backRow && !info.isMagic
+                && info.ability != null && info.ability.targetRule == TargetRule.SingleEnemy)
+                dmg *= cfg.backRowMeleeMult;
+
             // 5) STAGGER multiplier while the target is Broken — the burst window.
             if (tgt != null && tgt.isStaggered) dmg *= cfg.staggerDamageMult;
 

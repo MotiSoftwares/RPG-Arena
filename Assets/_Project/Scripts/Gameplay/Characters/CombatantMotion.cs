@@ -22,6 +22,7 @@ namespace RPGArena.Characters
         private Vector3 offset;          // current lunge/recoil offset (springs back to zero)
         private float bobPhase;
         private bool ready;
+        private bool dashing;            // a scripted run-in is driving the offset (skip auto-springback)
 
         private void Start()
         {
@@ -37,16 +38,48 @@ namespace RPGArena.Characters
             bobPhase += Time.deltaTime * bobSpeed;
             float bob = Mathf.Sin(bobPhase) * bobAmplitude;
             // Ease the lunge/recoil offset back to rest (unscaled so hit-stop doesn't freeze it odd).
-            offset = Vector3.Lerp(offset, Vector3.zero, Mathf.Clamp01(Time.unscaledDeltaTime * springback));
+            // While a scripted melee run-in (DashStrike) owns the offset, don't fight it.
+            if (!dashing) offset = Vector3.Lerp(offset, Vector3.zero, Mathf.Clamp01(Time.unscaledDeltaTime * springback));
             body.position = baseWorldPos + new Vector3(0f, bob, 0f) + offset;
         }
 
+        // Re-anchor the procedural motion to a new world spot (used when a hero repositions rows).
+        public void MoveBase(Vector3 worldPos) { baseWorldPos = worldPos; }
+
         // Snap toward a world direction, then spring back — a strike.
-        public void Lunge(Vector3 worldDir)
+        public void Lunge(Vector3 worldDir) => Lunge(worldDir, lungeDistance);
+
+        // Snap a chosen distance toward a world direction, then spring back. A large distance turns
+        // the small in-place lunge into a melee "dash in, strike, dash back" toward the foe.
+        public void Lunge(Vector3 worldDir, float distance)
         {
             if (!ready) return;
             worldDir.y = 0f;
-            offset = worldDir.sqrMagnitude > 0.0001f ? worldDir.normalized * lungeDistance : Vector3.zero;
+            offset = worldDir.sqrMagnitude > 0.0001f ? worldDir.normalized * distance : Vector3.zero;
+        }
+
+        // A melee approach: run a chosen distance toward the foe, HOLD briefly for the strike, then
+        // run back. Reads as "charge in and hit" (vs the in-place lunge). Ignored if a run is already
+        // in progress so a multi-hit flurry doesn't restart it every frame.
+        public void DashStrike(Vector3 worldDir, float distance)
+        {
+            if (!ready || dashing) return;
+            worldDir.y = 0f;
+            if (worldDir.sqrMagnitude < 0.0001f) { Lunge(worldDir, distance); return; }
+            StartCoroutine(DashRoutine(worldDir.normalized * distance));
+        }
+
+        private System.Collections.IEnumerator DashRoutine(Vector3 target)
+        {
+            dashing = true;
+            float t = 0f;
+            while (t < 0.12f) { t += Time.deltaTime; offset = Vector3.Lerp(Vector3.zero, target, t / 0.12f); yield return null; }
+            offset = target;
+            yield return new WaitForSeconds(0.16f);                 // strike hold (impact lands here)
+            Vector3 from = offset; t = 0f;
+            while (t < 0.2f) { t += Time.deltaTime; offset = Vector3.Lerp(from, Vector3.zero, t / 0.2f); yield return null; }
+            offset = Vector3.zero;
+            dashing = false;
         }
 
         // Knock back away from the attacker — a flinch.

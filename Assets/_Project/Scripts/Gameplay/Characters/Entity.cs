@@ -23,6 +23,9 @@ namespace RPGArena.Characters
         public Team team = Team.Heroes;
         public bool isBoss;
         public PrimaryStat primaryStat = PrimaryStat.STR;
+        // Positioning / row tactics: a BACK-ROW hero is shielded from single-target melee but still
+        // caught by AoE; the FRONT row (melee/STR) draws the boss's single-target aggro.
+        public bool backRow;
 
         [Header("Runtime state")]
         public StatBlock stats;                 // a COPY, never the definition's block
