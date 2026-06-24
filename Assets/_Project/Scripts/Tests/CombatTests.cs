@@ -226,6 +226,41 @@ namespace RPGArena.Tests
             TestUtil.Destroy(src, tgt);
         }
 
+        // --- Searing Fury (boss escalation vented by Break) --------------------------
+        [Test]
+        public void Boss_Searing_Fury_Escalates_Outgoing_Damage()
+        {
+            var cfg = TestUtil.Cfg();
+            var dragon = TestUtil.Make(cfg, new StatBlock { STR = 24, baseAttack = 30, maxHP = 9999 }, isBoss: true, primary: PrimaryStat.STR);
+            var hero = TestUtil.Make(cfg, new StatBlock { maxHP = 9999 });
+
+            dragon.rageStacks = 0;
+            var calm = DamagePipeline.ComputePure(Phys(dragon, hero), cfg, 0f, 1f, 1f);
+            dragon.rageStacks = 5;
+            var furious = DamagePipeline.ComputePure(Phys(dragon, hero), cfg, 0f, 1f, 1f);
+
+            Assert.Greater(furious.amount, calm.amount, "Fury must raise the boss's outgoing damage.");
+            Assert.AreEqual(calm.amount * (1f + 5 * cfg.rageDamagePerStack), furious.amount, calm.amount * 0.03f,
+                "5 Fury stacks should scale damage by ~1.30x.");
+            TestUtil.Destroy(dragon, hero);
+        }
+
+        [Test]
+        public void Break_Vents_The_Boss_Fury_To_Zero()
+        {
+            var cfg = TestUtil.Cfg();
+            var ctx = TestUtil.MiniCtx(cfg);
+            var dragon = TestUtil.Make(cfg, new StatBlock { maxHP = 9999 }, isBoss: true);
+            dragon.staggerThreshold = 50f;
+            ctx.boss = dragon;
+            dragon.rageStacks = 7;
+
+            ctx.stagger.Build(dragon, 50f, ctx);   // crosses the threshold -> Break
+            Assert.IsTrue(dragon.isStaggered, "Building past the threshold must Break the boss.");
+            Assert.AreEqual(0, dragon.rageStacks, "A Break must VENT the boss's Searing Fury back to zero.");
+            TestUtil.Destroy(dragon);
+        }
+
         // --- helpers -----------------------------------------------------------------
         private static DamageInfo Info(Entity src, Entity tgt, ElementType e) => new DamageInfo
         {

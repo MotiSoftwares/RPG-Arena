@@ -43,7 +43,8 @@ namespace RPGArena.UI
         static readonly Color MpBlue   = new Color(0.34f, 0.56f, 0.96f);
         static readonly Color Track    = new Color(0f, 0f, 0f, 0.55f);
 
-        private TMP_Text bossName, bossHpText, log, telegraph, bossWeakness, bossStaggerText, coachCaption, valorText, menuTitle;
+        private TMP_Text bossName, bossHpText, log, telegraph, bossWeakness, bossStaggerText, coachCaption, valorText, menuTitle, bossFuryText;
+        private GameObject bossFuryPanel;
         private bool coachDone;
         private Image bossHpFill, bossStaggerFill, valorFill;
         private GameObject telegraphPanel, coachPanel;
@@ -164,6 +165,23 @@ namespace RPGArena.UI
                 if (bossWeakness != null)
                     bossWeakness.text = (weaknessSeen || ctx.weaknessRevealed) ? FormatWeakness(ctx.boss) : "<color=#7A8398>study the dragon to reveal its weakness</color>";
                 RefreshStatusRow(bossStatusRow, ctx.boss, 0, true);
+
+                // Searing Fury: the escalating-damage warning that makes Break essential.
+                int rage = ctx.boss.rageStacks;
+                if (bossFuryPanel != null)
+                {
+                    bool show = rage > 0 && !ctx.boss.isStaggered;
+                    if (bossFuryPanel.activeSelf != show) bossFuryPanel.SetActive(show);
+                    if (show && bossFuryText != null)
+                    {
+                        float pct = rage * (controller.balance != null ? controller.balance.rageDamagePerStack : 0.06f) * 100f;
+                        float hot = Mathf.Clamp01(rage / 8f);   // redder + pulsing as it climbs
+                        Color c = Color.Lerp(new Color(1f, 0.72f, 0.36f), new Color(1f, 0.30f, 0.20f), hot);
+                        if (hot > 0.6f) c = Color.Lerp(c, Color.white, Mathf.PingPong(Time.unscaledTime * 5f, 1f) * 0.5f);
+                        bossFuryText.color = c;
+                        bossFuryText.text = $"SEARING FURY  ×{rage}    +{pct:0}% DMG";
+                    }
+                }
 
                 bool charging = ctx.boss.telegraphedAbility != null;
                 if (!charging && telegraphPanel != null && telegraphPanel.activeSelf) HideTelegraphNow();
@@ -530,6 +548,13 @@ namespace RPGArena.UI
             Place(bossWeakness, new Vector2(0, -104), new Vector2(700, 20));
             // boss status badges
             bossStatusRow = MakeRow(root, new Vector2(0.5f, 1f), new Vector2(0, -126), new Vector2(720, 26));
+
+            // Searing Fury pill (top-right of the boss panel): the escalating-damage warning. Hidden at
+            // 0 stacks; glows hotter as it climbs so "BREAK it to vent" reads at a glance.
+            bossFuryPanel = MakePanel(root, new Vector2(0.5f, 1f), new Vector2(214, -18), new Vector2(270, 26), new Color(0.35f, 0.10f, 0.04f, 0.92f));
+            bossFuryText = MakeText(bossFuryPanel.GetComponent<RectTransform>(), "", fontHeader, 13, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);
+            Stretch(bossFuryText, 6, 2, 6, 2); bossFuryText.color = new Color(1f, 0.6f, 0.3f);
+            bossFuryPanel.SetActive(false);
 
             // telegraph banner (rarely shown — boss attacks every turn now, but kept for the charged variant)
             telegraphPanel = MakePanel(root, new Vector2(0.5f, 1f), new Vector2(0, -150), new Vector2(760, 38), new Color(0.55f, 0.06f, 0.06f, 0.94f));

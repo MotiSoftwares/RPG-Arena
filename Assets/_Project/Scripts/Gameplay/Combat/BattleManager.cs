@@ -137,7 +137,18 @@ namespace RPGArena.Combat
         {
             actor.TickEndOfTurn();
             if (actor.team == Characters.Team.Heroes) ctx.charge?.ConsumeHeroTurn(ctx);   // count down an active Overdrive (null-safe)
+            if (actor.isBoss) GainBossFury(actor);
             ctx.RaiseTurnEnded(actor);
+        }
+
+        // Searing Fury: the boss escalates each of its turns (vented to 0 by a Break). Shared by the
+        // headless loop here and the live BattleController so the mechanic is identical in tests + game.
+        private void GainBossFury(Entity boss)
+        {
+            int before = boss.rageStacks;
+            boss.rageStacks = System.Math.Min(boss.rageStacks + 1, ctx.balance.rageMaxStacks);
+            if (boss.rageStacks > before)
+                ctx.Log($"    {boss.displayName}'s Searing Fury rises to {boss.rageStacks} (+{boss.rageStacks * ctx.balance.rageDamagePerStack * 100f:0}% damage — BREAK it to vent!)");
         }
 
         // Boss phase transitions (enrage at HP thresholds, §7.1). For M1 the DragonCycleAI

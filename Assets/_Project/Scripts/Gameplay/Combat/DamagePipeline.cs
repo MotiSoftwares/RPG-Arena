@@ -69,10 +69,13 @@ namespace RPGArena.Combat
                 return r;
             }
 
-            // 2) BASE DAMAGE: offense stat × ability power × variance roll × enrage multiplier.
+            // 2) BASE DAMAGE: offense stat × ability power × variance roll × enrage multiplier × Fury.
+            //    Searing Fury (boss only) stacks each of its turns and is vented on Break, so an
+            //    un-Broken dragon's damage escalates — the pressure that punishes ignoring the meter.
             float offense = src != null ? (info.isMagic ? src.MagicAttack : src.Attack) : 0f;
+            float furyMult = (src != null && src.rageStacks > 0) ? (1f + src.rageStacks * cfg.rageDamagePerStack) : 1f;
             float dmg = offense * Mathf.Max(0f, info.basePower) * damageRoll
-                      * (src != null ? src.damageOutMultiplier : 1f);
+                      * (src != null ? src.damageOutMultiplier : 1f) * furyMult;
 
             // 3) ELEMENT modifier. Absorb (negative sentinel) flips the hit into a heal.
             var reaction = (tgt != null && tgt.elementProfile != null)

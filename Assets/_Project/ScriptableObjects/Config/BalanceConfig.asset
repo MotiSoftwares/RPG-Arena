@@ -49,6 +49,8 @@ MonoBehaviour:
   riskBigDamageMult: 1.5
   riskJackpotDamageMult: 2
   riskSelfRecoilPct: 0.12
+  rageDamagePerStack: 0.06
+  rageMaxStacks: 12
   valorMax: 100
   valorPerPlainHit: 2
   valorPerComboHit: 18

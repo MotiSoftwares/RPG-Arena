@@ -80,6 +80,13 @@ namespace RPGArena.Core
         [Tooltip("SelfRecoil backfire: caster takes this fraction of the would-be damage as self-damage.")]
         public float riskSelfRecoilPct = 0.12f;
 
+        [Header("Boss Searing Fury (escalation vented by Break)")]
+        // The boss gains one Fury stack each of its turns; every stack raises its OUTGOING damage by
+        // rageDamagePerStack. Breaking the boss vents ALL stacks back to zero. So a party that never
+        // builds the Break meter watches the dragon's damage run away — the anti-spam pressure valve.
+        public float rageDamagePerStack = 0.06f;   // +6% boss damage per Fury stack
+        public int rageMaxStacks = 12;             // cap (+72% at full) so it ramps, not one-shots
+
         [Header("Party Valor / Overdrive (the reliable charge win-path)")]
         public float valorMax = 100f;
         // Valor accrues from COORDINATION (combos/setups/support) far faster than from spam, so the

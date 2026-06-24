@@ -49,6 +49,12 @@ namespace RPGArena.Characters
         // single-target attacks focus the biggest damage-dealer (recorded in DamagePipeline.Apply).
         public readonly System.Collections.Generic.Dictionary<Entity, float> threatFrom = new();
 
+        // Searing Fury (boss only): a stacking outgoing-damage escalation gained each of the boss's
+        // turns and VENTED to zero whenever it is Broken. Makes Break a "use it or lose it" pressure
+        // valve — ignore the Break meter and the dragon's damage runs away; spamming basics (which
+        // barely build stagger) can't keep the Fury in check, so you must combo/break to survive.
+        public int rageStacks;
+
         [Header("Stagger (bosses)")]
         public float staggerMeter;
         public float staggerThreshold = 100f;
@@ -104,6 +110,8 @@ namespace RPGArena.Characters
             ConsecutiveMisses = 0;
             aiCycleIndex = 0;
             telegraphedAbility = null;
+            rageStacks = 0;
+            threatFrom.Clear();
             currentAttunement = ElementType.Ice;
         }
 

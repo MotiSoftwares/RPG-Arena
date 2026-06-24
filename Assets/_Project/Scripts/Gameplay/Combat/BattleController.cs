@@ -196,6 +196,11 @@ namespace RPGArena.Combat
 
                     actor.TickEndOfTurn();
                     if (actor.team == Team.Heroes) Context.charge?.ConsumeHeroTurn(Context);   // count down an active Overdrive surge
+                    if (actor.isBoss)   // Searing Fury escalates each boss turn; a Break vents it (StaggerSystem)
+                    {
+                        actor.rageStacks = Mathf.Min(actor.rageStacks + 1, balance.rageMaxStacks);
+                        Context.Log($"    {actor.displayName}'s Searing Fury rises to {actor.rageStacks} (+{actor.rageStacks * balance.rageDamagePerStack * 100f:0}% damage — BREAK it to vent!)");
+                    }
                     onTurnEnded?.Raise(actor);
                     CheckDeaths();
                     Context.boss?.CheckPhaseTransition(Context);

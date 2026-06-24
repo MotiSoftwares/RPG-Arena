@@ -18,6 +18,11 @@ namespace RPGArena.Combat.Demo
         public static string Run(int seed = 12345, bool echoToConsole = false)
         {
             var cfg = ScriptableObject.CreateInstance<BalanceConfig>();   // default tuning values
+            // Searing Fury is the 3-hero-fight pressure valve (escalate-unless-Broken). This solo-Mage
+            // smoke test only verifies the Break / weakness / fire-absorb systems FIRE, so switch Fury
+            // off here — otherwise one hero can't out-pace the escalation to ever land a Break. Fury is
+            // covered by PartyTrioTests (the gate) and BossFuryTests.
+            cfg.rageDamagePerStack = 0f;
 
             // --- Status effects -------------------------------------------------------
             var frozen = MakeStatus("Frozen", StatusKind.Control, StatusFlag.Frozen, 1, skipsTurn: true);
