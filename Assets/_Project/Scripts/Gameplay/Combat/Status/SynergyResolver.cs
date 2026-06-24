@@ -45,10 +45,14 @@ namespace RPGArena.Combat.Status
                 outcome.note = "Wet+Ice (Freeze)";
             }
 
-            // Frozen + Physical => SHATTER: a big bonus, completing Wet->Ice(freeze)->smash (§5.8/§7.2).
+            // Frozen + Physical => SHATTER: the party's highest-ceiling line, completing the
+            // 3-action Wet -> Ice(freeze) -> smash combo (§5.8/§7.2). It must out-damage simply
+            // casting Ice three times (each ×1.5 + a bonus turn), so it both BURSTS hard (×2.3) and
+            // slams the Break meter (+stagger) — the payoff for coordinating three heroes.
             if (targetStatus.Has(StatusFlag.Frozen) && element == ElementType.Physical)
             {
-                outcome.damageMultiplier *= 1.6f;
+                outcome.damageMultiplier *= 2.3f;
+                outcome.bonusStaggerBuild += 25f;
                 outcome.note = string.IsNullOrEmpty(outcome.note) ? "SHATTER!" : outcome.note + " +SHATTER!";
             }
 

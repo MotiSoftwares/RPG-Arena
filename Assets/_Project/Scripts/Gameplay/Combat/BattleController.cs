@@ -165,24 +165,20 @@ namespace RPGArena.Combat
                             if (used != null && used.effectType != EffectType.Attack && used.effectType != EffectType.MultiHit && used.effectType != EffectType.BossMove)
                                 PlayNonDamagingFx(actor, used, usedTargets);
 
-                            // Action economy (§5.5): ONLY a weakness hit — exploiting the boss's
-                            // element (e.g. Ice on the Dragon) — grants the HERO one capped bonus
-                            // turn. Random crits no longer snowball, so extra turns are a TACTICAL
-                            // reward for correct targeting, not luck. (The boss never earns them.)
-                            if (actor.team == Team.Heroes)
-                                foreach (var r in Context.lastActionResults)
-                                    if (r.hit && r.reaction == ElementReaction.Weak)
-                                    {
-                                        // Insert the bonus turn RIGHT AFTER the current actor so the hero
-                                        // acts again immediately — before the slow boss — a real
-                                        // press-turn snowball (was queued at the tail, behind the boss).
-                                        if (Context.turns.CanGrantExtra(actor))
-                                        {
-                                            order.Insert(orderIndex + 1, actor);
-                                            Context.Log($"    +1 MORE! {actor.displayName} seizes another action.");
-                                        }
-                                        break;
-                                    }
+                            // Action economy (§5.5): ONLY a PAID weakness hit — exploiting the boss's
+                            // element (e.g. Ice Lance on the Dragon) — grants the HERO one capped bonus
+                            // turn. The free 0-MP basic can't farm a turn every round and random crits
+                            // never snowball, so extra turns are a TACTICAL reward for spending to hit
+                            // the weakness, not luck. Single shared rule — see TurnSystem.EarnsExtraTurn.
+                            if (actor.team == Team.Heroes
+                                && TurnSystem.EarnsExtraTurn(used, Context.lastActionResults)
+                                && Context.turns.CanGrantExtra(actor))
+                            {
+                                // Insert the bonus turn RIGHT AFTER the current actor so the hero acts
+                                // again immediately — before the slow boss — a real press-turn snowball.
+                                order.Insert(orderIndex + 1, actor);
+                                Context.Log($"    +1 MORE! {actor.displayName} seizes another action.");
+                            }
 
                             yield return WaitForPresentation();
                         }

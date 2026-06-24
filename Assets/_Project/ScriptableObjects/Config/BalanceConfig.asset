@@ -15,7 +15,7 @@ MonoBehaviour:
   weakMult: 1.5
   resistMult: 0.5
   defenseK: 100
-  staggerDamageMult: 1.5
+  staggerDamageMult: 1.85
   staggerBuildNormalHit: 8
   staggerBuildWeaknessHit: 20
   staggerBuildBreakSkill: 30
@@ -38,4 +38,5 @@ MonoBehaviour:
   missStreakCap: 2
   accuracyToPercent: 0.01
   defendDamageMult: 0.5
-  mpRegenPerTurn: 4
+  backRowMeleeMult: 0.55
+  mpRegenPerTurn: 5

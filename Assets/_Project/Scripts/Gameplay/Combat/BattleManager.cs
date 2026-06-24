@@ -36,8 +36,8 @@ namespace RPGArena.Combat
                     TurnStart(actor);
                     if (actor.CanAct)
                     {
-                        var cmd = Decide(actor);            // AwaitInput / EnemyDecision (brains in M1)
-                        if (cmd != null) ResolveAction(actor, cmd, order);
+                        var cmd = Decide(actor, out var used);   // AwaitInput / EnemyDecision (brains in M1)
+                        if (cmd != null) ResolveAction(actor, cmd, used, order);
                         else ctx.Log($"  {actor.displayName} has no affordable action — passes.");
                     }
                     else
@@ -79,12 +79,14 @@ namespace RPGArena.Combat
         }
 
         // AwaitInput / EnemyDecision: in M1 every combatant decides via its brain.
-        private ICommand Decide(Entity actor)
+        private ICommand Decide(Entity actor, out Ability used)
         {
+            used = null;
             if (actor.Brain == null) return null;
             var opponents = actor.team == Team.Heroes ? new List<Entity> { ctx.boss } : ctx.heroes;
             var ability = actor.Brain.DecideAction(ctx, actor, opponents, out var target);
             if (ability == null) return null;
+            used = ability;
             var targets = ResolveTargets(actor, ability, target, opponents);
             return CommandFactory.Build(new ActionRequest(ability, actor, targets));
         }
@@ -109,19 +111,18 @@ namespace RPGArena.Combat
             }
         }
 
-        private void ResolveAction(Entity actor, ICommand cmd, Queue<Entity> order)
+        private void ResolveAction(Entity actor, ICommand cmd, Ability used, Queue<Entity> order)
         {
             ctx.lastActionResults.Clear();
             ctx.Log($"  {cmd.DescribeForLog()}");
             cmd.Resolve(ctx);
 
-            // Action economy (§5.5): a weakness hit or a crit grants one capped "1 More".
-            bool weaknessOrCrit = false;
-            foreach (var r in ctx.lastActionResults)
-                if (r.hit && (r.reaction == ElementReaction.Weak || r.crit)) { weaknessOrCrit = true; break; }
-            // Hero-only (the boss never earns invisible extra turns, §5.5).
-            if (actor.team == Characters.Team.Heroes && weaknessOrCrit && ctx.turns.TryGrantExtraTurn(actor, order))
-                ctx.Log($"    +1 MORE! {actor.displayName} earns a bonus turn (weakness/crit).");
+            // Action economy (§5.5): a PAID weakness hit grants one capped "1 More" (hero-only,
+            // the boss never earns invisible extra turns). Single shared rule — see TurnSystem.
+            if (actor.team == Characters.Team.Heroes
+                && TurnSystem.EarnsExtraTurn(used, ctx.lastActionResults)
+                && ctx.turns.TryGrantExtraTurn(actor, order))
+                ctx.Log($"    +1 MORE! {actor.displayName} earns a bonus turn (weakness).");
         }
 
         private void CheckDeaths()

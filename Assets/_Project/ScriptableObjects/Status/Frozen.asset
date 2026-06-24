@@ -17,7 +17,7 @@ MonoBehaviour:
   tint: {r: 1, g: 1, b: 1, a: 1}
   kind: 4
   flag: 4
-  durationTurns: 1
+  durationTurns: 2
   stacks: 0
   maxStacks: 1
   perTurnPercentMaxHP: 0

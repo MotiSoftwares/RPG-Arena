@@ -53,5 +53,18 @@ namespace RPGArena.Combat
             extraTurnsThisRound[e] = used + 1;
             return true;
         }
+
+        // THE single rule for earning a "1 More" bonus turn (§5.5), shared by the headless
+        // (BattleManager) and live (BattleController) loops so they can never drift apart:
+        // a hero earns it ONLY when a PAID action (mpCost > 0) lands a WEAKNESS hit. The free
+        // 0-MP basic therefore can't farm a turn every round, and random crits never snowball —
+        // exploiting the boss's element with a real resource cost is the deliberate tactical reward.
+        public static bool EarnsExtraTurn(Ability used, List<DamageResult> results)
+        {
+            if (used == null || used.mpCost <= 0 || results == null) return false;
+            foreach (var r in results)
+                if (r.hit && r.reaction == ElementReaction.Weak) return true;
+            return false;
+        }
     }
 }
