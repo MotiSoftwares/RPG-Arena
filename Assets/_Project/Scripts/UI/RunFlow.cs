@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using RPGArena.Core;
 using RPGArena.Combat;
 
@@ -18,7 +19,8 @@ namespace RPGArena.UI
         [Header("Content")]
         public List<BoonDefinition> boonRoster = new();
 
-        private Font font;
+        [SerializeField] private TMP_FontAsset uiFont;   // SlimUI Poppins-Bold SDF (wired in scene); falls back to TMP default
+        private TMP_FontAsset font;
         private Canvas canvas;
         private RectTransform root;
         private GameObject overlay;
@@ -26,7 +28,7 @@ namespace RPGArena.UI
 
         private void Awake()
         {
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            font = uiFont != null ? uiFont : TMP_Settings.defaultFontAsset;
             controller = FindFirstObjectByType<BattleController>();
             EnsureEventSystem();
             BuildCanvas();
@@ -132,11 +134,11 @@ namespace RPGArena.UI
         // A rotating gameplay tip on the defeat screen (layered onboarding, §13.4 / E.4).
         private static readonly string[] Tips =
         {
-            "Tip: Exploit the boss's WEAKNESS — and never use the element it absorbs.",
-            "Tip: Build the Stagger bar and Break the boss during its telegraphed charge to cancel the big hit.",
-            "Tip: Set up combos — Oil then Fire, or Wet then Ice to Freeze, then smash for a Shatter bonus.",
-            "Tip: Defend, Dark Sight, or Magic Guard the turn a boss telegraphs a nuke.",
-            "Tip: A Broken boss loses its armour — physical parties get a real payoff in the Break window.",
+            "Tip: Exploit the boss's WEAKNESS (Ice on the Dragon) — and never use the element it ABSORBS (Fire heals it!).",
+            "Tip: The dragon's SEARING FURY grows every turn it goes un-Broken — BREAK it to vent the rage, or be overwhelmed.",
+            "Tip: Combo across classes — Wet (Thief) then Ice (Mage) to FREEZE, then a physical hit to SHATTER for huge damage.",
+            "Tip: Mark the boss (Thief/Archer) then Freeze it — a Marked + Frozen target is BRITTLE and crits hard.",
+            "Tip: Spamming your basic attack can't win — you'll die first. Combo, Break, and charge Valor for an OVERDRIVE surge.",
         };
         private int tipIndex;
         private string RandomTip() => Tips[(tipIndex++) % Tips.Length];
@@ -206,11 +208,22 @@ namespace RPGArena.UI
             return btn;
         }
 
-        private Text Text(RectTransform parent, string content, Vector2 anchor, Vector2 size, int fontSize, TextAnchor align)
+        private static TextAlignmentOptions MapAlign(TextAnchor a) => a switch
+        {
+            TextAnchor.UpperLeft => TextAlignmentOptions.TopLeft,
+            TextAnchor.UpperCenter => TextAlignmentOptions.Top,
+            TextAnchor.UpperRight => TextAlignmentOptions.TopRight,
+            TextAnchor.MiddleLeft => TextAlignmentOptions.MidlineLeft,
+            TextAnchor.MiddleRight => TextAlignmentOptions.MidlineRight,
+            _ => TextAlignmentOptions.Center
+        };
+
+        private TMP_Text Text(RectTransform parent, string content, Vector2 anchor, Vector2 size, int fontSize, TextAnchor align)
         {
             var go = new GameObject("Text"); go.transform.SetParent(parent, false);
-            var t = go.AddComponent<Text>(); t.font = font; t.text = content; t.fontSize = fontSize; t.alignment = align; t.color = Color.white;
-            t.horizontalOverflow = HorizontalWrapMode.Wrap; t.verticalOverflow = VerticalWrapMode.Overflow;
+            var t = go.AddComponent<TextMeshProUGUI>();
+            t.font = font; t.text = content; t.fontSize = fontSize; t.alignment = MapAlign(align); t.color = Color.white;
+            t.richText = true; t.raycastTarget = false; t.enableWordWrapping = true; t.overflowMode = TextOverflowModes.Overflow;
             var rt = t.rectTransform; rt.anchorMin = rt.anchorMax = anchor; rt.pivot = anchor; rt.anchoredPosition = Vector2.zero; rt.sizeDelta = size;
             return t;
         }

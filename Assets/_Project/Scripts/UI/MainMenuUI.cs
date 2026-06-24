@@ -17,7 +17,7 @@ namespace RPGArena.UI
         {
             ("Warrior", "TANK — soaks hits and TAUNTS the boss off your casters; breaks it with big physical finishers."),
             ("Mage", "MAGE — the ONLY hero who can exploit a boss's elemental WEAKNESS (the core mechanic) — and your healer."),
-            ("Thief", "SETUP — Oil / Wet / Mark to enable cross-class combos; high crit; vanish with Dark Sight."),
+            ("Thief", "SETUP — Wet / Mark to enable cross-class combos (Wet+Ice = Freeze); high crit; vanish with Dark Sight."),
             ("Archer", "RANGED — never misses; Puppet decoy to peel; Arrow Rain hits the whole field."),
         };
 
@@ -121,7 +121,7 @@ namespace RPGArena.UI
             sub.color = new Color(0.85f, 0.85f, 0.9f); AddOutline(sub.gameObject, new Color(0, 0, 0, 0.8f), 2);
             MenuButton(mp, "Play", 0.56f, () => ShowSelect());
             MenuButton(mp, "How to Play", 0.47f, () => ShowInfo("HOW TO PLAY",
-                "Pick 3 of 4 heroes. Read the boss: exploit its WEAKNESS (don't use what it absorbs!),\nset up cross-class combos (Oil+Fire, Wet+Ice/Lightning, Mark), and build the STAGGER bar.\nBreak the boss during its telegraphed charge to cancel the attack, then unload in the window.\nStrong attacks can miss — the action menu shows each move's hit %. Click an ability to act."));
+                "Pick 3 of 4 heroes. Read the boss: exploit its WEAKNESS (Ice), never use what it ABSORBS (Fire heals it!).\nSpamming basics can't win — set up cross-class combos: Wet (Thief) -> Ice (Mage) = FREEZE, then a physical\nhit = SHATTER. Mark + Freeze = BRITTLE crits. Build the STAGGER bar and BREAK the dragon to VENT its\nSearing Fury (its damage grows every turn you don't). Charge VALOR for an OVERDRIVE surge. Strong attacks\ncan miss — the menu shows each move's hit %. Click an ability to act."));
             MenuButton(mp, "Settings", 0.38f, ShowSettings);
             MenuButton(mp, "Credits", 0.29f, () => ShowInfo("CREDITS",
                 "Arena of the Algorithms — a student software-engineering project.\nBuilt with Unity 6.3 (URP). SFX: ElevenLabs. Art: Pollinations. 3D: Tripo. Narrative: Ink.\nMade with AI assistance (Claude Code + Unity MCP)."));

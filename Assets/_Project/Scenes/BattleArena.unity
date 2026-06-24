@@ -196002,6 +196002,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9a5e8efc7bebc1f43a88506456f14889, type: 2}
   - {fileID: 11400000, guid: 641ae4a51a3d8c241b989821a9e27df1, type: 2}
   - {fileID: 11400000, guid: 1cc5d82c145c703409dc7a96f1755db4, type: 2}
+  uiFont: {fileID: 11400000, guid: 59ee34472c5892a4196858080cc2141e, type: 2}
 --- !u!4 &1286005669
 Transform:
   m_ObjectHideFlags: 0
