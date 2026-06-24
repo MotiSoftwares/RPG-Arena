@@ -167,7 +167,8 @@ namespace RPGArena.UI
                 // Always spawn a reliable elemental impact BURST on the target body — guarantees a
                 // visible hit even when the ability's authored prefab is a fly-by projectile.
                 Color burstCol = (r.isHeal || r.absorbed) ? new Color(0.4f, 1f, 0.5f) : ElementColor(r.element);
-                SpawnVFX(bodyCenter, burstCol, r.crit ? 64 : 44, r.target.isBoss ? 2.4f : 1.25f);
+                ElementType vfxEl = (r.isHeal || r.absorbed) ? ElementType.Holy : r.element;
+                SpawnVFX(bodyCenter, burstCol, vfxEl, r.crit ? 64 : 44, r.target.isBoss ? 2.4f : 1.25f);
                 // Layer the ability's authored effect on top (impact/explosion prefabs read strongly here).
                 if (r.ability != null && r.ability.vfxPrefab != null)
                 {
@@ -314,8 +315,24 @@ namespace RPGArena.UI
 
         // A short-lived, self-destroying particle burst tinted to the element. Built in code so it
         // needs no imported VFX assets; uses a soft glow texture on a URP-safe sprite shader.
-        private void SpawnVFX(Vector3 pos, Color color, int count, float scale = 1f)
+        private void SpawnVFX(Vector3 pos, Color color, ElementType element, int count, float scale = 1f)
         {
+            // Per-element MOTION identity (not just tint): fire licks upward, frost drifts slow & cool,
+            // lightning snaps fast & jagged, holy motes rise softly, dark wisps implode. Physical = the
+            // generic spark-puff. All code-built — no new assets, no logic/test surface touched.
+            float gravity = 0.6f, spMin = 2.5f, spMax = 6.5f, lifeMin = 0.3f, lifeMax = 0.6f;
+            float radius = 0.2f, trailRatio = 0.7f, trailW = 0.4f, coreWhite = 0.5f, hdr = 2.6f, flash = 1.5f;
+            bool hotCore = true;
+            switch (element)
+            {
+                case ElementType.Fire:      gravity = -0.7f; spMin = 1.5f; spMax = 4.5f; lifeMax = 0.7f; trailRatio = 0.9f; trailW = 0.3f; break;
+                case ElementType.Ice:       gravity = 0.05f; spMin = 1.2f; spMax = 3.5f; lifeMin = 0.4f; lifeMax = 0.8f; radius = 0.28f; trailRatio = 0.22f; hotCore = false; coreWhite = 0.25f; hdr = 1.8f; break;
+                case ElementType.Lightning: gravity = 0f; spMin = 7f; spMax = 13f; lifeMin = 0.07f; lifeMax = 0.2f; radius = 0.1f; trailRatio = 1f; trailW = 0.16f; flash = 2.1f; break;
+                case ElementType.Holy:      gravity = -0.35f; spMin = 0.8f; spMax = 2.2f; lifeMin = 0.5f; lifeMax = 0.9f; trailRatio = 0.3f; hotCore = false; coreWhite = 0.7f; hdr = 1.9f; break;
+                case ElementType.Dark:      gravity = 0f; spMin = -5f; spMax = -1.5f; radius = 0.5f; trailRatio = 0.6f; hotCore = false; coreWhite = 0.25f; hdr = 1.8f; break;
+                default: break;   // Physical
+            }
+
             var go = new GameObject("VFX");
             go.transform.position = pos;
             var ps = go.AddComponent<ParticleSystem>();
@@ -323,26 +340,28 @@ namespace RPGArena.UI
 
             var main = ps.main;
             main.duration = 0.7f; main.loop = false; main.playOnAwake = false;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(0.3f * scale, 0.6f * scale);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(2.5f * scale, 6.5f * scale);
+            main.startLifetime = new ParticleSystem.MinMaxCurve(lifeMin * scale, lifeMax * scale);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(spMin * scale, spMax * scale);
             main.startSize = new ParticleSystem.MinMaxCurve(0.18f * scale, 0.5f * scale);
-            main.startColor = Hdr(color, 2.6f);   // HDR core -> blooms on impact
+            main.startColor = Hdr(color, hdr);   // HDR core -> blooms on impact
             main.maxParticles = 250; main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.stopAction = ParticleSystemStopAction.Destroy;
-            main.gravityModifier = 0.6f;
+            main.gravityModifier = gravity;
 
             var emission = ps.emission;
             emission.rateOverTime = 0f;
             emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)count) });
 
             var shape = ps.shape;
-            shape.shapeType = ParticleSystemShapeType.Sphere; shape.radius = 0.2f * scale;
+            shape.shapeType = ParticleSystemShapeType.Sphere; shape.radius = radius * scale;
 
-            // Bright hot core that cools to the element colour, then fades — gives the hit a "flash".
+            // Core (hot-white for fire/physical/lightning, a pale element tint for frost/holy/dark)
+            // cools to the element colour, then fades — gives the hit a "flash".
             var col = ps.colorOverLifetime; col.enabled = true;
             var grad = new Gradient();
+            Color core = hotCore ? Color.white : Color.Lerp(color, Color.white, coreWhite);
             grad.SetKeys(
-                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.Lerp(color, Color.white, 0.5f), 0.2f), new GradientColorKey(color, 1f) },
+                new[] { new GradientColorKey(core, 0f), new GradientColorKey(Color.Lerp(color, Color.white, coreWhite * 0.6f), 0.25f), new GradientColorKey(color, 1f) },
                 new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.45f), new GradientAlphaKey(0f, 1f) });
             col.color = grad;
 
@@ -350,10 +369,10 @@ namespace RPGArena.UI
             var sol = ps.sizeOverLifetime; sol.enabled = true;
             sol.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 1.25f, 1f, 0f));
 
-            // Streaky spark trails for energy.
+            // Trails: thick & energetic for fire/physical, hair-thin jagged streaks for lightning, faint for frost.
             var trails = ps.trails; trails.enabled = true; trails.mode = ParticleSystemTrailMode.PerParticle;
-            trails.lifetime = new ParticleSystem.MinMaxCurve(0.25f); trails.dieWithParticles = true; trails.ratio = 0.7f;
-            trails.widthOverTrail = new ParticleSystem.MinMaxCurve(0.4f); trails.inheritParticleColor = true;
+            trails.lifetime = new ParticleSystem.MinMaxCurve(0.25f); trails.dieWithParticles = true; trails.ratio = trailRatio;
+            trails.widthOverTrail = new ParticleSystem.MinMaxCurve(trailW); trails.inheritParticleColor = true;
 
             var rend = ps.GetComponent<ParticleSystemRenderer>();
             rend.material = VfxMaterial();
@@ -362,7 +381,7 @@ namespace RPGArena.UI
 
             ps.Play();
 
-            SpawnFlash(pos, color, 1.5f * scale);   // a bright flash disc at the contact point
+            SpawnFlash(pos, color, flash * scale);   // a bright flash disc at the contact point
         }
 
         // A short, bright disc that pops then fades — the impact flash that sells the hit.

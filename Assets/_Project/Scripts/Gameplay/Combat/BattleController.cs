@@ -345,12 +345,16 @@ namespace RPGArena.Combat
             go.transform.SetParent(host.transform, false);
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = ShadowSprite();
-            sr.color = new Color(0f, 0f, 0f, 0.5f);
+            sr.color = new Color(0f, 0f, 0f, 0.55f);
             sr.sortingOrder = -1;
-            go.transform.localRotation = Quaternion.Inverse(host.transform.rotation);   // face camera
+            // Lay the soft blob FLAT in the ground plane (XZ). The old code used a yaw-only
+            // Inverse(host.rotation) which left the sprite quad STANDING VERTICAL — under the new
+            // perspective camera that read as fighters floating with no contact patch. A world-space
+            // Euler(90,0,0) lays it on the grass; the 3/4 camera naturally foreshortens it to an oval.
+            go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             float sx = width / 0.64f;                       // shadow sprite is 64px @ 100ppu = 0.64u
-            go.transform.localScale = new Vector3(sx, sx * 0.32f, 1f);
-            go.transform.localPosition = new Vector3(0f, 0.14f, 0.02f);
+            go.transform.localScale = new Vector3(sx, sx * 0.78f, 1f);   // near-round footprint, soft edge
+            go.transform.localPosition = new Vector3(0f, 0.02f, 0f);     // a hair above the terrain (no z-fight)
         }
 
         // Procedural soft radial sprite (built once) used for the contact shadows.
