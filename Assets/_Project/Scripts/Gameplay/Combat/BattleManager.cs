@@ -117,12 +117,8 @@ namespace RPGArena.Combat
             ctx.Log($"  {cmd.DescribeForLog()}");
             cmd.Resolve(ctx);
 
-            // Action economy (§5.5): a PAID weakness hit grants one capped "1 More" (hero-only,
-            // the boss never earns invisible extra turns). Single shared rule — see TurnSystem.
-            if (actor.team == Characters.Team.Heroes
-                && TurnSystem.EarnsExtraTurn(used, ctx.lastActionResults)
-                && ctx.turns.TryGrantExtraTurn(actor, order))
-                ctx.Log($"    +1 MORE! {actor.displayName} earns a bonus turn (weakness).");
+            // Action economy: one action per hero per round (no "+1 More" bonus turn). Weakness/combo
+            // pays off through Valor + damage, not an extra turn.
             if (actor.team == Characters.Team.Heroes)
                 ChargeSystem.AwardFor(used, ctx.lastActionResults, ctx);   // party Valor (null-safe; headless = no-op)
         }

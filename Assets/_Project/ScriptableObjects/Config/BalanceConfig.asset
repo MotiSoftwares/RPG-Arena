@@ -30,13 +30,13 @@ MonoBehaviour:
   k8: 0.005
   damageVarianceMin: 0.85
   damageVarianceMax: 1.15
-  reliableHitBase: 0.99
-  standardHitBase: 0.9
-  riskyHitBase: 0.84
-  hitFloor: 0.5
-  hitCeiling: 0.99
+  reliableHitBase: 0.85
+  standardHitBase: 0.72
+  riskyHitBase: 0.58
+  hitFloor: 0.45
+  hitCeiling: 0.9
   missStreakCap: 2
-  accuracyToPercent: 0.01
+  accuracyToPercent: 0.005
   defendDamageMult: 0.5
   backRowMeleeMult: 0.55
   mpRegenPerTurn: 4

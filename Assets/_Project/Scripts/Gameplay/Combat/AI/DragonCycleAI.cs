@@ -40,45 +40,34 @@ namespace RPGArena.Combat.AI
                 return commit;   // AllEnemies => the manager expands targets
             }
 
-            // 2) Otherwise advance a telegraphed rotation that ESCALATES as the Dragon bloodies (§7.1).
-            //    Three HP-gated phases give the fight a real arc instead of a flat loop:
-            //      STALKING (>50%): patient — Claw, a defensive Tail Guard, the Charge->Flame telegraph,
-            //                       and a Tail Sweep. The window to build Valor/Break.
-            //      ENRAGED (<=50%): drops Tail Guard, adds Wing Buffet AoE and a second Charge — the
-            //                       "spread party can't out-heal the AoE" pressure.
-            //      FINAL FURY (<=15%): a sprint of Charge->Flame + Wing Buffet + Claw at x1.7 that
-            //                       punishes a party that hasn't closed the kill.
-            //    The telegraph commit/cancel path (step 1 above) is unchanged, so Break-cancels-Flame holds.
+            // 2) The Dragon ATTACKS EVERY TURN — no charge-up / telegraph. It mostly mauls its biggest
+            //    threat with Claw, with AoE (Flame Breath / Wing Buffet / Tail Sweep) mixed in more as it
+            //    bloodies. Three HP-gated rotations escalate the pressure; AoE never charges, it just hits.
             float hpFrac = self.stats.maxHP > 0 ? (float)self.currentHP / self.stats.maxHP : 1f;
             var wing = wingBuffet != null ? wingBuffet : tailSweep;   // graceful fallback if unassigned
             List<Ability> cycle;
             if (hpFrac <= phase3HpFraction)
-                cycle = new List<Ability> { chargingBreath, wing, clawSwipe };
+                cycle = new List<Ability> { clawSwipe, flameBreath, clawSwipe, wing };           // FINAL FURY: 2 AoE/4
             else if (hpFrac <= phase2HpFraction)
-                cycle = new List<Ability> { clawSwipe, wing, chargingBreath, clawSwipe, chargingBreath };
+                cycle = new List<Ability> { clawSwipe, clawSwipe, wing, clawSwipe };             // ENRAGED: 1 AoE/4
             else
-                cycle = new List<Ability> { clawSwipe, tailGuard, chargingBreath, tailSweep };
+                cycle = new List<Ability> { clawSwipe, clawSwipe, clawSwipe, tailSweep };        // STALKING: mostly focus the threat
 
             int idx = ((self.aiCycleIndex % cycle.Count) + cycle.Count) % cycle.Count;
             self.aiCycleIndex = (idx + 1) % cycle.Count;
             var chosen = cycle[idx];
 
-            // Light variance: occasionally substitute the AoE Tail Sweep for a Claw Swipe.
-            if (chosen == clawSwipe && tailSweep != null && ctx.rng.NextDouble() < tailSweepChance)
-                chosen = tailSweep;
-
-            // Single-target moves now READ player state instead of firing at random; AoE/self moves
-            // resolve their own targets.
+            // Single-target moves FOCUS the biggest damage-dealer (threat); AoE/self moves self-resolve.
             if (chosen != null && chosen.targetRule == TargetRule.SingleEnemy)
-                target = PickThreatTarget(opponents, ctx);
+                target = PickThreatTarget(self, opponents, ctx);
 
             return chosen;
         }
 
-        // The Dragon mostly focuses the lowest-HP hero (so "protect the squishy Mage" — Guardian
-        // Taunt / Puppet / healing — finally has something to bite on), with a 30% random pick so it
-        // isn't fully solvable, and it never targets a Stealthed hero (Dark Sight = untargetable).
-        private static Entity PickThreatTarget(IReadOnlyList<Entity> heroes, BattleContext ctx)
+        // The Dragon focuses the hero who has dealt it the MOST damage this fight (threat), so the big
+        // damage-dealer draws the heat and the party must peel (Taunt / Stealth / heal). A 20% random
+        // pick keeps it from being perfectly solvable; it never targets a Stealthed hero (Dark Sight).
+        private static Entity PickThreatTarget(Entity boss, IReadOnlyList<Entity> heroes, BattleContext ctx)
         {
             var pickable = new List<Entity>();
             foreach (var h in heroes)
@@ -86,20 +75,24 @@ namespace RPGArena.Combat.AI
                     pickable.Add(h);
             if (pickable.Count == 0) return TargetingSystem.RandomAlive(heroes, ctx.rng);
 
-            // A TAUNTING hero (Warrior's Guardian Taunt) FORCES the Dragon's single-target aggro onto
-            // the taunter(s) — the tank can finally peel for the squishy Mage (§6). We RESTRICT the pool
-            // (not invert lethality), so total damage is unchanged and the trio-clear test still holds;
-            // only WHO gets hit changes. Taunt overrides even the front/back row preference below.
+            // A TAUNTING hero (Guardian Taunt) FORCES aggro onto the taunter(s), overriding threat — the
+            // tank can peel for the squishy Mage. Restrict the pool (lethality math unchanged).
             var taunters = new List<Entity>();
             foreach (var h in pickable) if (h.Status.Has(RPGArena.Combat.Status.StatusFlag.Taunting)) taunters.Add(h);
             if (taunters.Count > 0) pickable = taunters;
-            // Positioning: the FRONT line draws the Dragon's single-target aggro; it only reaches the
-            // back row once the front has fallen — so a tank up front shields the squishy casters.
-            var front = new List<Entity>();
-            foreach (var h in pickable) if (!h.backRow) front.Add(h);
-            var pool = front.Count > 0 ? front : pickable;
-            if (ctx.rng.NextDouble() < 0.3) return pool[ctx.rng.Next(pool.Count)];
-            return TargetingSystem.LowestHP(pool);
+
+            if (ctx.rng.NextDouble() < 0.33) return pickable[ctx.rng.Next(pickable.Count)];   // some spread so a focus can't instantly delete the squishy
+
+            // Highest cumulative damage dealt to the boss wins; a tiny front-row nudge breaks early ties
+            // (before anyone has hit it) so a front-line tank still draws the first blows.
+            Entity top = null; float best = -1f;
+            foreach (var h in pickable)
+            {
+                boss.threatFrom.TryGetValue(h, out float th);
+                if (!h.backRow) th += 1f;
+                if (th > best) { best = th; top = h; }
+            }
+            return top != null ? top : pickable[0];
         }
     }
 }

@@ -56,9 +56,10 @@ namespace RPGArena.Combat
             float acc = src != null ? src.Accuracy : 0f;
             float eva = (tgt != null && !tgt.isStaggered) ? tgt.Evasion : 0f;
             float hitChance = Mathf.Clamp(tierBase + (acc - eva) * cfg.accuracyToPercent, cfg.hitFloor, cfg.hitCeiling);
-            // Reliable abilities (basics, AoE, the Archer) NEVER miss (Appendix E.1), as do
-            // explicit auto-hit / forced (pity) attacks.
-            bool guaranteed = info.forceHit || info.hitTier == HitTier.Reliable;
+            // Only EXPLICIT auto-hit (AoE / heal / the boss's unavoidable breath) and the pity guard
+            // skip the roll now. Even "Reliable" tier just has a HIGH base chance — so a hit is a real
+            // gamble (~60-85%), not a near-certainty. Makes the dice matter.
+            bool guaranteed = info.forceHit;
             r.hitChance = guaranteed ? 1f : hitChance;
             if (!guaranteed && hitRoll > hitChance)
             {
@@ -218,6 +219,12 @@ namespace RPGArena.Combat
                         ctx.Log($"      Magic Guard absorbs {absorbed} damage ({mpUsed} MP).");
                     }
                     r.target.TakeDamage(dmg);
+                    // THREAT: the boss remembers who hurt it most — its single-target attacks focus them.
+                    if (r.target.isBoss && r.source != null && dmg > 0)
+                    {
+                        r.target.threatFrom.TryGetValue(r.source, out float prior);
+                        r.target.threatFrom[r.source] = prior + dmg;
+                    }
                 }
             }
 

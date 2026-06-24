@@ -24,15 +24,15 @@ MonoBehaviour:
     DEX: 0
     INT: 0
     LUK: 0
-    maxHP: 1450
+    maxHP: 1700
     maxMP: 999
-    baseAttack: 30
+    baseAttack: 13
     baseMagicAttack: 0
     baseDefense: 22
     baseSpeed: 8
     baseAccuracy: 6
     baseEvasion: 0
-    baseCritChance: 0.08
+    baseCritChance: 0.06
     critDamage: 1.5
   abilities:
   - {fileID: 11400000, guid: 4df8a9503b30df84b8bd8f5263c6cffd, type: 2}
@@ -47,10 +47,10 @@ MonoBehaviour:
   - name: Enrage
     hpThresholdPercent: 0.5
     enrage: 1
-    attackMultiplier: 1.45
+    attackMultiplier: 1.3
   - name: Final Fury
     hpThresholdPercent: 0.15
     enrage: 1
-    attackMultiplier: 1.7
+    attackMultiplier: 1.5
   staggerThreshold: 115
   staggeredTurns: 2

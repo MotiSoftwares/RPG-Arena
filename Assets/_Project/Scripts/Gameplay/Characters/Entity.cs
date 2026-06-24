@@ -45,6 +45,10 @@ namespace RPGArena.Characters
         public System.Collections.Generic.List<RPGArena.Combat.BossPhase> phases;   // boss only
         private int phaseEntered = -1;
 
+        // Threat table (boss only): cumulative damage each hero has dealt this fight. The boss's
+        // single-target attacks focus the biggest damage-dealer (recorded in DamagePipeline.Apply).
+        public readonly System.Collections.Generic.Dictionary<Entity, float> threatFrom = new();
+
         [Header("Stagger (bosses)")]
         public float staggerMeter;
         public float staggerThreshold = 100f;

@@ -107,15 +107,18 @@ namespace RPGArena.Tests
         }
 
         [Test]
-        public void Reliable_Never_Misses_But_Risky_Can()
+        public void AutoHit_Always_Lands_But_Tiers_Roll()
         {
             var cfg = TestUtil.Cfg();
             var src = TestUtil.Make(cfg, new StatBlock { baseMagicAttack = 50, baseAccuracy = 0 });
             var tgt = TestUtil.Make(cfg, new StatBlock { maxHP = 9999, baseEvasion = 0 }, TestUtil.Profile(), isBoss: true);
+            var auto     = new DamageInfo { source = src, target = tgt, element = ElementType.Physical, basePower = 1f, isMagic = true, hitTier = HitTier.Reliable, forceHit = true };
             var reliable = new DamageInfo { source = src, target = tgt, element = ElementType.Physical, basePower = 1f, isMagic = true, hitTier = HitTier.Reliable };
-            var risky = new DamageInfo { source = src, target = tgt, element = ElementType.Physical, basePower = 1f, isMagic = true, hitTier = HitTier.Risky };
-            Assert.IsTrue(DamagePipeline.ComputePure(reliable, cfg, 0.999f, 1f, 1f).hit);    // never misses
-            Assert.IsFalse(DamagePipeline.ComputePure(risky, cfg, 0.999f, 1f, 1f).hit);      // can miss
+            var risky    = new DamageInfo { source = src, target = tgt, element = ElementType.Physical, basePower = 1f, isMagic = true, hitTier = HitTier.Risky };
+            Assert.IsTrue(DamagePipeline.ComputePure(auto, cfg, 0.999f, 1f, 1f).hit, "autoHit always lands.");
+            Assert.IsTrue(DamagePipeline.ComputePure(reliable, cfg, 0.1f, 1f, 1f).hit, "a reliable shot lands on a good roll.");
+            Assert.IsFalse(DamagePipeline.ComputePure(reliable, cfg, 0.999f, 1f, 1f).hit, "even a reliable shot can miss on a bad roll now (real RNG).");
+            Assert.IsFalse(DamagePipeline.ComputePure(risky, cfg, 0.999f, 1f, 1f).hit, "a risky shot can miss.");
             TestUtil.Destroy(src, tgt);
         }
 

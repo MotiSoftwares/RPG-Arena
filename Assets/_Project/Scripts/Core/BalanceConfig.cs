@@ -42,20 +42,21 @@ namespace RPGArena.Core
         public float damageVarianceMin = 0.85f;
         public float damageVarianceMax = 1.15f;
 
-        // Base hit chance per ability reliability tier, before accuracy/evasion are added.
-        public float reliableHitBase = 0.99f;
-        public float standardHitBase = 0.90f;
-        public float riskyHitBase = 0.84f;
+        // Base hit chance per ability reliability tier, before accuracy/evasion are added. Tuned so a
+        // hit is a REAL gamble (~60-85%), not a near-certainty — landing your attack is part of the RNG.
+        public float reliableHitBase = 0.85f;
+        public float standardHitBase = 0.72f;
+        public float riskyHitBase = 0.58f;
 
         // Hit chance is always clamped to this window so non-reliable skills are never a
-        // guaranteed miss, and risky skills are never a guaranteed hit.
-        public float hitFloor = 0.50f;
-        public float hitCeiling = 0.99f;
+        // guaranteed miss, and even a buffed shot is never a guaranteed hit (caps the certainty).
+        public float hitFloor = 0.45f;
+        public float hitCeiling = 0.90f;
 
         // Anti-feel-bad: after this many misses in a row, the next attack is forced to hit.
         public int missStreakCap = 2;
-        [Tooltip("Each point of (Accuracy - Evasion) shifts hit chance by this. Shared by the pipeline AND the HUD preview so they never drift.")]
-        public float accuracyToPercent = 0.01f;
+        [Tooltip("Each point of (Accuracy - Evasion) shifts hit chance by this. Lowered so high-accuracy heroes don't just pin every shot to the ceiling — accuracy helps, but the gamble stays.")]
+        public float accuracyToPercent = 0.005f;
         [Tooltip("Incoming damage multiplier while the target is Defending.")]
         public float defendDamageMult = 0.5f;
         [Tooltip("Positioning: damage a BACK-ROW hero takes from a single-target physical (melee) blow.")]
