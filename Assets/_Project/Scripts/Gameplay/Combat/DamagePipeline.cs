@@ -28,13 +28,17 @@ namespace RPGArena.Combat
             float hitRoll = (float)rng.NextDouble();
             float damageRoll = Mathf.Lerp(cfg.damageVarianceMin, cfg.damageVarianceMax, (float)rng.NextDouble());
             float critRoll = (float)rng.NextDouble();
-            return ComputePure(info, cfg, hitRoll, damageRoll, critRoll);
+            // Only the SPECIAL draws the risk die — gated so non-special hits consume no extra rng
+            // (keeps seeded headless runs stable until a risky ability actually fires).
+            float riskRoll = info.rollsRiskDie ? (float)rng.NextDouble() : 1f;
+            return ComputePure(info, cfg, hitRoll, damageRoll, critRoll, riskRoll);
         }
 
         // PURE: deterministic given explicit rolls. hitRoll/critRoll in [0,1); damageRoll is the
-        // already-chosen variance multiplier. Mirrors the §4.8 order of operations.
+        // already-chosen variance multiplier. riskRoll in [0,1) drives the SPECIAL's risk die and
+        // defaults to 1f (a no-op band) so every non-special call is byte-identical. §4.8 order.
         public static DamageResult ComputePure(DamageInfo info, BalanceConfig cfg,
-                                               float hitRoll, float damageRoll, float critRoll)
+                                               float hitRoll, float damageRoll, float critRoll, float riskRoll = 1f)
         {
             var r = new DamageResult { source = info.source, target = info.target, ability = info.ability, element = info.element, hit = true, damageRoll = damageRoll };
             var src = info.source;
@@ -121,6 +125,31 @@ namespace RPGArena.Combat
                 dmg *= (src != null ? src.CritDamage : 1.5f);
             }
 
+            // 7c) RISK DIE — the SPECIAL skill's visible d20 gamble. Low rolls go BAD (backfire/whiff),
+            //     high rolls pay off (big/jackpot, jackpot also crits). ONLY abilities flagged
+            //     rollsRiskDie draw it; for every other call this block is skipped, so the seeded
+            //     CombatTests are byte-identical. SelfRecoil takes a slice of the WOULD-BE damage.
+            if (info.rollsRiskDie)
+            {
+                r.risked = true;
+                r.riskFace = Mathf.Clamp(Mathf.FloorToInt(riskRoll * 20f) + 1, 1, 20);
+                if (riskRoll < cfg.riskBackfireThreshold)
+                {
+                    r.riskBand = RiskBand.Backfire;
+                    if (info.backfireKind == BackfireKind.SelfRecoil)
+                        r.selfDamage = Mathf.Max(1, Mathf.RoundToInt(dmg * cfg.riskSelfRecoilPct));
+                    dmg *= cfg.riskBackfireDamageMult;
+                }
+                else if (riskRoll < cfg.riskWhiffThreshold) { r.riskBand = RiskBand.Whiff; dmg *= cfg.riskWhiffDamageMult; }
+                else if (riskRoll >= cfg.riskJackpotThreshold)
+                {
+                    r.riskBand = RiskBand.Jackpot; dmg *= cfg.riskJackpotDamageMult;
+                    if (!r.crit) { r.crit = true; dmg *= (src != null ? src.CritDamage : 1.5f); }
+                }
+                else if (riskRoll >= cfg.riskBigThreshold) { r.riskBand = RiskBand.Big; dmg *= cfg.riskBigDamageMult; }
+                else r.riskBand = RiskBand.Normal;
+            }
+
             // 7b) FINISHER payoffs (§6): bonus vs a setup flag (Marked/Weaken/Frozen) and an
             //     execute bonus on a low-HP target — reasons to set up before firing an ult.
             if (info.ability != null && tgt != null)
@@ -192,6 +221,13 @@ namespace RPGArena.Combat
 
             if (r.staggerBuilt > 0f && r.target.isBoss)
                 ctx.stagger.Build(r.target, r.staggerBuilt, ctx);
+
+            // Risk-die SelfRecoil backfire: the caster eats a slice of their own would-be blow.
+            if (r.hit && r.selfDamage > 0 && r.source != null)
+            {
+                r.source.TakeDamage(r.selfDamage);
+                ctx.Log($"      BACKFIRE! {r.source.displayName} takes {r.selfDamage} self-damage.");
+            }
 
             ctx.RaiseDamage(r);
         }

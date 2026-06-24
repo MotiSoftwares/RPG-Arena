@@ -2,6 +2,9 @@ using RPGArena.Characters;
 
 namespace RPGArena.Combat
 {
+    // The SPECIAL skill's risk-die outcome band (low = bad gamble, high = it pays off).
+    public enum RiskBand { Backfire, Whiff, Normal, Big, Jackpot }
+
     // Everything the damage pipeline needs to compute one hit. Flags let synergies, stances,
     // and the RNG layer modify the result (CLAUDE.md §4.8 / Appendix E.1).
     public struct DamageInfo
@@ -15,6 +18,8 @@ namespace RPGArena.Combat
         public bool forceHit;          // auto-hit abilities skip the accuracy roll
         public bool isBreakSkill;      // adds extra stagger build
         public HitTier hitTier;        // reliability tier for the hit roll
+        public bool rollsRiskDie;      // this is a SPECIAL: draw the risk die
+        public BackfireKind backfireKind;  // what a backfire does to the caster
     }
 
     // The outcome of one hit. Presentation reads this from OnDamageDealt to drive the
@@ -35,5 +40,9 @@ namespace RPGArena.Combat
         public float hitChance;        // the chance we rolled against (shown pre-commit)
         public float staggerBuilt;     // how much stagger this hit added to the target
         public bool comboDetonated;    // this paid hit cashed in a setup (Shatter / Marked) — earns a bonus turn for physical classes too
+        public bool risked;            // a risk die was rolled for this hit (the SPECIAL)
+        public int riskFace;           // the d20 face (1..20) for the flourish
+        public RiskBand riskBand;      // Backfire / Whiff / Normal / Big / Jackpot
+        public int selfDamage;         // SelfRecoil backfire: HP the caster loses (applied in Apply)
     }
 }

@@ -64,5 +64,30 @@ namespace RPGArena.Core
         [Header("MP economy")]
         [Tooltip("Flat MP regenerated at the start of every turn, so refueling is a baseline — not something you must farm by spamming free basics. Decouples the MP faucet from damage.")]
         public int mpRegenPerTurn = 5;
+
+        [Header("Risk die (the SPECIAL skill's d20 gamble)")]
+        // The risk roll is a uniform [0,1) draw mapped to a d20 face + an outcome band. Low = the
+        // gamble goes bad (backfire/whiff), high = it pays off (big/jackpot, jackpot also crits).
+        public float riskBackfireThreshold = 0.15f;   // < this => Backfire (the bad beat)
+        public float riskWhiffThreshold   = 0.30f;     // < this => Whiff (lands soft)
+        public float riskBigThreshold      = 0.75f;     // >= this => Big
+        public float riskJackpotThreshold  = 0.95f;     // >= this => Jackpot (+ forced crit)
+        public float riskBackfireDamageMult = 0.5f;
+        public float riskWhiffDamageMult    = 0.7f;
+        public float riskBigDamageMult      = 1.5f;
+        public float riskJackpotDamageMult  = 2.0f;
+        [Tooltip("SelfRecoil backfire: caster takes this fraction of the would-be damage as self-damage.")]
+        public float riskSelfRecoilPct = 0.12f;
+
+        [Header("Party Valor / Overdrive (the reliable charge win-path)")]
+        public float valorMax = 100f;
+        // Valor accrues from COORDINATION (combos/setups/support) far faster than from spam, so the
+        // meter is the antidote to button-mashing — see ChargeSystem.AwardFor.
+        public float valorPerPlainHit = 2f;     // a free/basic hit barely charges it
+        public float valorPerComboHit = 18f;    // a weakness or Shatter/Mark detonation charges it hard
+        public float valorPerSetup    = 10f;    // applying Wet/Oiled/Marked to the boss
+        public float valorPerSupport  = 8f;     // an ally buff / heal
+        public int overdriveHeroTurns = 3;       // how many hero turns the Overdrive surge lasts
+        public float overdriveDamageMult = 1.35f;// party-wide damage multiplier during Overdrive
     }
 }

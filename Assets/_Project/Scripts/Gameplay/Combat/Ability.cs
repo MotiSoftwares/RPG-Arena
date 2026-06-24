@@ -13,6 +13,10 @@ namespace RPGArena.Combat
     // skills (basics, AoE, the Archer) effectively never miss; Risky ones (big nukes) can.
     public enum HitTier { Reliable, Standard, Risky }
 
+    // What a SPECIAL skill's risk-die does on a low (Backfire) roll: hurt the caster, fizzle to
+    // ~no damage (MP already spent), or embolden the boss. Only abilities with rollsRiskDie use it.
+    public enum BackfireKind { None, SelfRecoil, Fizzle, EmboldenBoss }
+
     // What a Stance ability does when used (§5.9). The two real stance systems after the
     // E.3 trim are the Mage's attunement cycle and the Warrior's Berserk/Guardian toggle.
     public enum StanceAction { None, CycleAttunement, ToggleStatus }
@@ -46,6 +50,14 @@ namespace RPGArena.Combat
         public HitTier hitTier = HitTier.Reliable;
         [Tooltip("Healing and many AoE skills skip the accuracy roll entirely.")]
         public bool autoHit = false;
+
+        [Header("Risk die (the SPECIAL skill — a visible d20 gamble)")]
+        [Tooltip("This (and only this) ability rolls the risk die: low = backfire/whiff, high = big/jackpot.")]
+        public bool rollsRiskDie = false;
+        [Tooltip("What a Backfire (low roll) does to the caster.")]
+        public BackfireKind backfireKind = BackfireKind.None;
+        [Tooltip("EmboldenBoss backfire: the buff applied to the boss on a backfire.")]
+        public StatusEffectDefinition backfireStatus;
 
         [Header("Status / synergy")]
         public StatusEffectDefinition[] statusesToApply;

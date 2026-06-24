@@ -70,12 +70,21 @@ namespace RPGArena.Combat.Commands
                     {
                         source = caster, target = target, ability = a, element = element,
                         basePower = a.power, isMagic = a.isMagic, forceHit = a.autoHit,
-                        isBreakSkill = a.HasTag("BreakSkill"), hitTier = a.hitTier
+                        isBreakSkill = a.HasTag("BreakSkill"), hitTier = a.hitTier,
+                        rollsRiskDie = a.rollsRiskDie, backfireKind = a.backfireKind
                     };
                     var result = ctx.damage.Compute(info);
                     ctx.damage.Apply(result, ctx);
                     ctx.lastActionResults.Add(result);
                     LogHit(ctx, result, target);
+                    // EmboldenBoss backfire: a bad gamble buffs the dragon. (SelfRecoil/Fizzle are
+                    // handled inside the pipeline — self-damage in Apply, reduced damage by the band.)
+                    if (result.risked && result.riskBand == RiskBand.Backfire
+                        && a.backfireKind == BackfireKind.EmboldenBoss && a.backfireStatus != null && ctx.boss != null)
+                    {
+                        ctx.boss.Status.Apply(a.backfireStatus);
+                        ctx.Log("      BACKFIRE! The dragon is emboldened!");
+                    }
                 }
 
                 ApplyStatuses(ctx, target, syn.forceStatusApply);
@@ -92,7 +101,8 @@ namespace RPGArena.Combat.Commands
             string crit = r.crit ? " CRIT" : "";
             string verb = r.isHeal ? "heals" : "takes";
             string extra = string.IsNullOrEmpty(tag) ? "" : " " + tag;
-            ctx.Log($"      -> {Name(target)} {verb} {r.amount}{extra}{crit}  (roll {r.damageRoll:0.00}, HP {target.currentHP}/{target.stats.maxHP})");
+            string die = r.risked ? $"  [d20 {r.riskFace}: {r.riskBand}]" : "";
+            ctx.Log($"      -> {Name(target)} {verb} {r.amount}{extra}{crit}{die}  (roll {r.damageRoll:0.00}, HP {target.currentHP}/{target.stats.maxHP})");
         }
     }
 
