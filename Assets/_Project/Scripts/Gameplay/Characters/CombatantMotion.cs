@@ -75,11 +75,11 @@ namespace RPGArena.Characters
         {
             dashing = true;
             float t = 0f;
-            while (t < 0.12f) { t += Time.deltaTime; offset = Vector3.Lerp(Vector3.zero, target, t / 0.12f); yield return null; }
+            while (t < 0.18f) { t += Time.deltaTime; offset = Vector3.Lerp(Vector3.zero, target, t / 0.18f); yield return null; }
             offset = target;
-            yield return new WaitForSeconds(0.16f);                 // strike hold (impact lands here)
+            yield return new WaitForSeconds(0.34f);                 // strike HOLD — long enough that the ~0.38s impact lands while the hero is at the foe (synced to the swing)
             Vector3 from = offset; t = 0f;
-            while (t < 0.2f) { t += Time.deltaTime; offset = Vector3.Lerp(from, Vector3.zero, t / 0.2f); yield return null; }
+            while (t < 0.22f) { t += Time.deltaTime; offset = Vector3.Lerp(from, Vector3.zero, t / 0.22f); yield return null; }
             offset = Vector3.zero;
             dashing = false;
         }

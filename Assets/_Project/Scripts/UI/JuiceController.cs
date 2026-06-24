@@ -123,7 +123,7 @@ namespace RPGArena.UI
             // Schedule on a shared timeline so several hits resolved in one frame play one-by-one.
             float start = Mathf.Max(Time.time, nextBeat);
             nextBeat = start + 0.24f;
-            BattleController.PresentationBusyUntil = Mathf.Max(BattleController.PresentationBusyUntil, start + 0.75f);
+            BattleController.PresentationBusyUntil = Mathf.Max(BattleController.PresentationBusyUntil, start + 0.95f);
             float lead = start - Time.time;
             if (lead > 0f) yield return new WaitForSeconds(lead);
 
@@ -153,8 +153,10 @@ namespace RPGArena.UI
                 }
             }
 
-            // Wind-up window before contact (attacker mid-swing / projectile in flight).
-            yield return new WaitForSeconds(melee ? 0.17f : 0.22f);
+            // Wind-up window before contact. The Animator's attack/cast trigger blends in then the
+            // swing CONNECTS ~0.35-0.45s later — firing the impact at the old ~0.17s landed the VFX +
+            // damage while the hero was still mid-windup (the "not synced" look). Wait for the swing.
+            yield return new WaitForSeconds(melee ? 0.38f : 0.42f);
 
             // IMPACT beat: VFX blooms on the target body, damage number pops, hit-stop + shake fire.
             string text; Color color; float size;

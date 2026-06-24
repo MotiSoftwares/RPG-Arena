@@ -58,7 +58,7 @@ namespace RPGArena.UI
             // sounds space out with its visuals) plus the melee/magic wind-up before contact.
             float start = Mathf.Max(Time.time, nextAudioBeat);
             nextAudioBeat = start + 0.24f;
-            float windup = (r.hit && r.ability != null && !r.ability.isMagic && r.ability.targetRule != TargetRule.AllEnemies) ? 0.17f : 0.22f;
+            float windup = (r.hit && r.ability != null && !r.ability.isMagic && r.ability.targetRule != TargetRule.AllEnemies) ? 0.38f : 0.42f;
             StartCoroutine(DelayedSfx(id, (start - Time.time) + windup));
         }
 
