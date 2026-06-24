@@ -281,13 +281,13 @@ namespace RPGArena.Combat
 
         private void PlaceCombatants()
         {
-            var bossPos = new Vector3(3.4f, 0f, 0.6f);   // boss anchor: pulled in from x=4 so the big dragon sits fully inside the frame (head was clipping the right edge)
+            var bossPos = new Vector3(6.0f, 0f, 0.6f);   // boss anchor: pushed out so there's a real battlefield gap to charge across (was crammed against the party)
             for (int i = 0; i < Context.heroes.Count; i++)
             {
                 var h = Context.heroes[i];
                 h.backRow = h.primaryStat != PrimaryStat.STR;                          // STR melee = front line; casters/ranged = back
-                float rowZ = h.backRow ? 1.5f : -0.6f;                                 // formation: back row stands behind the front
-                h.transform.position = new Vector3(-2.5f + i * 1.2f, 0f, rowZ);
+                float rowZ = h.backRow ? 1.6f : -1.0f;                                 // formation: deeper front/back split so the rows read apart
+                h.transform.position = new Vector3(-4.4f + i * 1.7f, 0f, rowZ);        // wider spacing so the heroes aren't shoulder-to-shoulder
                 h.transform.rotation = Quaternion.Euler(0, 90, 0);
                 Vector3 faceBoss = bossPos - h.transform.position; faceBoss.y = 0f;
                 float scale = h.modelPrefab != null ? 1.2f : 1f;     // make the 3D heroes read larger
@@ -490,7 +490,7 @@ namespace RPGArena.Combat
             if (hero == null) return;
             hero.backRow = !hero.backRow;
             var p = hero.transform.position;
-            var np = new Vector3(p.x, 0f, hero.backRow ? 1.5f : -0.6f);
+            var np = new Vector3(p.x, 0f, hero.backRow ? 1.6f : -1.0f);
             hero.transform.position = np;
             hero.GetComponent<CombatantMotion>()?.MoveBase(np);
             Context.Log($"{hero.displayName} repositions to the {(hero.backRow ? "back" : "front")} row.");

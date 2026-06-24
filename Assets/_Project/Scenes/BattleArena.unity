@@ -63695,7 +63695,6 @@ MonoBehaviour:
   onBattleStarted: {fileID: 11400000, guid: 90c2fafe43967714391b7e5fad4e10db, type: 2}
   onBattleWon: {fileID: 11400000, guid: 7755cb59b38f1884b8840356c088cee5, type: 2}
   onBattleLost: {fileID: 11400000, guid: 657f440bf23332a44b9d34be3cca5dbe, type: 2}
-  impactSfxDelay: 0.18
 --- !u!4 &426872341
 Transform:
   m_ObjectHideFlags: 0
@@ -184848,7 +184847,7 @@ Camera:
     height: 1
   near clip plane: 0.1
   far clip plane: 1000
-  field of view: 44
+  field of view: 50
   orthographic: 0
   orthographic size: 3.5
   m_Depth: 0
@@ -184874,8 +184873,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1208433520}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.10446479, y: 0.034708314, z: -0.0036479908, w: 0.9939161}
-  m_LocalPosition: {x: 0.2, y: 4, z: -9}
+  m_LocalRotation: {x: 0.1305262, y: 0, z: 0, w: 0.9914449}
+  m_LocalPosition: {x: 1.3, y: 4.6, z: -13.2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
