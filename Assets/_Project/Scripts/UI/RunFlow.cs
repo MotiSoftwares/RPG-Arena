@@ -78,6 +78,7 @@ namespace RPGArena.UI
             Label(panel, "VICTORY!", 0.9f, 46, new Color(1f, 0.9f, 0.4f));
             Label(panel, $"Battle Grade:  {g}", 0.83f, 30, GradeColor(g));
             Label(panel, $"Choose a boon  —  Next: {Pretty(run.NextBoss)}", 0.77f, 24, Color.white);
+            Label(panel, RandomTip(), 0.72f, 18, new Color(0.75f, 0.85f, 1f));   // teach on the WIN screen too, not only on defeat
 
             var picks = PickThree();
             for (int i = 0; i < picks.Count; i++)

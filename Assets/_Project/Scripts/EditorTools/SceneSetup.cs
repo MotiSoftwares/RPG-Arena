@@ -155,6 +155,18 @@ namespace RPGArena.EditorTools
         // moodier directional light. The orthographic 2.5D arena (§10.1).
         private static void DressArena()
         {
+            // The meadow stage (ArenaEnvironment + its tuned rim/ambient/shadow rig) is the authored
+            // look now. If it's present, do NOT rebuild the old lava stage — re-running the setup tool
+            // to re-wire channels would otherwise clobber the meadow lighting and drop a stray orange
+            // LavaGlow into the forest. Just ensure the camera keeps post-processing, then bail.
+            // (Mirrors the runtime guard in BattleController.DressStage.)
+            if (GameObject.Find("ArenaEnvironment") != null)
+            {
+                var camGo = GameObject.FindWithTag("MainCamera");
+                if (camGo) { var cc = camGo.GetComponent<Camera>(); if (cc) cc.GetUniversalAdditionalCameraData().renderPostProcessing = true; }
+                return;
+            }
+
             DestroyIfExists("Ground");
             DestroyIfExists("LavaGlow");
 

@@ -25,7 +25,8 @@ namespace RPGArena.UI
         public Core.Events.VoidChannel onBattleWon, onBattleLost;
 
         private Font font;
-        private Text bossName, bossHpText, log, telegraph, bossWeakness, bossStaggerText;
+        private Text bossName, bossHpText, log, telegraph, bossWeakness, bossStaggerText, coachCaption;
+        private bool coachDone;          // one-shot "how to read the menu" teach on the first input
         private Image bossHpFill, bossStaggerFill;
         private GameObject telegraphPanel;
         private Sprite roundedSprite;
@@ -86,11 +87,13 @@ namespace RPGArena.UI
             {
                 lastMenuHero = controller.ActiveHero;
                 BuildActionMenu(controller.ActiveHero);
+                if (!coachDone && coachCaption != null) coachCaption.gameObject.SetActive(true);   // teach on the very first input
             }
             else if (!controller.AwaitingInput && lastMenuHero != null)
             {
                 lastMenuHero = null;
                 ClearChildren(actionPanel);
+                if (!coachDone && coachCaption != null) { coachCaption.gameObject.SetActive(false); coachDone = true; }   // they acted — lesson learned
             }
         }
 
@@ -461,6 +464,12 @@ namespace RPGArena.UI
             // Action menu (bottom-right).
             var menu = MakePanel(root, new Vector2(1f, 0f), new Vector2(-20, 30), new Vector2(390, 330), new Color(0.05f, 0.06f, 0.1f, 0.62f));
             actionPanel = menu.GetComponent<RectTransform>();
+
+            // One-shot coach caption above the menu — teaches how to read it on the very first input.
+            coachCaption = MakeText(root, "▼ Pick an ability:  % = hit chance,  the colour tag = element reaction  (WEAK is good — exploit it!)",
+                                    new Vector2(1f, 0f), new Vector2(-20, 398), new Vector2(396, 52), 14, TextAnchor.LowerCenter);
+            coachCaption.color = new Color(1f, 0.95f, 0.55f); coachCaption.fontStyle = FontStyle.Bold;
+            coachCaption.gameObject.SetActive(false);
 
             // Combat log (left-middle): a short color-coded ticker on a solid-reading backing.
             MakePanel(root, new Vector2(0f, 0.5f), new Vector2(16, -64), new Vector2(420, 150), new Color(0.04f, 0.04f, 0.07f, 0.62f));
