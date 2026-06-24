@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using RPGArena.Core;
 
 namespace RPGArena.UI
@@ -24,9 +25,10 @@ namespace RPGArena.UI
         public Sprite backgroundSprite;     // title-screen background (assigned by SceneSetup)
         public Sprite[] classPortraits = new Sprite[4];   // Warrior/Mage/Thief/Archer (select cards)
 
-        private Font font;
+        [SerializeField] private TMP_FontAsset uiFont;     // SlimUI Poppins-Bold SDF (wired in scene); falls back to TMP default
+        private TMP_FontAsset font;
         private GameObject mainPanel, selectPanel, infoPanel, settingsPanel;
-        private Text infoText, selectHint;
+        private TMP_Text infoText, selectHint;
         private Button confirmBtn;
         private readonly List<string> picked = new();
         private readonly Dictionary<string, Image> cardImages = new();
@@ -36,7 +38,7 @@ namespace RPGArena.UI
 
         private void Awake()
         {
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            font = uiFont != null ? uiFont : TMP_Settings.defaultFontAsset;
             EnsureEventSystem();
             BuildUI();
             ShowMain();
@@ -113,7 +115,7 @@ namespace RPGArena.UI
             mainPanel = Panel(root, "Main");
             var mp = (RectTransform)mainPanel.transform;
             var title = Label(mp, "ARENA OF THE ALGORITHMS", new Vector2(0.5f, 0.80f), 74, TextAnchor.MiddleCenter, 1600);
-            title.color = new Color(1f, 0.82f, 0.35f); title.fontStyle = FontStyle.Bold;
+            title.color = new Color(1f, 0.82f, 0.35f); title.fontStyle = FontStyles.Bold;
             AddOutline(title.gameObject, new Color(0.25f, 0.04f, 0f, 0.95f), 3);
             var sub = Label(mp, "A turn-based boss-rush RPG", new Vector2(0.5f, 0.72f), 26, TextAnchor.MiddleCenter, 1000);
             sub.color = new Color(0.85f, 0.85f, 0.9f); AddOutline(sub.gameObject, new Color(0, 0, 0, 0.8f), 2);
@@ -202,16 +204,37 @@ namespace RPGArena.UI
             var ort = oimg.rectTransform; ort.anchorMin = Vector2.zero; ort.anchorMax = Vector2.one; ort.offsetMin = Vector2.zero; ort.offsetMax = Vector2.zero;
         }
 
+        // Give a TMP label a crisp dark outline (legible over the cinematic background) via an
+        // instanced font material — selective, so cards/blurbs on dark panels stay clean.
         private static void AddOutline(GameObject go, Color color, int dist)
         {
-            var o = go.AddComponent<Outline>(); o.effectColor = color; o.effectDistance = new Vector2(dist, -dist);
+            var t = go.GetComponent<TMP_Text>();
+            if (t == null) return;
+            var m = t.fontMaterial;   // TMP creates a per-instance material on access
+            m.EnableKeyword("OUTLINE_ON");
+            m.SetColor("_OutlineColor", color);
+            m.SetFloat("_OutlineWidth", Mathf.Clamp01(dist * 0.06f));
         }
 
-        private Text Label(RectTransform parent, string text, Vector2 anchor, int size, TextAnchor align, float width)
+        private static TextAlignmentOptions MapAlign(TextAnchor a) => a switch
+        {
+            TextAnchor.UpperLeft => TextAlignmentOptions.TopLeft,
+            TextAnchor.UpperCenter => TextAlignmentOptions.Top,
+            TextAnchor.UpperRight => TextAlignmentOptions.TopRight,
+            TextAnchor.MiddleLeft => TextAlignmentOptions.MidlineLeft,
+            TextAnchor.MiddleRight => TextAlignmentOptions.MidlineRight,
+            TextAnchor.LowerLeft => TextAlignmentOptions.BottomLeft,
+            TextAnchor.LowerCenter => TextAlignmentOptions.Bottom,
+            TextAnchor.LowerRight => TextAlignmentOptions.BottomRight,
+            _ => TextAlignmentOptions.Center
+        };
+
+        private TMP_Text Label(RectTransform parent, string text, Vector2 anchor, int size, TextAnchor align, float width)
         {
             var go = new GameObject("Label"); go.transform.SetParent(parent, false);
-            var t = go.AddComponent<Text>(); t.font = font; t.text = text; t.fontSize = size; t.alignment = align; t.color = Color.white;
-            t.horizontalOverflow = HorizontalWrapMode.Wrap; t.verticalOverflow = VerticalWrapMode.Overflow;
+            var t = go.AddComponent<TextMeshProUGUI>();
+            t.font = font; t.text = text; t.fontSize = size; t.alignment = MapAlign(align); t.color = Color.white;
+            t.richText = true; t.raycastTarget = false; t.enableWordWrapping = true; t.overflowMode = TextOverflowModes.Overflow;
             var rt = t.rectTransform; rt.anchorMin = rt.anchorMax = anchor; rt.pivot = new Vector2(0.5f, 0.5f); rt.anchoredPosition = Vector2.zero; rt.sizeDelta = new Vector2(width, size * 4 + 20);
             return t;
         }
@@ -230,7 +253,7 @@ namespace RPGArena.UI
             btn.colors = cb; img.color = cb.normalColor;
             btn.onClick.AddListener(() => { Audio?.PlaySfx("ui_click"); onClick(); });
             var t = Label((RectTransform)go.transform, label, new Vector2(0.5f, 0.5f), 26, TextAnchor.MiddleCenter, 420);
-            t.fontStyle = FontStyle.Bold; AddOutline(t.gameObject, new Color(0, 0, 0, 0.7f), 1);
+            t.fontStyle = FontStyles.Bold; AddOutline(t.gameObject, new Color(0, 0, 0, 0.7f), 1);
             return btn;
         }
 
@@ -253,7 +276,7 @@ namespace RPGArena.UI
             }
 
             var nameT = Label(rt, name, new Vector2(0.5f, 0.74f), 30, TextAnchor.MiddleLeft, 760);
-            nameT.color = new Color(1f, 0.9f, 0.5f); nameT.fontStyle = FontStyle.Bold;
+            nameT.color = new Color(1f, 0.9f, 0.5f); nameT.fontStyle = FontStyles.Bold;
             nameT.rectTransform.anchoredPosition = new Vector2(95, nameT.rectTransform.anchoredPosition.y);
             var blurbT = Label(rt, blurb, new Vector2(0.5f, 0.3f), 18, TextAnchor.MiddleLeft, 740);
             blurbT.rectTransform.anchoredPosition = new Vector2(105, blurbT.rectTransform.anchoredPosition.y);
