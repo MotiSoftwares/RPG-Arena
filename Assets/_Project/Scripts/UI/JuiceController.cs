@@ -53,6 +53,10 @@ namespace RPGArena.UI
 
         private Camera cam;
         private Vector3 camBasePos;
+        private float camBaseFov;
+        private float fovPunch;        // degrees subtracted from base FOV on crit/break (eases back, unscaled)
+        private float breakPunch;      // 0..1 dolly push toward the action on a Break
+        private static readonly Vector3 BreakDolly = new Vector3(0.8f, -0.25f, 1.6f);  // local push: right/down/forward
         private float shakeAmount;
         private float flashAmount;
         private bool timeEffectActive;
@@ -68,7 +72,7 @@ namespace RPGArena.UI
         {
             font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             cam = Camera.main;
-            if (cam != null) camBasePos = cam.transform.localPosition;
+            if (cam != null) { camBasePos = cam.transform.localPosition; camBaseFov = cam.fieldOfView; }
             BuildCanvas();
         }
 
@@ -180,11 +184,13 @@ namespace RPGArena.UI
 
             if (r.hit && !r.isHeal && !r.absorbed && r.source != null)
             {
-                r.target.GetComponent<Characters.CombatantMotion>()?.Recoil(dir);
+                float recoilScale = r.crit ? 1.8f : (r.reaction == ElementReaction.Weak ? 1.4f : 1f);   // weight the flinch to the hit
+                r.target.GetComponent<Characters.CombatantMotion>()?.Recoil(dir, recoilScale);
                 r.target.GetComponentInChildren<Characters.AnimationDriver>()?.PlayHit();
                 HitStop(r.crit ? hitStopCrit : hitStopNormal);
                 shakeAmount = Mathf.Max(shakeAmount, r.crit ? shakeOnCrit : (r.reaction == ElementReaction.Weak ? shakeOnCrit * 0.8f : shakeOnHit));
-                if (r.crit) flashAmount = Mathf.Max(flashAmount, flashOnCrit);
+                if (r.crit) { flashAmount = Mathf.Max(flashAmount, flashOnCrit); fovPunch = Mathf.Max(fovPunch, 9f); }   // crit snaps the camera in
+                else if (r.reaction == ElementReaction.Weak) fovPunch = Mathf.Max(fovPunch, 4.5f);
             }
         }
 
@@ -217,6 +223,7 @@ namespace RPGArena.UI
         {
             shakeAmount = Mathf.Max(shakeAmount, shakeOnBreak);
             flashAmount = Mathf.Max(flashAmount, flashOnBreak);
+            fovPunch = Mathf.Max(fovPunch, 14f); breakPunch = 1f;   // big FOV snap + a slow dolly toward the action
             // The break slow-mo QUEUES behind any in-flight hit-stop (never dropped, never races it).
             StartCoroutine(TimeEffect(breakSlowMoScale, breakSlowMoDuration, true));
         }
@@ -275,17 +282,23 @@ namespace RPGArena.UI
 
         private void LateUpdate()
         {
-            // Camera shake: a decaying random offset on the cached base position (unscaled so it
-            // still moves during hit-stop's freeze).
+            // Action camera: FOV punch (crit/break) + a Break dolly push, plus decaying shake — all on
+            // UNSCALED time so the move animates through the hit-stop freeze and the BREAK slow-mo. The
+            // base pos/FOV are restored as the punches ease to zero, so this never deadlocks the framing.
             if (cam != null)
             {
+                fovPunch = Mathf.MoveTowards(fovPunch, 0f, 26f * Time.unscaledDeltaTime);
+                breakPunch = Mathf.MoveTowards(breakPunch, 0f, 1.45f * Time.unscaledDeltaTime);
+                cam.fieldOfView = camBaseFov - fovPunch;
+
+                Vector3 shakeOff = Vector3.zero;
                 if (shakeAmount > 0.0001f)
                 {
                     Vector2 o = Random.insideUnitCircle * shakeAmount;
-                    cam.transform.localPosition = camBasePos + new Vector3(o.x, o.y, 0f);
+                    shakeOff = new Vector3(o.x, o.y, 0f);
                     shakeAmount = Mathf.MoveTowards(shakeAmount, 0f, shakeDecay * Time.unscaledDeltaTime);
                 }
-                else cam.transform.localPosition = camBasePos;
+                cam.transform.localPosition = camBasePos + BreakDolly * breakPunch + shakeOff;
             }
 
             if (flashImage != null)

@@ -23,6 +23,7 @@ namespace RPGArena.Characters
         private float bobPhase;
         private bool ready;
         private bool dashing;            // a scripted run-in is driving the offset (skip auto-springback)
+        private bool recoiling;          // a scripted flinch is driving the offset (skip auto-springback)
 
         private void Start()
         {
@@ -37,9 +38,10 @@ namespace RPGArena.Characters
             if (!ready) return;
             bobPhase += Time.deltaTime * bobSpeed;
             float bob = Mathf.Sin(bobPhase) * bobAmplitude;
-            // Ease the lunge/recoil offset back to rest (unscaled so hit-stop doesn't freeze it odd).
-            // While a scripted melee run-in (DashStrike) owns the offset, don't fight it.
-            if (!dashing) offset = Vector3.Lerp(offset, Vector3.zero, Mathf.Clamp01(Time.unscaledDeltaTime * springback));
+            // Ease the lunge offset back to rest. While a scripted run-in (DashStrike) or flinch
+            // (Recoil) owns the offset, don't fight it — those run on SCALED time so the body holds
+            // still during the hit-stop freeze (which is what makes the freeze read as a hard impact).
+            if (!dashing && !recoiling) offset = Vector3.Lerp(offset, Vector3.zero, Mathf.Clamp01(Time.unscaledDeltaTime * springback));
             body.position = baseWorldPos + new Vector3(0f, bob, 0f) + offset;
         }
 
@@ -82,12 +84,31 @@ namespace RPGArena.Characters
             dashing = false;
         }
 
-        // Knock back away from the attacker — a flinch.
-        public void Recoil(Vector3 worldDir)
+        // Knock back away from the attacker — a flinch. Default magnitude.
+        public void Recoil(Vector3 worldDir) => Recoil(worldDir, 1f);
+
+        // Knock back scaled to the hit's weight (the call site passes more for a crit / weakness), HOLD
+        // the flinch briefly (reads through the hit-stop freeze since it runs on scaled time), then
+        // spring back with a small overshoot/settle so the impact has follow-through, not a snap home.
+        public void Recoil(Vector3 worldDir, float scale)
         {
-            if (!ready) return;
+            if (!ready || dashing) return;
             worldDir.y = 0f;
-            offset = worldDir.sqrMagnitude > 0.0001f ? worldDir.normalized * recoilDistance : Vector3.zero;
+            if (worldDir.sqrMagnitude < 0.0001f) return;
+            StartCoroutine(RecoilRoutine(worldDir.normalized * recoilDistance * Mathf.Max(0.1f, scale)));
+        }
+
+        private System.Collections.IEnumerator RecoilRoutine(Vector3 knock)
+        {
+            recoiling = true;
+            offset = knock;                                         // snap to the flinch
+            yield return new WaitForSeconds(0.07f);                 // HOLD (scaled → extends through hit-stop)
+            Vector3 from = offset; float t = 0f;
+            while (t < 0.18f) { t += Time.deltaTime; offset = Vector3.Lerp(from, knock * -0.1f, t / 0.18f); yield return null; }  // spring past rest (overshoot)
+            from = offset; t = 0f;
+            while (t < 0.10f) { t += Time.deltaTime; offset = Vector3.Lerp(from, Vector3.zero, t / 0.10f); yield return null; }   // settle to rest
+            offset = Vector3.zero;
+            recoiling = false;
         }
     }
 }
