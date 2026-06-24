@@ -29,9 +29,9 @@ namespace RPGArena.Combat
             float damageRoll = Mathf.Lerp(cfg.damageVarianceMin, cfg.damageVarianceMax, (float)rng.NextDouble());
             float critRoll = (float)rng.NextDouble();
             // Only the SPECIAL draws the risk die — gated so non-special hits consume no extra rng
-            // (keeps seeded headless runs stable until a risky ability actually fires). The roll is
-            // clamped up to the ability's riskFloor so a "safe" special rarely/never backfires.
-            float riskRoll = info.rollsRiskDie ? Mathf.Max(Mathf.Clamp01(info.riskFloor), (float)rng.NextDouble()) : 1f;
+            // (keeps seeded headless runs stable until a risky ability actually fires). The riskFloor
+            // clamp lives in ComputePure so it stays deterministic + unit-testable.
+            float riskRoll = info.rollsRiskDie ? (float)rng.NextDouble() : 1f;
             return ComputePure(info, cfg, hitRoll, damageRoll, critRoll, riskRoll);
         }
 
@@ -133,6 +133,7 @@ namespace RPGArena.Combat
             if (info.rollsRiskDie)
             {
                 r.risked = true;
+                riskRoll = Mathf.Max(Mathf.Clamp01(info.riskFloor), riskRoll);   // a "safe" special floors the roll out of Backfire
                 r.riskFace = Mathf.Clamp(Mathf.FloorToInt(riskRoll * 20f) + 1, 1, 20);
                 if (riskRoll < cfg.riskBackfireThreshold)
                 {
