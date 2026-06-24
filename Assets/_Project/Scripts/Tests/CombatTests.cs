@@ -261,6 +261,31 @@ namespace RPGArena.Tests
             TestUtil.Destroy(dragon);
         }
 
+        // --- Synergy web (combos the live kits can actually trigger) ------------------
+        [Test]
+        public void Wet_Physical_Gives_The_Physical_Trio_A_Setup_Payoff()
+        {
+            // Thief's Water Bomb (Wet) should make the no-Mage physical trio's blows hit harder AND
+            // build extra stagger (so they can Break/vent Fury without an Ice freeze).
+            var dry = new StatusEffectContainer();
+            var wet = new StatusEffectContainer(); wet.Apply(Flag(StatusFlag.Wet));
+            var sDry = SynergyResolver.Resolve(dry, ElementType.Physical);
+            var sWet = SynergyResolver.Resolve(wet, ElementType.Physical);
+            Assert.Greater(sWet.damageMultiplier, sDry.damageMultiplier, "Wet must raise physical damage.");
+            Assert.Greater(sWet.bonusStaggerBuild, sDry.bonusStaggerBuild, "Wet must add stagger build for physical hits.");
+        }
+
+        [Test]
+        public void Marked_Plus_Frozen_Is_Brittle_Extra_Crit()
+        {
+            var marked = new StatusEffectContainer(); marked.Apply(Flag(StatusFlag.Marked));
+            var brittle = new StatusEffectContainer(); brittle.Apply(Flag(StatusFlag.Marked)); brittle.Apply(Flag(StatusFlag.Frozen));
+            var sM = SynergyResolver.Resolve(marked, ElementType.Physical);
+            var sB = SynergyResolver.Resolve(brittle, ElementType.Physical);
+            Assert.Greater(sB.critChanceBonus, sM.critChanceBonus,
+                "A Marked + Frozen (brittle) target must crit harder than Marked alone — rewards Mark before the freeze->shatter.");
+        }
+
         // --- helpers -----------------------------------------------------------------
         private static DamageInfo Info(Entity src, Entity tgt, ElementType e) => new DamageInfo
         {

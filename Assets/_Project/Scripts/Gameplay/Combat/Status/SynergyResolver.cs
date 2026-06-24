@@ -55,6 +55,17 @@ namespace RPGArena.Combat.Status
                 outcome.note = "Wet+Ice (Freeze)";
             }
 
+            // Wet + Physical => the soaked target is heavier and exposed: a little extra damage and a
+            // solid stagger bump. This gives Thief's Water Bomb STANDALONE value for the NO-MAGE
+            // physical trio (which can't freeze): soak, then pound to drive the Break that vents the
+            // dragon's Searing Fury. Mirrors the Oiled+Physical line for the actually-applied flag.
+            if (targetStatus.Has(StatusFlag.Wet) && element == ElementType.Physical)
+            {
+                outcome.damageMultiplier *= 1.15f;
+                outcome.bonusStaggerBuild += 12f;
+                outcome.note = string.IsNullOrEmpty(outcome.note) ? "Wet+Physical" : outcome.note + " +soaked";
+            }
+
             // Frozen + Physical => SHATTER: the party's highest-ceiling line, completing the
             // 3-action Wet -> Ice(freeze) -> smash combo (§5.8/§7.2). It must out-damage simply
             // casting Ice three times (each ×1.5 + a bonus turn), so it both BURSTS hard (×2.3) and
@@ -71,6 +82,15 @@ namespace RPGArena.Combat.Status
             {
                 outcome.critChanceBonus += 0.25f;
                 outcome.bonusStaggerBuild += 6f;
+            }
+
+            // Marked + Frozen => BRITTLE: a marked, frozen target is glass — a big extra crit-chance
+            // spike (on top of Mark's) so the Shatter that follows almost always crits. Rewards
+            // spending a Mark BEFORE the freeze->smash, deepening the marquee combo line.
+            if (targetStatus.Has(StatusFlag.Marked) && targetStatus.Has(StatusFlag.Frozen))
+            {
+                outcome.critChanceBonus += 0.4f;
+                outcome.note = string.IsNullOrEmpty(outcome.note) ? "Brittle!" : outcome.note + " +Brittle";
             }
 
             return outcome;
