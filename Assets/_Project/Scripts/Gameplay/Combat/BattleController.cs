@@ -185,6 +185,11 @@ namespace RPGArena.Combat
                                 Context.Log($"    +1 MORE! {actor.displayName} seizes another action.");
                             }
 
+                            // Party Valor accrues from this action — coordination (weakness/combo/
+                            // setup/buff) charges it hard, a plain spam-hit barely (null-safe).
+                            if (actor.team == Team.Heroes)
+                                ChargeSystem.AwardFor(used, Context.lastActionResults, Context);
+
                             yield return WaitForPresentation();
                         }
                     }
@@ -195,6 +200,7 @@ namespace RPGArena.Combat
                     }
 
                     actor.TickEndOfTurn();
+                    if (actor.team == Team.Heroes) Context.charge?.ConsumeHeroTurn(Context);   // count down an active Overdrive surge
                     onTurnEnded?.Raise(actor);
                     CheckDeaths();
                     Context.boss?.CheckPhaseTransition(Context);
@@ -242,6 +248,7 @@ namespace RPGArena.Combat
                 damage = new DamagePipeline(balance, new System.Random()),
                 stagger = new StaggerSystem(),
                 turns = new TurnSystem(),
+                charge = new ChargeSystem { max = balance.valorMax },   // party Valor / Overdrive (live battles only)
                 onBattleStarted = onBattleStarted, onBattleWon = onBattleWon, onBattleLost = onBattleLost,
                 onTurnStarted = onTurnStarted, onTurnEnded = onTurnEnded, onEntityDied = onEntityDied,
                 onStaggerBroken = onStaggerBroken, onDamageDealt = onDamageDealt, onBossTelegraph = onBossTelegraph

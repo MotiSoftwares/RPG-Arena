@@ -123,6 +123,8 @@ namespace RPGArena.Combat
                 && TurnSystem.EarnsExtraTurn(used, ctx.lastActionResults)
                 && ctx.turns.TryGrantExtraTurn(actor, order))
                 ctx.Log($"    +1 MORE! {actor.displayName} earns a bonus turn (weakness).");
+            if (actor.team == Characters.Team.Heroes)
+                ChargeSystem.AwardFor(used, ctx.lastActionResults, ctx);   // party Valor (null-safe; headless = no-op)
         }
 
         private void CheckDeaths()
@@ -138,6 +140,7 @@ namespace RPGArena.Combat
         private void TurnEnd(Entity actor)
         {
             actor.TickEndOfTurn();
+            if (actor.team == Characters.Team.Heroes) ctx.charge?.ConsumeHeroTurn(ctx);   // count down an active Overdrive (null-safe)
             ctx.RaiseTurnEnded(actor);
         }
 

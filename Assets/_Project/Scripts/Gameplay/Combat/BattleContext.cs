@@ -19,6 +19,7 @@ namespace RPGArena.Combat
         public DamagePipeline damage;
         public StaggerSystem stagger;
         public TurnSystem turns;
+        public ChargeSystem charge;        // party Valor / Overdrive (null in headless tests — every hook null-guards)
         public System.Random rng;
         public int BossStaggeredTurns = 1;
 
