@@ -34,5 +34,6 @@ namespace RPGArena.Combat
         public float damageRoll;       // the rolled variance multiplier (for the dice UI)
         public float hitChance;        // the chance we rolled against (shown pre-commit)
         public float staggerBuilt;     // how much stagger this hit added to the target
+        public bool comboDetonated;    // this paid hit cashed in a setup (Shatter / Marked) — earns a bonus turn for physical classes too
     }
 }

@@ -56,14 +56,16 @@ namespace RPGArena.Combat
 
         // THE single rule for earning a "1 More" bonus turn (§5.5), shared by the headless
         // (BattleManager) and live (BattleController) loops so they can never drift apart:
-        // a hero earns it ONLY when a PAID action (mpCost > 0) lands a WEAKNESS hit. The free
-        // 0-MP basic therefore can't farm a turn every round, and random crits never snowball —
-        // exploiting the boss's element with a real resource cost is the deliberate tactical reward.
+        // a hero earns it when a PAID action (mpCost > 0) either lands a WEAKNESS hit (the Mage's
+        // Ice line) OR cashes in a setup — a Shatter detonation or a blow on a Marked target — so
+        // the physical classes (Warrior/Archer/Thief) have their OWN reachable tempo engine instead
+        // of the reward being Mage-exclusive. The free 0-MP basic still can't farm it (mpCost > 0),
+        // and random crits never snowball — tempo is always a deliberate, paid, set-up reward.
         public static bool EarnsExtraTurn(Ability used, List<DamageResult> results)
         {
             if (used == null || used.mpCost <= 0 || results == null) return false;
             foreach (var r in results)
-                if (r.hit && r.reaction == ElementReaction.Weak) return true;
+                if (r.hit && (r.reaction == ElementReaction.Weak || r.comboDetonated)) return true;
             return false;
         }
     }

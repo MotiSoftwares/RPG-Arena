@@ -30,6 +30,16 @@ namespace RPGArena.Combat.Status
                 outcome.note = "Oiled+Fire";
             }
 
+            // Oiled + Physical => the slick coating leaves the target exposed: a little extra damage
+            // and a solid stagger bump. This gives Thief's Oil Bomb STANDALONE value against the
+            // Fire-ABSORBING Dragon, where its Oiled+Fire payoff would only heal the boss (§4.12).
+            if (targetStatus.Has(StatusFlag.Oiled) && element == ElementType.Physical)
+            {
+                outcome.damageMultiplier *= 1.15f;
+                outcome.bonusStaggerBuild += 12f;
+                outcome.note = string.IsNullOrEmpty(outcome.note) ? "Oiled+Physical" : outcome.note + " +slick";
+            }
+
             // Wet + Lightning => +50% damage and a guaranteed control proc.
             if (targetStatus.Has(StatusFlag.Wet) && element == ElementType.Lightning)
             {

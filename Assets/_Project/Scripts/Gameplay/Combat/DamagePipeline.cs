@@ -73,7 +73,10 @@ namespace RPGArena.Combat
                 ? tgt.elementProfile.GetReaction(info.element) : ElementReaction.Neutral;
             // Breaking the boss STRIPS its armour: a staggered target no longer resists, so the
             // Break window is a clear payoff even for physical-only parties (§7.2/§7.4/§19.3).
-            if (tgt != null && tgt.isStaggered && reaction == ElementReaction.Resist)
+            // A FROZEN target's physical SHATTER likewise bypasses Physical resist — otherwise the
+            // marquee Wet->Freeze->smash combo nets only 2.3 x 0.5 ~= 1.15x and feels like a dud.
+            bool shatter = tgt != null && tgt.Status != null && tgt.Status.Has(StatusFlag.Frozen) && info.element == ElementType.Physical;
+            if (tgt != null && (tgt.isStaggered || shatter) && reaction == ElementReaction.Resist)
                 reaction = ElementReaction.Neutral;
             r.reaction = reaction;
             float elementMult = ElementProfile.MultiplierFor(reaction, cfg);
@@ -100,9 +103,14 @@ namespace RPGArena.Combat
             // 5) STAGGER multiplier while the target is Broken — the burst window.
             if (tgt != null && tgt.isStaggered) dmg *= cfg.staggerDamageMult;
 
-            // 6) SYNERGY (Oiled+Fire, Wet+Lightning, Marked, ...).
+            // 6) SYNERGY (Oiled+Fire, Wet+Lightning, Marked, Shatter, ...).
             var syn = SynergyResolver.Resolve(tgt != null ? tgt.Status : null, info.element);
             dmg *= syn.damageMultiplier;
+            // A PAID hit that cashes in a setup (a Shatter detonation, or any blow on a Marked target)
+            // earns the press-turn bonus too — so the physical classes aren't locked out of the action
+            // economy that the Mage's Ice-weakness would otherwise monopolise (§5.5).
+            r.comboDetonated = (syn.note != null && syn.note.Contains("SHATTER"))
+                            || (tgt != null && tgt.Status != null && tgt.Status.Has(StatusFlag.Marked));
 
             // 7) CRIT (Marked raises the chance; some finishers always crit).
             float critChance = (src != null ? src.CritChance : 0f) + syn.critChanceBonus;

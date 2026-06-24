@@ -177,10 +177,61 @@ namespace RPGArena.Tests
             Assert.Greater(SynergyResolver.Resolve(oiled, ElementType.Fire).damageMultiplier, 1f, "Oiled + Fire must boost fire damage.");
         }
 
+        // Oil Bomb must have standalone value vs the Fire-ABSORBING Dragon (its Oiled+Fire combo
+        // would only heal it), so Oiled+Physical builds extra stagger.
+        [Test]
+        public void OiledPhysical_Builds_Stagger()
+        {
+            var oiled = new StatusEffectContainer();
+            oiled.Apply(Flag(StatusFlag.Oiled));
+            Assert.Greater(SynergyResolver.Resolve(oiled, ElementType.Physical).bonusStaggerBuild, 0f,
+                "Oiled + Physical must build extra stagger so Oil Bomb isn't a trap on a fire-absorbing boss.");
+        }
+
+        // The marquee Wet->Freeze->smash combo: a Frozen target's physical Shatter must bypass the
+        // Dragon's Physical resist, else it nets only ~1.15x and feels like a dud (audit tier-2 #10).
+        [Test]
+        public void Frozen_Physical_Shatter_Bypasses_Physical_Resist()
+        {
+            var cfg = TestUtil.Cfg();
+            var src = TestUtil.Make(cfg, new StatBlock { STR = 24, baseAttack = 30 }, primary: PrimaryStat.STR);
+            var tgt = TestUtil.Make(cfg, new StatBlock { maxHP = 9999, baseDefense = 0 }, TestUtil.Profile(resist: new[] { ElementType.Physical }), isBoss: true);
+            int resisted = DamagePipeline.ComputePure(Phys(src, tgt), cfg, 0f, 1f, 1f).amount;
+            tgt.Status.Apply(Flag(StatusFlag.Frozen));
+            var shatter = DamagePipeline.ComputePure(Phys(src, tgt), cfg, 0f, 1f, 1f);
+            Assert.AreEqual(ElementReaction.Neutral, shatter.reaction, "Frozen+Physical must shatter the Physical resist.");
+            Assert.Greater(shatter.amount, resisted, "A Shatter hit must out-damage a plain resisted physical hit.");
+            TestUtil.Destroy(src, tgt);
+        }
+
+        // Physical classes get their OWN tempo engine: a PAID hit that detonates a setup (Shatter /
+        // Marked) earns the "1 More", but a free 0-MP basic never does (audit tier-2 #4).
+        [Test]
+        public void Physical_Combo_Detonation_Earns_Extra_Turn_But_Free_Basic_Does_Not()
+        {
+            var cfg = TestUtil.Cfg();
+            var src = TestUtil.Make(cfg, new StatBlock { STR = 24, baseAttack = 30 }, primary: PrimaryStat.STR);
+            var tgt = TestUtil.Make(cfg, new StatBlock { maxHP = 9999 }, TestUtil.Profile(), isBoss: true);
+            tgt.Status.Apply(Flag(StatusFlag.Frozen));
+            var shatter = DamagePipeline.ComputePure(Phys(src, tgt), cfg, 0f, 1f, 1f);
+            Assert.IsTrue(shatter.comboDetonated, "A Frozen+Physical Shatter must flag comboDetonated.");
+            var results = new System.Collections.Generic.List<DamageResult> { shatter };
+            var paid = ScriptableObject.CreateInstance<Ability>(); paid.mpCost = 10;
+            var free = ScriptableObject.CreateInstance<Ability>(); free.mpCost = 0;
+            Assert.IsTrue(TurnSystem.EarnsExtraTurn(paid, results), "A PAID physical Shatter earns the press-turn bonus.");
+            Assert.IsFalse(TurnSystem.EarnsExtraTurn(free, results), "A 0-MP basic must never farm a bonus turn.");
+            TestUtil.Destroy(src, tgt);
+        }
+
         // --- helpers -----------------------------------------------------------------
         private static DamageInfo Info(Entity src, Entity tgt, ElementType e) => new DamageInfo
         {
             source = src, target = tgt, element = e, basePower = 1f, isMagic = true, forceHit = true, hitTier = HitTier.Standard
+        };
+
+        private static DamageInfo Phys(Entity src, Entity tgt) => new DamageInfo
+        {
+            source = src, target = tgt, element = ElementType.Physical, basePower = 1f, isMagic = false, forceHit = true, hitTier = HitTier.Standard
         };
 
         private static StatusEffectDefinition Flag(StatusFlag f)
