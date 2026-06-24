@@ -276,7 +276,7 @@ namespace RPGArena.Combat
 
         private void PlaceCombatants()
         {
-            var bossPos = new Vector3(4.0f, 0f, 0.6f);   // boss anchor (tighter face-off so both party + boss frame well)
+            var bossPos = new Vector3(3.4f, 0f, 0.6f);   // boss anchor: pulled in from x=4 so the big dragon sits fully inside the frame (head was clipping the right edge)
             for (int i = 0; i < Context.heroes.Count; i++)
             {
                 var h = Context.heroes[i];

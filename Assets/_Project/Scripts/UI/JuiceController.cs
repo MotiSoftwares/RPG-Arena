@@ -216,7 +216,8 @@ namespace RPGArena.UI
         {
             shakeAmount = Mathf.Max(shakeAmount, shakeOnBreak);
             flashAmount = Mathf.Max(flashAmount, flashOnBreak);
-            StartCoroutine(BreakSpectacle());
+            // The break slow-mo QUEUES behind any in-flight hit-stop (never dropped, never races it).
+            StartCoroutine(TimeEffect(breakSlowMoScale, breakSlowMoDuration, true));
         }
 
         private void OnTelegraph(Ability a)
@@ -226,49 +227,49 @@ namespace RPGArena.UI
         }
 
         // --- effects ------------------------------------------------------------------
+        // A tiny freeze-frame on impact. Dropped (not queued) if a bigger time effect already owns
+        // the clock — the break slow-mo during a crit is dramatic enough without stacking a freeze.
         private void HitStop(float duration)
         {
-            if (!timeEffectActive) StartCoroutine(HitStopRoutine(duration));
+            if (timeEffectActive) return;
+            StartCoroutine(TimeEffect(0f, duration, false));
         }
 
-        private IEnumerator HitStopRoutine(float duration)
+        // THE single owner of Time.timeScale (§12.1/§12.3). Only one of these ever runs at a time —
+        // a new effect WAITS for the in-flight one to finish, so HitStop (0) and the BREAK slow-mo
+        // (0.35) can never interleave and leave the game stuck frozen or in permanent slow-mo. The
+        // try/finally guarantees the clock is restored to 1 even if the coroutine is interrupted.
+        private IEnumerator TimeEffect(float scale, float duration, bool banner)
         {
+            while (timeEffectActive) yield return null;   // serialize: one owner of the clock
             timeEffectActive = true;
-            float prev = Time.timeScale;
-            Time.timeScale = 0f;
-            yield return new WaitForSecondsRealtime(duration);
-            Time.timeScale = prev;
-            timeEffectActive = false;
-        }
-
-        private IEnumerator BreakSpectacle()
-        {
-            // Slow-mo window + the big "BREAK!" banner punching in.
-            timeEffectActive = true;
-            Time.timeScale = breakSlowMoScale;
-
-            if (breakBanner != null)
+            try
             {
-                breakBanner.gameObject.SetActive(true);
-                breakBanner.color = new Color(1f, 0.85f, 0.2f, 1f);
-                float t = 0f;
-                while (t < breakSlowMoDuration)
+                Time.timeScale = scale;
+                if (banner && breakBanner != null)
                 {
-                    t += Time.unscaledDeltaTime;
-                    float k = t / breakSlowMoDuration;
-                    breakBanner.transform.localScale = Vector3.one * Mathf.Lerp(1.6f, 1f, Mathf.Clamp01(k * 3f));
-                    breakBanner.color = new Color(1f, 0.85f, 0.2f, 1f - Mathf.Clamp01((k - 0.6f) / 0.4f));
-                    yield return null;
+                    breakBanner.gameObject.SetActive(true);
+                    float t = 0f;
+                    while (t < duration)
+                    {
+                        t += Time.unscaledDeltaTime;
+                        float k = t / duration;
+                        breakBanner.transform.localScale = Vector3.one * Mathf.Lerp(1.6f, 1f, Mathf.Clamp01(k * 3f));
+                        breakBanner.color = new Color(1f, 0.85f, 0.2f, 1f - Mathf.Clamp01((k - 0.6f) / 0.4f));
+                        yield return null;
+                    }
+                    breakBanner.gameObject.SetActive(false);
                 }
-                breakBanner.gameObject.SetActive(false);
+                else
+                {
+                    yield return new WaitForSecondsRealtime(duration);
+                }
             }
-            else
+            finally
             {
-                yield return new WaitForSecondsRealtime(breakSlowMoDuration);
+                Time.timeScale = 1f;
+                timeEffectActive = false;
             }
-
-            Time.timeScale = 1f;
-            timeEffectActive = false;
         }
 
         private void LateUpdate()
@@ -294,6 +295,10 @@ namespace RPGArena.UI
         }
 
         // --- elemental VFX ------------------------------------------------------------
+        // Push a colour into HDR (>1) so the bright impact core exceeds the Bloom threshold (0.9)
+        // and actually GLOWS over the sunlit meadow instead of washing out as a flat decal.
+        private static Color Hdr(Color c, float intensity) => new Color(c.r * intensity, c.g * intensity, c.b * intensity, c.a);
+
         private static Color ElementColor(ElementType e)
         {
             switch (e)
@@ -321,7 +326,7 @@ namespace RPGArena.UI
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.3f * scale, 0.6f * scale);
             main.startSpeed = new ParticleSystem.MinMaxCurve(2.5f * scale, 6.5f * scale);
             main.startSize = new ParticleSystem.MinMaxCurve(0.18f * scale, 0.5f * scale);
-            main.startColor = color;
+            main.startColor = Hdr(color, 2.6f);   // HDR core -> blooms on impact
             main.maxParticles = 250; main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.stopAction = ParticleSystemStopAction.Destroy;
             main.gravityModifier = 0.6f;
@@ -370,7 +375,7 @@ namespace RPGArena.UI
             var main = ps.main;
             main.duration = 0.3f; main.loop = false; main.playOnAwake = false;
             main.startLifetime = 0.18f; main.startSpeed = 0f;
-            main.startSize = size; main.startColor = Color.Lerp(color, Color.white, 0.6f);
+            main.startSize = size; main.startColor = Hdr(Color.Lerp(color, Color.white, 0.6f), 2.4f);
             main.maxParticles = 2; main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.stopAction = ParticleSystemStopAction.Destroy;
             var emission = ps.emission; emission.rateOverTime = 0f; emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)1) });

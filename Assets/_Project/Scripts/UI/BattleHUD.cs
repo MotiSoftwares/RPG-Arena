@@ -25,8 +25,10 @@ namespace RPGArena.UI
         public Core.Events.VoidChannel onBattleWon, onBattleLost;
 
         private Font font;
-        private Text bossName, bossHpText, log, telegraph, bossWeakness;
+        private Text bossName, bossHpText, log, telegraph, bossWeakness, bossStaggerText;
         private Image bossHpFill, bossStaggerFill;
+        private GameObject telegraphPanel;
+        private Sprite roundedSprite;
         private bool weaknessSeen;          // a weakness hit has landed (or the player studied)
         private readonly List<Text> partyTexts = new();
         private readonly List<Image> partyHpFill = new();
@@ -34,7 +36,8 @@ namespace RPGArena.UI
         private readonly List<Text> partyHpText = new();
         private readonly List<Text> partyMpText = new();
         private RectTransform actionPanel;
-        private readonly List<string> logLines = new();
+        private struct LogEntry { public string text; public Color color; }
+        private readonly List<LogEntry> logEntries = new();
         private RectTransform bossStatusRow;
         private readonly List<RectTransform> heroStatusRows = new();
         private readonly string[] statusSigs = new string[8];   // 0 = boss, 1.. = heroes
@@ -95,25 +98,37 @@ namespace RPGArena.UI
         private void OnDamage(DamageResult r)
         {
             string who = r.target != null ? r.target.displayName : "?";
-            if (!r.hit) AddLog($"{who}: MISS");
-            else if (r.absorbed) AddLog($"{who} ABSORBED {r.amount} (healed!)");
-            else if (r.isHeal) AddLog($"{who} +{r.amount} HP");
-            else AddLog($"{who} -{r.amount}{(r.reaction == ElementReaction.Weak ? " WEAK!" : "")}{(r.crit ? " CRIT" : "")}");
+            if (!r.hit) AddLog($"{who}  miss", new Color(0.60f, 0.60f, 0.64f));
+            else if (r.absorbed) AddLog($"{who}  ABSORBED {r.amount} — healed", new Color(0.55f, 0.80f, 1f));
+            else if (r.isHeal) AddLog($"{who}  +{r.amount} HP", new Color(0.45f, 0.85f, 0.42f));
+            else
+            {
+                string suffix = (r.reaction == ElementReaction.Weak ? "  WEAK" : "") + (r.crit ? "  CRIT" : "");
+                Color c = r.crit ? new Color(1f, 0.82f, 0.25f)                       // gold = crit
+                        : r.reaction == ElementReaction.Weak ? new Color(0.40f, 0.85f, 1f)  // cyan = weakness
+                        : new Color(0.84f, 0.86f, 0.90f);                            // muted = plain hit
+                AddLog($"{who}  -{r.amount}{suffix}", c);
+            }
             if (r.reaction == ElementReaction.Weak) weaknessSeen = true;   // reveal it in the HUD
         }
 
-        private void OnBreak(Entity boss) => AddLog($">>> BREAK! {boss.displayName} is staggered! <<<");
-        private void OnDied(Entity e) => AddLog($"X {e.displayName} has fallen.");
+        private void OnBreak(Entity boss) => AddLog($"BREAK!  {boss.displayName} staggered", new Color(1f, 0.68f, 0.18f));
+        private void OnDied(Entity e) => AddLog($"{e.displayName} has fallen", new Color(1f, 0.40f, 0.38f));
 
         private void OnTelegraph(Ability a)
         {
             if (telegraph == null) return;
-            telegraph.text = $"⚠ The Dragon is charging {a.displayName}!";
+            telegraph.text = $"⚠  DRAGON IS CHARGING: {a.displayName.ToUpper()}  —  BREAK IT OR DEFEND  ⚠";
             telegraph.gameObject.SetActive(true);
-            CancelInvoke(nameof(HideTelegraph));
-            Invoke(nameof(HideTelegraph), 3.5f);
+            if (telegraphPanel != null) telegraphPanel.SetActive(true);
+            // Visibility is now STATE-driven (see RefreshBars): the banner stays up across the
+            // multiple hero turns until the Dragon unleashes the move or it is Broken — not a timer.
         }
-        private void HideTelegraph() { if (telegraph) telegraph.gameObject.SetActive(false); }
+        private void HideTelegraphNow()
+        {
+            if (telegraph != null) telegraph.gameObject.SetActive(false);
+            if (telegraphPanel != null) telegraphPanel.SetActive(false);
+        }
 
         // --- per-frame UI refresh -----------------------------------------------------
         private void RefreshBars()
@@ -125,9 +140,24 @@ namespace RPGArena.UI
                 SetFill(bossHpFill, ctx.boss.currentHP, ctx.boss.stats.maxHP);
                 SetFill(bossStaggerFill, ctx.boss.isStaggered ? ctx.boss.staggerThreshold : ctx.boss.staggerMeter, ctx.boss.staggerThreshold);
                 bossHpText.text = $"HP {ctx.boss.currentHP}/{ctx.boss.stats.maxHP}";
+                // Stagger meter: labelled, and it visibly changes state (pulses white) while Broken so
+                // the headline Break window is legible, not a decorative underline.
+                if (bossStaggerText != null)
+                    bossStaggerText.text = ctx.boss.isStaggered
+                        ? "★  BROKEN  ★"
+                        : $"BREAK  {Mathf.RoundToInt(ctx.boss.staggerMeter)} / {Mathf.RoundToInt(ctx.boss.staggerThreshold)}";
+                if (bossStaggerFill != null)
+                    bossStaggerFill.color = ctx.boss.isStaggered
+                        ? Color.Lerp(new Color(1f, 0.96f, 0.6f), Color.white, Mathf.PingPong(Time.unscaledTime * 4f, 1f))
+                        : new Color(0.95f, 0.8f, 0.2f);
                 if (bossWeakness != null)
                     bossWeakness.text = (weaknessSeen || ctx.weaknessRevealed) ? FormatWeakness(ctx.boss) : "";
                 RefreshStatusRow(bossStatusRow, ctx.boss, 0, true);
+
+                // Telegraph banner stays up until the charged move FIRES or is BROKEN (state-driven,
+                // not a 3.5s timer that vanished before the player could react across slow boss turns).
+                bool charging = ctx.boss.telegraphedAbility != null;
+                if (!charging && telegraph != null && telegraph.gameObject.activeSelf) HideTelegraphNow();
             }
             RefreshTurnOrder();
             for (int i = 0; i < partyTexts.Count; i++)
@@ -300,11 +330,30 @@ namespace RPGArena.UI
             }
         }
 
-        private void AddLog(string line)
+        private void AddLog(string line) => AddLog(line, new Color(0.82f, 0.84f, 0.88f));
+
+        // A short, color-coded event ticker (not a debug console): newest line at the bottom and
+        // fully bright, older lines fade out — so the eye lands on what just happened.
+        private void AddLog(string line, Color color)
         {
-            logLines.Add(line);
-            while (logLines.Count > 9) logLines.RemoveAt(0);
-            if (log) log.text = string.Join("\n", logLines);
+            logEntries.Add(new LogEntry { text = line, color = color });
+            while (logEntries.Count > 5) logEntries.RemoveAt(0);
+            if (log) log.text = ComposeLog();
+        }
+
+        private string ComposeLog()
+        {
+            var sb = new System.Text.StringBuilder();
+            int n = logEntries.Count;
+            for (int i = 0; i < n; i++)
+            {
+                float a = n <= 1 ? 1f : Mathf.Lerp(0.35f, 1f, (float)i / (n - 1));   // oldest dim -> newest bright
+                var c = logEntries[i].color; c.a = a;
+                sb.Append("<color=#").Append(ColorUtility.ToHtmlStringRGBA(c)).Append('>')
+                  .Append(logEntries[i].text).Append("</color>");
+                if (i < n - 1) sb.Append('\n');
+            }
+            return sb.ToString();
         }
 
         // Record the bar's target fill; the coloured fill + pale ghost ease toward it in AnimateBars().
@@ -376,11 +425,17 @@ namespace RPGArena.UI
             bossName.color = new Color(1f, 0.58f, 0.48f); bossName.fontStyle = FontStyle.Bold;
             bossHpFill = MakeBar(root, new Vector2(0.5f, 1f), new Vector2(0, -80), new Vector2(780, 28), new Color(0.85f, 0.18f, 0.18f));
             bossHpText = MakeText(root, "HP", new Vector2(0.5f, 1f), new Vector2(0, -80), new Vector2(780, 28), 16, TextAnchor.MiddleCenter);
-            bossStaggerFill = MakeBar(root, new Vector2(0.5f, 1f), new Vector2(0, -110), new Vector2(780, 12), new Color(0.95f, 0.8f, 0.2f));
-            bossWeakness = MakeText(root, "", new Vector2(0.5f, 1f), new Vector2(0, -124), new Vector2(700, 22), 16, TextAnchor.MiddleCenter);
+            bossStaggerFill = MakeBar(root, new Vector2(0.5f, 1f), new Vector2(0, -110), new Vector2(780, 14), new Color(0.95f, 0.8f, 0.2f));
+            bossStaggerText = MakeText(root, "BREAK", new Vector2(0.5f, 1f), new Vector2(0, -110), new Vector2(780, 14), 11, TextAnchor.MiddleCenter);
+            bossStaggerText.color = Color.white; bossStaggerText.fontStyle = FontStyle.Bold;
+            bossWeakness = MakeText(root, "", new Vector2(0.5f, 1f), new Vector2(0, -126), new Vector2(700, 22), 16, TextAnchor.MiddleCenter);
             bossWeakness.color = new Color(0.4f, 0.9f, 1f);
-            telegraph = MakeText(root, "", new Vector2(0.5f, 1f), new Vector2(0, -150), new Vector2(900, 40), 24, TextAnchor.MiddleCenter);
-            telegraph.color = new Color(1f, 0.5f, 0.1f);
+            // Telegraph WARNING banner: a saturated red bar behind bold amber text. High contrast and
+            // state-driven so the "break it / defend it" decision is loud and persistent.
+            telegraphPanel = MakePanel(root, new Vector2(0.5f, 1f), new Vector2(0, -152), new Vector2(760, 40), new Color(0.55f, 0.06f, 0.06f, 0.93f));
+            telegraph = MakeText(root, "", new Vector2(0.5f, 1f), new Vector2(0, -152), new Vector2(900, 38), 22, TextAnchor.MiddleCenter);
+            telegraph.color = new Color(1f, 0.93f, 0.4f); telegraph.fontStyle = FontStyle.Bold;
+            telegraphPanel.SetActive(false);
             telegraph.gameObject.SetActive(false);
             // Boss status-effect badges (so Oiled/Wet/Marked/Frozen are visible for combos, §9.4).
             bossStatusRow = MakeRow(root, new Vector2(0.5f, 1f), new Vector2(0, -176), new Vector2(820, 26));
@@ -407,9 +462,10 @@ namespace RPGArena.UI
             var menu = MakePanel(root, new Vector2(1f, 0f), new Vector2(-20, 30), new Vector2(390, 330), new Color(0.05f, 0.06f, 0.1f, 0.62f));
             actionPanel = menu.GetComponent<RectTransform>();
 
-            // Combat log (left-middle) with a dark backing.
-            MakePanel(root, new Vector2(0f, 0.5f), new Vector2(16, -50), new Vector2(440, 240), new Color(0.04f, 0.04f, 0.07f, 0.45f));
-            log = MakeText(root, "", new Vector2(0f, 0.5f), new Vector2(20, 60), new Vector2(420, 220), 15, TextAnchor.LowerLeft);
+            // Combat log (left-middle): a short color-coded ticker on a solid-reading backing.
+            MakePanel(root, new Vector2(0f, 0.5f), new Vector2(16, -64), new Vector2(420, 150), new Color(0.04f, 0.04f, 0.07f, 0.62f));
+            log = MakeText(root, "", new Vector2(0f, 0.5f), new Vector2(28, 18), new Vector2(396, 132), 16, TextAnchor.LowerLeft);
+            log.supportRichText = true; log.lineSpacing = 1.15f;
             // (End-of-battle screens are owned by RunFlow, driven by OnBattleWon/OnBattleLost.)
         }
 
@@ -428,15 +484,15 @@ namespace RPGArena.UI
         private Image MakeBar(RectTransform parent, Vector2 anchor, Vector2 pos, Vector2 size, Color color)
         {
             var bg = new GameObject("BarBG"); bg.transform.SetParent(parent, false);
-            var bgImg = bg.AddComponent<Image>(); bgImg.color = new Color(0, 0, 0, 0.6f);
+            var bgImg = bg.AddComponent<Image>(); bgImg.color = new Color(0, 0, 0, 0.6f); Style(bgImg);
             var brt = bgImg.rectTransform; brt.anchorMin = brt.anchorMax = anchor; brt.pivot = anchor; brt.anchoredPosition = pos; brt.sizeDelta = size;
             // Ghost ("chip") layer behind the real fill: a pale bar that trails to reveal lost HP.
             var gh = new GameObject("BarGhost"); gh.transform.SetParent(bg.transform, false);
             var ghImg = gh.AddComponent<Image>(); ghImg.color = new Color(1f, 1f, 1f, 0.55f); ghImg.type = Image.Type.Filled; ghImg.fillMethod = Image.FillMethod.Horizontal; ghImg.fillOrigin = 0; ghImg.fillAmount = 1f;
-            var grt = ghImg.rectTransform; grt.anchorMin = Vector2.zero; grt.anchorMax = Vector2.one; grt.offsetMin = Vector2.zero; grt.offsetMax = Vector2.zero;
+            var grt = ghImg.rectTransform; grt.anchorMin = Vector2.zero; grt.anchorMax = Vector2.one; grt.offsetMin = new Vector2(3, 3); grt.offsetMax = new Vector2(-3, -3);
             var fg = new GameObject("BarFill"); fg.transform.SetParent(bg.transform, false);
             var img = fg.AddComponent<Image>(); img.color = color; img.type = Image.Type.Filled; img.fillMethod = Image.FillMethod.Horizontal; img.fillOrigin = 0; img.fillAmount = 1f;
-            var frt = img.rectTransform; frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one; frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero;
+            var frt = img.rectTransform; frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one; frt.offsetMin = new Vector2(3, 3); frt.offsetMax = new Vector2(-3, -3);
             ghostOf[img] = ghImg; targetFill[img] = 1f;
             return img;
         }
@@ -444,7 +500,7 @@ namespace RPGArena.UI
         private GameObject MakePanel(RectTransform parent, Vector2 anchor, Vector2 pos, Vector2 size, Color color)
         {
             var go = new GameObject("Panel"); go.transform.SetParent(parent, false);
-            var img = go.AddComponent<Image>(); img.color = color;
+            var img = go.AddComponent<Image>(); img.color = color; Style(img);
             var rt = img.rectTransform; rt.anchorMin = rt.anchorMax = anchor; rt.pivot = anchor; rt.anchoredPosition = pos; rt.sizeDelta = size;
             return go;
         }
@@ -452,10 +508,14 @@ namespace RPGArena.UI
         private Button MakeButton(RectTransform parent, string label, Vector2 pos, bool enabled, Sprite icon = null)
         {
             var go = new GameObject("Button"); go.transform.SetParent(parent, false);
-            var img = go.AddComponent<Image>(); img.color = enabled ? new Color(0.16f, 0.3f, 0.5f, 0.9f) : new Color(0.25f, 0.25f, 0.25f, 0.7f);
+            var img = go.AddComponent<Image>(); img.color = enabled ? new Color(0.16f, 0.3f, 0.5f, 0.9f) : new Color(0.25f, 0.25f, 0.25f, 0.7f); Style(img);
             var rt = img.rectTransform; rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(0, 1);
             rt.anchoredPosition = pos; rt.sizeDelta = new Vector2(0, 28); rt.offsetMin = new Vector2(6, rt.offsetMin.y); rt.offsetMax = new Vector2(-6, rt.offsetMax.y);
             var btn = go.AddComponent<Button>(); btn.targetGraphic = img; btn.interactable = enabled;
+            // Tint on hover/press so the menu feels responsive (normal/disabled keep the base color).
+            var cb = btn.colors; cb.normalColor = Color.white; cb.disabledColor = Color.white;
+            cb.highlightedColor = new Color(0.72f, 0.86f, 1f); cb.pressedColor = new Color(0.55f, 0.68f, 0.85f);
+            cb.fadeDuration = 0.08f; btn.colors = cb;
 
             float textLeft = 10f;
             if (icon != null)
@@ -471,6 +531,36 @@ namespace RPGArena.UI
             t.rectTransform.anchorMin = new Vector2(0, 0); t.rectTransform.anchorMax = new Vector2(1, 1);
             t.rectTransform.offsetMin = new Vector2(textLeft, 0); t.rectTransform.offsetMax = new Vector2(-6, 0);
             return btn;
+        }
+
+        // Apply a soft rounded-rectangle frame to any HUD Image (9-sliced so corners never stretch).
+        // One shared sprite replaces the hard 90-degree opaque rectangles that read as programmer-art.
+        private void Style(Image img)
+        {
+            if (img == null) return;
+            img.sprite = RoundedSprite();
+            img.type = Image.Type.Sliced;
+        }
+
+        private Sprite RoundedSprite()
+        {
+            if (roundedSprite != null) return roundedSprite;
+            const int s = 32, r = 6;
+            var tex = new Texture2D(s, s, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+            for (int y = 0; y < s; y++)
+                for (int x = 0; x < s; x++)
+                {
+                    // distance into the nearest rounded corner (0 along the straight edges)
+                    float dx = Mathf.Max(Mathf.Max(r - x, x - (s - 1 - r)), 0f);
+                    float dy = Mathf.Max(Mathf.Max(r - y, y - (s - 1 - r)), 0f);
+                    float d = Mathf.Sqrt(dx * dx + dy * dy);
+                    float a = Mathf.Clamp01(r - d + 0.5f);   // solid inside, 1px anti-aliased corner falloff
+                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+                }
+            tex.Apply();
+            roundedSprite = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), 100f, 0,
+                                          SpriteMeshType.FullRect, new Vector4(r, r, r, r));
+            return roundedSprite;
         }
 
         private static void ClearChildren(RectTransform t)
