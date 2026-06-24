@@ -34,6 +34,7 @@ namespace RPGArena.Audio
         private int nextVoice;
         private AudioSource musicSource;
         private Coroutine musicFade;
+        private Coroutine duckCo;
 
         private void Awake()
         {
@@ -87,6 +88,30 @@ namespace RPGArena.Audio
             if (musicFade != null) StopCoroutine(musicFade);
             musicFade = StartCoroutine(FadeOutStop());
         }
+
+        // Transient music duck (§12.3): the BREAK stinger lands harder when the loop dips under it.
+        // Restores to the persisted level — never writes PlayerPrefs. Unscaled so it rides the slow-mo.
+        public void DuckMusic(float toLinear, float hold, float release)
+        {
+            if (mixer == null) return;
+            if (duckCo != null) StopCoroutine(duckCo);
+            duckCo = StartCoroutine(DuckRoutine(Mathf.Clamp01(toLinear), Mathf.Max(0f, hold), Mathf.Max(0.01f, release)));
+        }
+
+        private IEnumerator DuckRoutine(float toLinear, float hold, float release)
+        {
+            float baseLin = GetVolume(AudioBus.Music);     // the persisted level we swell back to
+            const float attack = 0.08f;
+            for (float t = 0f; t < attack; t += Time.unscaledDeltaTime) { SetMusicDb(Mathf.Lerp(baseLin, toLinear, t / attack)); yield return null; }
+            SetMusicDb(toLinear);
+            yield return new WaitForSecondsRealtime(hold);
+            for (float t = 0f; t < release; t += Time.unscaledDeltaTime) { SetMusicDb(Mathf.Lerp(toLinear, baseLin, t / release)); yield return null; }
+            SetMusicDb(baseLin);
+            duckCo = null;
+        }
+
+        // Set the music bus dB directly WITHOUT persisting (unlike SetVolume) — for the transient duck.
+        private void SetMusicDb(float linear) { if (mixer != null) mixer.SetFloat(AudioBus.Music, LinearToDb(linear)); }
 
         public void SetVolume(string bus, float linear01)
         {

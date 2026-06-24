@@ -68,7 +68,12 @@ namespace RPGArena.UI
             Audio?.PlaySfx(id);
         }
 
-        private void OnBreak(Entity _) => Audio?.PlaySfx("break");
+        private void OnBreak(Entity _)
+        {
+            var a = Audio; if (a == null) return;
+            a.PlaySfx("break");
+            a.DuckMusic(0.4f, 0.55f, 0.7f);   // dip the loop under the BREAK stinger, then swell back (~covers the slow-mo)
+        }
         private void OnTelegraph(Ability _) => Audio?.PlaySfx("telegraph");
     }
 }

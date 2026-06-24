@@ -18,6 +18,10 @@ namespace RPGArena.Core
         void PlayMusic(string id, bool loop = true);
         void StopMusic();
 
+        // Briefly dip the music bus (e.g. under a BREAK stinger) to toLinear, hold, then swell back
+        // to the persisted level. Does NOT change the saved volume — purely a transient duck.
+        void DuckMusic(float toLinear, float hold, float release);
+
         // Volume on a 0..1 linear scale (mapped to dB internally) for the settings sliders;
         // bus is one of the AudioBus constants. GetVolume returns the persisted value.
         void SetVolume(string bus, float linear01);
