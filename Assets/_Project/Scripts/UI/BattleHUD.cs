@@ -668,6 +668,16 @@ namespace RPGArena.UI
             move.onClick.AddListener(() => controller.SubmitReposition());
             y += 38f;
 
+            // HOLD — act at the end of the round instead. Named for what it BUYS ("act after your
+            // allies"), because "delay" reads like a penalty when it is the combo party's best tool:
+            // it is how a physical hero gets to swing AFTER the Mage has frozen the boss.
+            if (controller.CanHold)
+            {
+                var hold = MakeSimpleButton(actionPanel, "⏳  Hold  —  act after your allies", new Vector2(0, -y), Accent, true);
+                hold.onClick.AddListener(() => controller.SubmitHold());
+                y += 38f;
+            }
+
             // Consumables: one button into the item submenu (hidden while the satchel is empty).
             var run = GameBootstrap.Instance?.Run;
             int owned = run != null ? run.inventory.Count : 0;

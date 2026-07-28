@@ -48,6 +48,10 @@ namespace RPGArena.Combat
 
         private ActionRequest? pendingAction;
         private bool pendingReposition;          // HUD requested a row swap (front<->back) this turn
+        private bool pendingHold;                // HUD requested to HOLD (act later this round)
+        // Who has already held this round. Caps it at once per hero, which is what stops two heroes
+        // holding for each other forever, and also marks whose start-of-turn tick already ran.
+        private readonly HashSet<Entity> heldThisRound = new();
 
         // Set by the presentation layer (JuiceController) to the time the current strike's juice
         // finishes; the battle loop waits on it so the next turn never starts mid-animation.
@@ -106,6 +110,27 @@ namespace RPGArena.Combat
         // The HUD calls this when the active hero chooses to reposition (swap front/back row).
         public void SubmitReposition() { if (ActiveHero != null) pendingReposition = true; }
 
+        // HOLD: give up your slot and act at the END of this round instead.
+        //
+        // The whole game is setup-then-detonate, but who acts first was pure initiative roll — so
+        // the round where your Warrior moved before the Mage's Blizzard, you simply could not
+        // SHATTER, and the combo you had built was decided by dice rather than by you. Holding turns
+        // turn order from something that happens TO the party into something the party plays.
+        //
+        // Deliberately not free: you surrender your place in the order, so every enemy still to act
+        // hits you first, and the boss's telegraph may land before you ever swing.
+        public bool CanHold => ActiveHero != null && !heldThisRound.Contains(ActiveHero) && HasLaterActor();
+        public void SubmitHold() { if (CanHold) pendingHold = true; }
+
+        // Holding only means anything if somebody is still scheduled behind you.
+        private bool HasLaterActor()
+        {
+            if (currentOrder == null) return false;
+            for (int i = orderIndex + 1; i < currentOrder.Count; i++)
+                if (currentOrder[i] != null && currentOrder[i].IsAlive) return true;
+            return false;
+        }
+
         // The HUD's gold OVERDRIVE button: spend a FULL Valor meter on the party-wide damage surge.
         // A free activation — the hero still takes their action this turn (now surge-boosted), so you
         // "charge up, unleash, then dump a Shatter in the Break window" for the biggest reliable hit.
@@ -153,13 +178,19 @@ namespace RPGArena.Combat
                 RoundsTaken = round;
                 var order = new List<Entity>(Context.turns.BuildRoundOrder(All(), Context.rng, balance.maxExtraTurnsPerEntityPerRound));
                 currentOrder = order;   // exposed to the HUD's turn-order tracker
+                heldThisRound.Clear();  // one hold per hero per round
                 for (orderIndex = 0; orderIndex < order.Count && Result == BattleManager.Outcome.InProgress; orderIndex++)
                 {
                     var actor = order[orderIndex];
                     if (actor == null || !actor.IsAlive) continue;
 
-                    int dot = actor.TickStartOfTurn();
-                    if (dot > 0) Context.Log($"{actor.displayName} takes {dot} damage over time.");
+                    // A hero who HELD already began their turn earlier this round, so ticking again
+                    // would burn a second stack of every damage-over-time they are carrying.
+                    if (!heldThisRound.Contains(actor))
+                    {
+                        int dot = actor.TickStartOfTurn();
+                        if (dot > 0) Context.Log($"{actor.displayName} takes {dot} damage over time.");
+                    }
                     onTurnStarted?.Raise(actor);
 
                     if (actor.CanAct)
@@ -206,7 +237,25 @@ namespace RPGArena.Combat
                             ActiveHero = actor;
                             pendingAction = null;
                             pendingReposition = false;
-                            while (pendingAction == null && !pendingReposition) yield return null;
+                            pendingHold = false;
+                            while (pendingAction == null && !pendingReposition && !pendingHold) yield return null;
+
+                            if (pendingHold)
+                            {
+                                // Move to the back of the round and re-run this slot. `continue` still
+                                // runs the for-loop's increment, so stepping the index back by one
+                                // lands on whoever slid up into the vacated position.
+                                pendingHold = false;
+                                ActiveHero = null;
+                                heldThisRound.Add(actor);
+                                order.RemoveAt(orderIndex);
+                                order.Add(actor);
+                                orderIndex--;
+                                Context.Log($"{actor.displayName} holds, waiting for a better moment.");
+                                yield return Wait();
+                                continue;   // no action spent, no end-of-turn tick — the turn is deferred, not used
+                            }
+
                             if (pendingReposition)
                             {
                                 pendingReposition = false;
