@@ -48,9 +48,30 @@ Unity 3D turn-based boss-battler (URP). Party of 3 heroes (from Warrior/Mage/Thi
 - Gotcha: `SceneManager.LoadScene` from `execute_code` only applies if you Step a few frames IN THE SAME call right after it; PowerShell `-replace`/`Set-Content` mojibakes UTF-8 C# files (repair: read UTF8 → encode 1252 → decode UTF8) — use .NET File IO or the Edit tool.
 - [x] Final (this pass): 29/29 EditMode green after every feature; validated visually via Step+screenshot loop.
 
+## Simulation-driven findings (July 28 pass 3) — measure, don't guess
+
+Run N headless fights and aggregate the log (see the `execute_code` recipe pattern: build a
+`BattleContext` like `PartyTrioTests`, `RunToCompletion`, then parse `ctx.log`). What it exposed:
+
+- **Combos NEVER fire** — 12 full fights, zero `synergy:` lines. `SimpleHeroAI` scores by raw power so
+  setup skills (Water Bomb / Shadow Mark) are never chosen. The combo web is the game's identity and
+  is currently decorative. **Still open.**
+- **23.6% of all attacks MISS**; in 1 of 10 fights every single round-1 attack whiffed. Dead turns are
+  the biggest "boring" contributor. Candidate fix: glancing blows (~30% damage) instead of 0. **Open.**
+- Damage is Mage-dominated (Frost Touch + Blizzard = 51% of all damage); physical heroes eat "resist"
+  103 times per 10 fights.
+- **The gate test is a single seed (99).** Changing the AI's RNG consumption reshuffles that fight
+  entirely — a trio can win 8/8 on other seeds and still fail the gate. **Sweep trios × seeds before
+  tuning**, and prefer a lever with a real design reason over one that only fixes seed 99.
+
 ## Hard-won gotchas (verify before re-deriving)
 
+- **Animation clips MUST be Humanoid.** 13 clips wired into the battle controllers were Generic rigs on Humanoid characters — Unity can't retarget those, so they silently never played (the "weird/unnatural animation" complaint). Any new clip: `animationType = Human`, `avatarSetup = CopyFromOther`, `sourceAvatar` = that pack's own model avatar. Verify with `read_console` for "not humanoid".
+- **Vendor prefabs have no AnimationDriver** — `AttachBody` now adds one if missing. Without it a boss/minion stands frozen all fight.
+- **Pause ownership**: `Core.GamePause` is the single authority (Core so Gameplay+UI can both read it; UI→Gameplay is a one-way dependency). `Time.timeScale == 0` does NOT mean paused — hit-stop parks it at 0 too. Anything real-time (timed-strike bar, BRACE) must check `GamePause.IsPaused`, and JuiceController's watchdog must never force-restore a deliberate pause.
 - **Unfocused-editor stall root cause**: `WaitForSecondsRealtime` never resumes under `EditorApplication.Step()` with the editor unfocused → hit-stop parked `Time.timeScale` at 0 forever. Fixed: TimeEffect integrates `unscaledDeltaTime` manually + a LateUpdate watchdog force-restores after 1.5s frozen. Don't reintroduce realtime waits in presentation.
+- ComfyUI and Unity must NOT run at once on this 32GB machine — ComfyUI keeps ~13-20GB of model weights pinned in RAM after a render, which pages Unity to death (looks like a 5-FPS editor). Batch-generate, quit ComfyUI fully, then return to Unity.
+- The MCP `execute_code` frame-stepping loop spams "PlayerLoop called recursively" errors in the console — that's the automation, not a game bug.
 - Burst screenshots inside one `execute_code` call flush the same frame — capture ONE screenshot per call (step ~5 after) for sequences.
 - Direct-play BattleArena has NO GameBootstrap/RunState (items/gold hidden). Test via an INACTIVE GameObject + AddComponent + reflection-set `Instance`/`Run` (Awake never fires on inactive).
 - Erb "projectile" prefabs: root ParticleSystem startSpeed 15, world-space, sub-emitters explode on particle death. Never spawn at identity/origin; configure BEFORE first sim frame (same call as Instantiate).
