@@ -260,34 +260,80 @@ namespace RPGArena.UI
             if (turnOrderRow == null || controller.UpcomingOrder == null) return;
             var sb = new System.Text.StringBuilder();
             int seen = 0;
-            foreach (var e in controller.UpcomingOrder) { if (e != null && e.IsAlive) { sb.Append(e.displayName).Append('|'); if (++seen >= 6) break; } }
+            foreach (var e in controller.UpcomingOrder)
+            {
+                if (e == null || !e.IsAlive) continue;
+                sb.Append(e.displayName).Append(':').Append(IntentOf(e)).Append('|');
+                if (++seen >= 6) break;
+            }
             string sig = sb.ToString();
             if (sig == turnOrderSig) return;
             turnOrderSig = sig;
 
             ClearChildren(turnOrderRow);
+            turnOrderCursor = 0;
             int i = 0;
             foreach (var e in controller.UpcomingOrder)
             {
                 if (e == null || !e.IsAlive) continue;
+                bool enemy = e.team == Team.Enemies;
+                string intent = enemy ? IntentOf(e) : "";
+                bool tall = intent.Length > 0;
                 var chip = new GameObject("Chip"); chip.transform.SetParent(turnOrderRow, false);
                 var img = chip.AddComponent<Image>(); Soft(img);
                 img.color = i == 0 ? new Color(Gold.r, Gold.g, Gold.b, 0.22f)
                           : e.isBoss ? new Color(0.5f, 0.16f, 0.16f, 0.55f) : new Color(0.15f, 0.2f, 0.32f, 0.55f);
                 var rt = img.rectTransform;
                 rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f); rt.pivot = new Vector2(0.5f, 1f);
-                rt.anchoredPosition = new Vector2(0, -i * 30); rt.sizeDelta = new Vector2(166, 27);
+                rt.anchoredPosition = new Vector2(0, -turnOrderCursor); rt.sizeDelta = new Vector2(166, tall ? 40 : 27);
+                turnOrderCursor += tall ? 43 : 30;
                 // accent dot
                 var dot = new GameObject("Dot"); dot.transform.SetParent(rt, false);
                 var dimg = dot.AddComponent<Image>(); Soft(dimg);
                 dimg.color = e.isBoss ? Danger : (i == 0 ? Gold : Accent);
-                var drt = dimg.rectTransform; drt.anchorMin = drt.anchorMax = new Vector2(0f, 0.5f); drt.pivot = new Vector2(0f, 0.5f);
-                drt.anchoredPosition = new Vector2(10, 0); drt.sizeDelta = new Vector2(8, 8);
-                var t = MakeText(rt, (i == 0 ? "NOW  " : $"{i + 1}.  ") + e.displayName, fontBody, 14, TextAlignmentOptions.MidlineLeft, new Vector2(0, 1), new Vector2(0, 1));
-                var trt = t.rectTransform; trt.anchorMin = new Vector2(0, 0); trt.anchorMax = new Vector2(1, 1); trt.offsetMin = new Vector2(24, 0); trt.offsetMax = new Vector2(-4, 0);
+                var drt = dimg.rectTransform; drt.anchorMin = drt.anchorMax = new Vector2(0f, 1f); drt.pivot = new Vector2(0f, 1f);
+                drt.anchoredPosition = new Vector2(10, tall ? -9 : -10); drt.sizeDelta = new Vector2(8, 8);
+
+                var t = MakeText(rt, (i == 0 ? "NOW  " : $"{i + 1}.  ") + e.displayName, fontBody, 14, TextAlignmentOptions.TopLeft, new Vector2(0, 1), new Vector2(0, 1));
+                var trt = t.rectTransform; trt.anchorMin = new Vector2(0, 1); trt.anchorMax = new Vector2(1, 1);
+                trt.pivot = new Vector2(0, 1); trt.anchoredPosition = new Vector2(24, -3); trt.sizeDelta = new Vector2(-28, 18);
                 t.color = i == 0 ? Gold : TxtMain;
+
+                // INTENT: what this enemy is about to do. Planning beats reacting — the whole fight
+                // changes character once you can see the incoming blow one turn early.
+                if (tall)
+                {
+                    var it = MakeText(rt, intent, fontBody, 11.5f, TextAlignmentOptions.TopLeft, new Vector2(0, 1), new Vector2(0, 1));
+                    var irt = it.rectTransform; irt.anchorMin = new Vector2(0, 1); irt.anchorMax = new Vector2(1, 1);
+                    irt.pivot = new Vector2(0, 1); irt.anchoredPosition = new Vector2(24, -21); irt.sizeDelta = new Vector2(-28, 16);
+                    it.richText = true; it.enableWordWrapping = false; it.overflowMode = TextOverflowModes.Ellipsis;
+                }
                 if (++i >= 6) break;
             }
+        }
+
+        private int turnOrderCursor;
+
+        // A short, readable description of an enemy's NEXT action. A committed telegraph outranks
+        // everything (it is already locked in); otherwise we ask the brain for a side-effect-free
+        // preview. Brains that are genuinely random answer null, and "???" is honest information.
+        private string IntentOf(Entity e)
+        {
+            if (e == null || e.team != Team.Enemies || controller == null || controller.Context == null) return "";
+            if (e.telegraphedAbility != null)
+                return $"<color=#FF7A5C>⚠ {e.telegraphedAbility.displayName.ToUpper()}</color>";
+            var brain = e.Brain;
+            if (brain == null) return "";
+            Ability next = null;
+            try { next = brain.PreviewIntent(controller.Context, e, controller.Context.heroes); }
+            catch { next = null; }
+            if (next == null) return "<color=#8A95A8>??? unpredictable</color>";
+
+            string scope = next.targetRule == TargetRule.AllEnemies ? "  <color=#FF9E7A>ALL</color>" : "";
+            string col = next.effectType == EffectType.BossMove ? "#FFD24A"
+                       : (next.effectType == EffectType.Attack || next.effectType == EffectType.MultiHit) ? "#E8907A"
+                       : "#8FD8A0";
+            return $"<color={col}>{next.displayName}</color>{scope}";
         }
 
         // --- status-effect badges -----------------------------------------------------
@@ -890,9 +936,10 @@ namespace RPGArena.UI
             telegraphPanel.SetActive(false);
 
             // ---- TURN ORDER (top right) ----
-            var toPanel = MakePanel(root, new Vector2(1f, 1f), new Vector2(-12, -12), new Vector2(184, 236), Panel).GetComponent<RectTransform>();
+            // taller: enemy rows now carry an INTENT line under the name
+            var toPanel = MakePanel(root, new Vector2(1f, 1f), new Vector2(-12, -12), new Vector2(184, 292), Panel).GetComponent<RectTransform>();
             var toTitle = PanelTitle(toPanel, "TURN ORDER", 14, 8, 20); toTitle.color = Accent; toTitle.characterSpacing = 6;
-            turnOrderRow = MakeRow(root, new Vector2(1f, 1f), new Vector2(-104, -44), new Vector2(172, 188));
+            turnOrderRow = MakeRow(root, new Vector2(1f, 1f), new Vector2(-104, -44), new Vector2(172, 244));
 
             // ---- PARTY (bottom left): 3 hero cards ----
             for (int i = 0; i < 3; i++)

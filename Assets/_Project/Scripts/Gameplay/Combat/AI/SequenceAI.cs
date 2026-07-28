@@ -15,6 +15,14 @@ namespace RPGArena.Combat.AI
         [Tooltip("How this minion picks its victim each turn.")]
         public TargetPick targeting = TargetPick.RandomHero;
 
+        // Minions run a fixed rotation, so their next move is fully readable — that is the point of
+        // an authored sequence: the player learns it and plans around it.
+        public override Ability PreviewIntent(BattleContext ctx, Entity self, IReadOnlyList<Entity> opponents)
+        {
+            if (self.abilities == null || self.abilities.Count == 0) return null;
+            return self.abilities[self.aiCycleIndex % self.abilities.Count];
+        }
+
         public override Ability DecideAction(BattleContext ctx, Entity self, IReadOnlyList<Entity> opponents, out Entity target)
         {
             target = null;

@@ -26,6 +26,33 @@ namespace RPGArena.Combat.AI
         [Range(0f, 1f)] public float phase2HpFraction = 0.5f;
         [Range(0f, 1f)] public float phase3HpFraction = 0.15f;
 
+        // What the dragon will do next turn, without touching its state. Its rotation is fully
+        // deterministic, so the player can genuinely plan around it — which is the point: this boss
+        // is a PUZZLE, and a puzzle you cannot read is just noise.
+        public override Ability PreviewIntent(BattleContext ctx, Entity self,
+                                              IReadOnlyList<Entity> opponents)
+        {
+            if (self.telegraphedAbility != null) return self.telegraphedAbility;   // already committed
+            var cycle = BuildCycle(self);
+            if (cycle == null || cycle.Count == 0) return null;
+            int idx = ((self.aiCycleIndex % cycle.Count) + cycle.Count) % cycle.Count;
+            return cycle[idx];
+        }
+
+        // The HP-gated rotation. Shared by DecideAction and PreviewIntent so the preview can never
+        // drift from what actually happens.
+        private List<Ability> BuildCycle(Entity self)
+        {
+            float hpFrac = self.stats.maxHP > 0 ? (float)self.currentHP / self.stats.maxHP : 1f;
+            var wing = wingBuffet != null ? wingBuffet : tailSweep;
+            var charge = chargingBreath != null ? chargingBreath : flameBreath;
+            if (hpFrac <= phase3HpFraction)
+                return new List<Ability> { charge, clawSwipe, charge, wing };        // FINAL FURY
+            if (hpFrac <= phase2HpFraction)
+                return new List<Ability> { clawSwipe, charge, wing, clawSwipe };     // ENRAGED
+            return new List<Ability> { clawSwipe, tailSweep, clawSwipe, charge };    // STALKING
+        }
+
         public override Ability DecideAction(BattleContext ctx, Entity self,
                                              IReadOnlyList<Entity> opponents, out Entity target)
         {
@@ -43,20 +70,11 @@ namespace RPGArena.Combat.AI
             // 2) The Dragon ATTACKS EVERY TURN — no charge-up / telegraph. It mostly mauls its biggest
             //    threat with Claw, with AoE (Flame Breath / Wing Buffet / Tail Sweep) mixed in more as it
             //    bloodies. Three HP-gated rotations escalate the pressure; AoE never charges, it just hits.
-            float hpFrac = self.stats.maxHP > 0 ? (float)self.currentHP / self.stats.maxHP : 1f;
-            var wing = wingBuffet != null ? wingBuffet : tailSweep;   // graceful fallback if unassigned
-            var charge = chargingBreath != null ? chargingBreath : flameBreath;
-            List<Ability> cycle;
-            // Every rotation now CHARGES once, and more often as it bloodies. The charge turn is the
+            // Every rotation CHARGES once, and more often as it bloodies. The charge turn is the
             // whole point of the fight's rhythm: it announces a huge AoE one turn ahead, which the
             // party can either race to BREAK (cancelling it outright) or eat. Without it the dragon
             // was a metronome that just mauled the same hero forever — no read, no counterplay.
-            if (hpFrac <= phase3HpFraction)
-                cycle = new List<Ability> { charge, clawSwipe, charge, wing };                   // FINAL FURY: charge every other turn
-            else if (hpFrac <= phase2HpFraction)
-                cycle = new List<Ability> { clawSwipe, charge, wing, clawSwipe };                // ENRAGED
-            else
-                cycle = new List<Ability> { clawSwipe, tailSweep, clawSwipe, charge };           // STALKING: one charge per cycle
+            var cycle = BuildCycle(self);
 
             int idx = ((self.aiCycleIndex % cycle.Count) + cycle.Count) % cycle.Count;
             self.aiCycleIndex = (idx + 1) % cycle.Count;
