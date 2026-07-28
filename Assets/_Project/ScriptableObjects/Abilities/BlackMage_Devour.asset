@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b335960c99a30f42b5f43ed52ac5c82, type: 3}
+  m_Name: BlackMage_Devour
+  m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.Ability
+  displayName: Devour Magic
+  description: Swallows the coatings and marks laid upon him, growing fat and furious
+    on your preparation.
+  icon: {fileID: 0}
+  effectType: 8
+  targetRule: 4
+  element: 5
+  isMagic: 0
+  power: 0
+  hits: 1
+  mpCost: 0
+  cooldown: 0
+  mpRegenOnUse: 0
+  flatPower: 0
+  hitTier: 0
+  autoHit: 0
+  rollsRiskDie: 0
+  riskFloor: 0
+  backfireKind: 0
+  backfireStatus: {fileID: 0}
+  statusesToApply: []
+  telegraphsAbility: {fileID: 0}
+  consumesSetupFlags: 1
+  devourHealPercentMaxHP: 0.04
+  devourFuryPerFlag: 2
+  stanceAction: 0
+  attunementOptions: 
+  stanceStatuses: []
+  followsAttunement: 0
+  attackMod: 0
+  defenseMod: 0
+  speedMod: 0
+  accuracyMod: 0
+  evasionMod: 0
+  buffDurationTurns: 3
+  ignoreDefensePercent: 0
+  guaranteedCrit: 0
+  bonusVsFlag: 0
+  bonusVsFlagMult: 1.5
+  executeBelowHpPct: 0
+  executeMult: 1.6
+  vfxPrefab: {fileID: 3744133877081091469, guid: a2a060732547fe64581bb0cb3c2bdf1d, type: 3}
+  vfxIsProjectile: 0
+  sfxId: 
+  animationTrigger: Cast
+  tags: []

@@ -41,8 +41,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 112d0d235cb2304429065da11b7d8fb9, type: 2}
   - {fileID: 11400000, guid: 44fa5b24312fca443a3a1897fc601671, type: 2}
   - {fileID: 11400000, guid: 7213f9632f6fe9a4fba2eab0eae28f9e, type: 2}
+  - {fileID: 11400000, guid: efb102904a6104b45aa7154ad1ba33c6, type: 2}
   elementProfile: {fileID: 11400000, guid: 604f0fbea5637bf4980388124694f4e8, type: 2}
-  aiBehavior: {fileID: 11400000, guid: 71c7e3d0a33880449a5d07b607d99120, type: 2}
+  aiBehavior: {fileID: 11400000, guid: 589bad00cf13c814b8cbd42f73168462, type: 2}
   phases:
   - name: Reality Warp
     hpThresholdPercent: 0.5

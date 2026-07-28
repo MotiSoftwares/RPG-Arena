@@ -26,6 +26,14 @@ namespace RPGArena.Combat.Status
         public void Apply(StatusEffectDefinition def)
         {
             if (def == null) return;
+
+            // The two COATINGS are mutually exclusive: you cannot be soaked and slicked at once.
+            // Without this the party could stack both flags for free, which both trivialises the
+            // setup choice (why pick, when you can have both?) and hands a flag-eating boss a
+            // bigger meal. Making them exclusive turns "which coating?" into a real decision.
+            if (def.flag == StatusFlag.Wet) RemoveByFlag(StatusFlag.Oiled);
+            else if (def.flag == StatusFlag.Oiled) RemoveByFlag(StatusFlag.Wet);
+
             var existing = active.Find(a => a.def == def);
             if (existing != null)
             {
@@ -42,6 +50,14 @@ namespace RPGArena.Combat.Status
 
         // Remove a specific status (used when a stance toggle swaps Berserk <-> Guardian).
         public void Remove(StatusEffectDefinition def) => active.RemoveAll(a => a.def == def);
+
+        // Strip every status carrying a flag; returns how many were removed. Used by the coating
+        // exclusion above and by the Black Mage, who EATS the party's setups.
+        public int RemoveByFlag(StatusFlag flag)
+        {
+            if (flag == StatusFlag.None) return 0;
+            return active.RemoveAll(a => a.def != null && a.def.flag == flag);
+        }
 
         // Is a specific status definition currently active?
         public bool Has(StatusEffectDefinition def) => active.Exists(a => a.def == def);

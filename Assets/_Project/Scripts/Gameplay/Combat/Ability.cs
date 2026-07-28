@@ -70,6 +70,11 @@ namespace RPGArena.Combat
         [Tooltip("For a Charging/telegraph move: the attack it commits to next turn (e.g. Flame Breath).")]
         public Ability telegraphsAbility;
 
+        [Tooltip("DEVOUR: this move EATS the setup flags (Wet/Oiled/Marked) on its target, healing and enraging the caster per flag eaten. Frozen is deliberately immune - it is the party's escape hatch.")]
+        public bool consumesSetupFlags = false;
+        [Range(0f, 0.25f)] public float devourHealPercentMaxHP = 0.04f;
+        public int devourFuryPerFlag = 2;
+
         [Header("Stance / attunement (effectType = Stance, §5.9)")]
         public StanceAction stanceAction = StanceAction.None;
         [Tooltip("CycleAttunement: the elemental schools to rotate through (Mage).")]

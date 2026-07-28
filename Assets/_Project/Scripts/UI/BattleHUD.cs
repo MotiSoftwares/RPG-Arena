@@ -328,6 +328,7 @@ namespace RPGArena.UI
             try { next = brain.PreviewIntent(controller.Context, e, controller.Context.heroes); }
             catch { next = null; }
             if (next == null) return "<color=#8A95A8>??? unpredictable</color>";
+            if (next.consumesSetupFlags) return "<color=#FF7A5C>⚠ DEVOURS YOUR SETUPS</color>";
 
             string scope = next.targetRule == TargetRule.AllEnemies ? "  <color=#FF9E7A>ALL</color>" : "";
             string col = next.effectType == EffectType.BossMove ? "#FFD24A"
@@ -845,8 +846,23 @@ namespace RPGArena.UI
 
         private string ComboTag(Entity hero, Ability ab, ElementType el, Entity explicitTarget)
         {
+            var tgt0 = explicitTarget != null ? explicitTarget : PickTarget(hero, ab);
+            // FEEDING WARNING: against a devourer, laying another setup is a trap — it heals and
+            // enrages him. Say so on the button, in red, BEFORE the player commits the turn.
+            if (tgt0 != null && tgt0.team == Team.Enemies && ab.statusesToApply != null
+                && tgt0.Brain is RPGArena.Combat.AI.DevourerAI dv
+                && RPGArena.Combat.AI.DevourerAI.DevourableCount(tgt0) >= 1)
+            {
+                foreach (var s in ab.statusesToApply)
+                {
+                    if (s == null) continue;
+                    if (s.flag == StatusFlag.Wet || s.flag == StatusFlag.Oiled || s.flag == StatusFlag.Marked)
+                        return "  <color=#FF6B5C>>>FEEDS HIM!</color>";
+                }
+            }
+
             if (!IsDamaging(ab)) return "";
-            var tgt = explicitTarget != null ? explicitTarget : PickTarget(hero, ab);
+            var tgt = tgt0;
             if (tgt == null || tgt.team == Team.Heroes) return "";
             var st = tgt.Status;
             bool phys = el == ElementType.Physical;

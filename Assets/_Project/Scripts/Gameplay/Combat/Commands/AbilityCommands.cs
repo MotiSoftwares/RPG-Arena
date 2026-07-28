@@ -150,10 +150,19 @@ namespace RPGArena.Combat.Commands
     {
         public BossMoveCommand(ActionRequest req) : base(req) { }
 
+        // The setup flags a devourer can eat. Frozen is deliberately NOT here: freezing is the
+        // party's escape hatch against this boss, and leaving it edible would remove their only
+        // safe play instead of asking them to change plan.
+        private static readonly StatusFlag[] SetupFlags =
+            { StatusFlag.Wet, StatusFlag.Oiled, StatusFlag.Marked };
+
         public override void Resolve(BattleContext ctx)
         {
             if (!PayCosts(ctx)) return;
             var a = req.ability; var caster = req.caster;
+
+            if (a.consumesSetupFlags) { Devour(ctx, caster, a); return; }
+
             if (a.telegraphsAbility != null)
             {
                 caster.telegraphedAbility = a.telegraphsAbility;
@@ -164,6 +173,38 @@ namespace RPGArena.Combat.Commands
             {
                 ctx.Log($"  {DescribeForLog()}");
             }
+        }
+
+        // DEVOUR — the Black Mage's identity. The Dragon rewards stacking setups; this boss PUNISHES
+        // it, eating the party's coatings and marks to heal himself and stoke his own Fury. The same
+        // habit that beats boss #1 feeds boss #2, so the player has to notice and change plan:
+        // spend setups immediately, or freeze him (Frozen is inedible) instead of stockpiling.
+        private void Devour(BattleContext ctx, Entity caster, Ability a)
+        {
+            // Eat off whoever the move was aimed at; fall back to the boss's own target pool.
+            var victim = (req.targets != null && req.targets.Length > 0 && req.targets[0] != null)
+                ? req.targets[0] : null;
+            if (victim == null && ctx.heroes.Count > 0) victim = ctx.heroes[0];
+
+            int eaten = 0;
+            // The setups the party lays live on the BOSS (they are debuffs on him), so a devourer
+            // eats them off ITSELF — that is the point: he swallows the work you did to him.
+            var plate = caster.Status;
+            foreach (var f in SetupFlags) eaten += plate.RemoveByFlag(f);
+
+            if (eaten == 0)
+            {
+                ctx.Log($"  {Name(caster)} reaches for your magic and finds nothing to devour.");
+                return;
+            }
+
+            int heal = Mathf.RoundToInt(caster.stats.maxHP * Mathf.Max(0f, a.devourHealPercentMaxHP) * eaten);
+            if (heal > 0) caster.Heal(heal);
+            int fury = Mathf.Max(0, a.devourFuryPerFlag) * eaten;
+            if (fury > 0 && ctx.balance != null)
+                caster.rageStacks = Mathf.Min(caster.rageStacks + fury, ctx.balance.rageMaxStacks);
+
+            ctx.Log($"  >>> {Name(caster)} DEVOURS {eaten} of your setup(s)! +{heal} HP, Fury +{fury} <<<");
         }
     }
 
