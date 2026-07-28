@@ -24,7 +24,7 @@ MonoBehaviour:
     DEX: 0
     INT: 0
     LUK: 0
-    maxHP: 950
+    maxHP: 1300
     maxMP: 200
     baseAttack: 30
     baseMagicAttack: 0
@@ -49,5 +49,6 @@ MonoBehaviour:
     attackMultiplier: 1.35
   modelHeight: 3.6
   staggerThreshold: 110
-  staggeredTurns: 1
+  staggeredTurns: 2
+  staggerDecayPerTurn: 10
   minions: []

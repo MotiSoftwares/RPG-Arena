@@ -149,6 +149,11 @@ namespace RPGArena.Combat
             boss.rageStacks = System.Math.Min(boss.rageStacks + 1, ctx.balance.rageMaxStacks);
             if (boss.rageStacks > before)
                 ctx.Log($"    {boss.displayName}'s Searing Fury rises to {boss.rageStacks} (+{boss.rageStacks * ctx.balance.rageDamagePerStack * 100f:0}% damage — BREAK it to vent!)");
+
+            // MIRRORED INVARIANT — the same call exists in BattleController's live loop.
+            // The Evil Warrior's guard re-settles: unconverted stagger bleeds off each of his turns,
+            // so chip-and-turtle can never bank a Break. A no-op for bosses with decay 0.
+            boss.DecayStagger(ctx);
         }
 
         // Boss phase transitions (enrage at HP thresholds, §7.1). For M1 the DragonCycleAI

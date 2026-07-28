@@ -46,6 +46,8 @@ namespace RPGArena.Combat
         [Header("Stagger")]
         public float staggerThreshold = 100f;
         public int staggeredTurns = 1;          // how many of the boss's turns a Break costs it
+        [Tooltip("Stagger bled off at the end of each of this boss's turns. >0 punishes chip-and-turtle: you must commit pressure in a burst. 0 = classic behaviour (Dragon, Black Mage).")]
+        public float staggerDecayPerTurn = 0f;
 
         [Header("Minions (live battles only — headless tests stay trio-vs-boss)")]
         public List<MinionDefinition> minions = new();

@@ -52,6 +52,7 @@ namespace RPGArena.Combat
             e.isBoss = true;
             e.primaryStat = def.primaryStat;
             e.staggerThreshold = def.staggerThreshold;
+            e.staggerDecayPerTurn = def.staggerDecayPerTurn;   // set BEFORE Initialize
             e.stageSprite = def.stageSprite;
             e.modelPrefab = def.modelPrefab;
             e.phases = def.phases;

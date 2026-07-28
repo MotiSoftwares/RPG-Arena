@@ -55,9 +55,24 @@ namespace RPGArena.Characters
         // barely build stagger) can't keep the Fury in check, so you must combo/break to survive.
         public int rageStacks;
 
+        // Bleed off unconverted stagger at the owner's turn end. Pinned during a Break (the window
+        // you earned is not clawed back) and inert wherever staggerDecayPerTurn is 0.
+        public void DecayStagger(RPGArena.Combat.BattleContext ctx)
+        {
+            if (!isBoss || isStaggered || staggerDecayPerTurn <= 0f || staggerMeter <= 0f) return;
+            float before = staggerMeter;
+            staggerMeter = Mathf.Max(0f, staggerMeter - staggerDecayPerTurn);
+            ctx?.Log($"    {displayName} shakes it off — Break {before:0} -> {staggerMeter:0}");
+        }
+
         // Minions only: gold paid out when this entity dies (read by presentation for the "+Xg"
         // floater; awarded to the RunState by the battle loop). 0 for heroes and bosses.
         public int goldDrop;
+
+        // The Evil Warrior's identity: his guard RE-SETTLES. Stagger you fail to convert bleeds away
+        // each of his turns, so chip-and-turtle can never accumulate a Break — you must commit
+        // pressure in a burst. 0 (the Dragon, the Black Mage) is a literal no-op.
+        public float staggerDecayPerTurn;
 
         [Header("Stagger (bosses)")]
         public float staggerMeter;

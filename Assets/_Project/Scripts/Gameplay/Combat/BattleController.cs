@@ -260,6 +260,9 @@ namespace RPGArena.Combat
                     {
                         actor.rageStacks = Mathf.Min(actor.rageStacks + 1, balance.rageMaxStacks);
                         Context.Log($"    {actor.displayName}'s Searing Fury rises to {actor.rageStacks} (+{actor.rageStacks * balance.rageDamagePerStack * 100f:0}% damage — BREAK it to vent!)");
+                        // MIRRORED INVARIANT — the same call exists in BattleManager's headless loop.
+                        // Change both or the live game and the balance gate drift apart.
+                        actor.DecayStagger(Context);
                     }
                     onTurnEnded?.Raise(actor);
                     CheckDeaths();
