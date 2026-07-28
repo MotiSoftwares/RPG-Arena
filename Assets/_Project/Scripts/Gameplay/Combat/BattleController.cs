@@ -23,6 +23,7 @@ namespace RPGArena.Combat
         public List<BoonDefinition> boonRoster = new();               // all boons, looked up by name
         public List<CharacterDefinition> roster = new();              // all selectable classes
         public List<string> defaultParty = new() { "Warrior", "Mage", "Thief" };
+        public List<ItemDefinition> itemCatalog = new();              // all items, resolved by asset name (RunState stores names)
 
         [Header("Event channels (presentation subscribes)")]
         public VoidChannel onBattleStarted, onBattleWon, onBattleLost;
@@ -71,6 +72,17 @@ namespace RPGArena.Combat
 
         // Convenience for a "pass/defend with no target" action.
         public void SubmitAction(Ability ability) => SubmitAction(ability, null);
+
+        // The HUD calls this when the active hero uses a consumable: consume one copy from the run
+        // inventory FIRST (reject if none owned), then cast the item's wrapped ability through the
+        // exact same command pipeline as any skill. The item spends the hero's turn.
+        public void SubmitItem(ItemDefinition item, Entity target)
+        {
+            if (ActiveHero == null || item == null || item.ability == null) return;
+            var run = GameBootstrap.Instance?.Run;
+            if (run == null || !run.RemoveItem(item.name)) return;
+            pendingAction = new ActionRequest(item.ability, ActiveHero, ResolveTargets(ActiveHero, item.ability, target));
+        }
 
         // The HUD calls this when the active hero chooses to reposition (swap front/back row).
         public void SubmitReposition() { if (ActiveHero != null) pendingReposition = true; }

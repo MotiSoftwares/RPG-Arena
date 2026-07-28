@@ -335,6 +335,63 @@ namespace RPGArena.UI
             }
             var move = MakeSimpleButton(actionPanel, $"↕  Move to {(hero.backRow ? "FRONT" : "BACK")} row", new Vector2(0, -y), Accent, true);
             move.onClick.AddListener(() => controller.SubmitReposition());
+            y += 38f;
+
+            // Consumables: one button into the item submenu (hidden while the satchel is empty).
+            var run = GameBootstrap.Instance?.Run;
+            int owned = run != null ? run.inventory.Count : 0;
+            if (owned > 0 && controller.itemCatalog != null && controller.itemCatalog.Count > 0)
+            {
+                var items = MakeSimpleButton(actionPanel, $"◆  Items  ({owned})", new Vector2(0, -y), new Color(0.72f, 0.55f, 0.95f), true);
+                items.onClick.AddListener(() => BuildItemMenu(hero));
+            }
+        }
+
+        // The item submenu: one two-line card per DISTINCT owned item (name ×count / description),
+        // plus a back row. Using one routes through BattleController.SubmitItem — same turn spend,
+        // same presentation pipeline as a skill.
+        private void BuildItemMenu(Entity hero)
+        {
+            ClearChildren(actionPanel);
+            if (menuTitle != null) menuTitle.text = $"{hero.displayName.ToUpper()} — USE AN ITEM";
+            var run = GameBootstrap.Instance?.Run;
+            float y = 0f;
+            if (run != null)
+            {
+                var seen = new HashSet<string>();
+                foreach (var itemName in run.inventory)
+                {
+                    if (!seen.Add(itemName)) continue;
+                    var def = controller.itemCatalog.Find(d => d != null && d.name == itemName);
+                    if (def == null || def.ability == null) continue;
+                    int count = run.CountItem(itemName);
+
+                    var go = new GameObject("Item"); go.transform.SetParent(actionPanel, false);
+                    var img = go.AddComponent<Image>(); Soft(img);
+                    img.color = new Color(0.17f, 0.13f, 0.26f, 0.95f);
+                    var rt = img.rectTransform;
+                    rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(0, 1);
+                    rt.anchoredPosition = new Vector2(0, -y); rt.sizeDelta = new Vector2(0, 46);
+                    rt.offsetMin = new Vector2(6, rt.offsetMin.y); rt.offsetMax = new Vector2(-6, rt.offsetMax.y);
+                    var btn = go.AddComponent<Button>(); btn.targetGraphic = img;
+                    var cb = btn.colors; cb.highlightedColor = new Color(1.25f, 1.25f, 1.25f); cb.fadeDuration = 0.07f; btn.colors = cb;
+
+                    var nameT = MakeText(rt, $"{def.displayName}  <color=#B9A3E8>×{count}</color>", fontHeader, 16, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
+                    Stretch(nameT, 14, 22, 12, 3); nameT.enableWordWrapping = false; nameT.overflowMode = TextOverflowModes.Overflow;
+                    var descT = MakeText(rt, def.description, fontBody, 12, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
+                    Stretch(descT, 14, 3, 12, 24); descT.color = TxtMuted;
+
+                    var captured = def;
+                    btn.onClick.AddListener(() =>
+                    {
+                        GameBootstrap.Instance?.Audio?.PlaySfx("ui_click");
+                        controller.SubmitItem(captured, PickTarget(hero, captured.ability));
+                    });
+                    y += 50f;
+                }
+            }
+            var back = MakeSimpleButton(actionPanel, "←  Back to skills", new Vector2(0, -y), Accent, true);
+            back.onClick.AddListener(() => BuildActionMenu(hero));
         }
 
         private void MakeAbilityButton(RectTransform parent, Entity hero, Ability ab, BattleContext ctx, Vector2 pos, bool affordable)
@@ -596,18 +653,18 @@ namespace RPGArena.UI
                 heroStatusRows.Add(MakeRow(st, new Vector2(0f, 0f), new Vector2(16, 6), new Vector2(330, 16)));
             }
 
-            // ---- ACTION MENU (bottom right) ---- (372 tall: 5 skill rows + Overdrive + Move fit
-            // with margin — the old 352 clipped the Move button by ~10px when Overdrive showed)
-            var menuPanel = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 16), new Vector2(424, 372), Panel).GetComponent<RectTransform>();
+            // ---- ACTION MENU (bottom right) ---- (410 tall: 5 skill rows + Overdrive + Move +
+            // Items all fit with margin — smaller sizes used to clip the last row)
+            var menuPanel = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 16), new Vector2(424, 410), Panel).GetComponent<RectTransform>();
             menuTitle = PanelTitle(menuPanel, "", 14, 8, 20); menuTitle.color = Accent; menuTitle.characterSpacing = 3;
-            var menuInner = MakeRow(menuPanel, new Vector2(0f, 1f), new Vector2(10, -34), new Vector2(404, 332));
+            var menuInner = MakeRow(menuPanel, new Vector2(0f, 1f), new Vector2(10, -34), new Vector2(404, 370));
             menuInner.anchorMin = new Vector2(0f, 1f); menuInner.anchorMax = new Vector2(1f, 1f);
-            menuInner.offsetMin = new Vector2(10, -366); menuInner.offsetMax = new Vector2(-10, -34);
+            menuInner.offsetMin = new Vector2(10, -404); menuInner.offsetMax = new Vector2(-10, -34);
             menuInner.pivot = new Vector2(0.5f, 1f);
             actionPanel = menuInner;
 
             // coach hint (above the menu, first input only)
-            coachPanel = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 396), new Vector2(424, 40), new Color(0.10f, 0.13f, 0.05f, 0.9f));
+            coachPanel = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 434), new Vector2(424, 40), new Color(0.10f, 0.13f, 0.05f, 0.9f));
             coachCaption = MakeText(coachPanel.GetComponent<RectTransform>(),
                                     "Pick a skill:  <color=#7FD08A>%</color> = hit chance · the band = damage · <color=#46C8E6>WEAK</color> is good · <color=#F2C14E>d20!</color> = a risky gamble",
                                     fontBody, 12.5f, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);

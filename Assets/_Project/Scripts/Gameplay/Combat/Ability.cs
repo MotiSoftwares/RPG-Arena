@@ -45,6 +45,8 @@ namespace RPGArena.Combat
         public int cooldown = 0;
         [Tooltip("Basic attacks restore a little MP so there is always a tempo choice.")]
         public int mpRegenOnUse = 0;
+        [Tooltip("Flat amount added on top of the stat-scaled result (0 for every hero skill). Lets ITEM abilities heal a fixed amount no matter who drinks them.")]
+        public int flatPower = 0;
 
         [Header("RNG (Appendix E.1)")]
         public HitTier hitTier = HitTier.Reliable;

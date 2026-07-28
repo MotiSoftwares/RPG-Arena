@@ -118,7 +118,7 @@ namespace RPGArena.Combat.Commands
             foreach (var target in req.targets)
             {
                 if (target == null || !target.IsAlive) continue;
-                int heal = Mathf.RoundToInt(caster.MagicAttack * Mathf.Max(0f, a.power));
+                int heal = Mathf.RoundToInt(caster.MagicAttack * Mathf.Max(0f, a.power)) + Mathf.Max(0, a.flatPower);
                 int before = target.currentHP;
                 target.Heal(heal);
                 ctx.Log($"      -> {Name(target)} healed {target.currentHP - before} (HP {target.currentHP}/{target.stats.maxHP})");

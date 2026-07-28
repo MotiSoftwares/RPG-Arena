@@ -18,6 +18,7 @@ namespace RPGArena.UI
 
         [Header("Content")]
         public List<BoonDefinition> boonRoster = new();
+        public List<ItemDefinition> itemCatalog = new();   // Supply Camp stock (wired in scene)
 
         [SerializeField] private TMP_FontAsset uiFont;   // SlimUI Poppins-Bold SDF (wired in scene); falls back to TMP default
         private TMP_FontAsset font;
@@ -63,9 +64,19 @@ namespace RPGArena.UI
         }
 
         // --- outcomes -----------------------------------------------------------------
+        private int lastReward;
+
+        // Gold payout scales with the battle grade — clean fast wins fund a richer Supply Camp.
+        private int GradeGold(string g) => g == "S" ? 260 : g == "A" ? 210 : g == "B" ? 160 : 120;
+
         private void OnWin(bool _)
         {
             var run = GameBootstrap.Instance != null ? GameBootstrap.Instance.Run : null;
+            if (run != null)
+            {
+                lastReward = GradeGold(Grade());
+                run.gold += lastReward;
+            }
             if (run != null && run.HasNextBoss) ShowBoonSelect(run);
             else ShowRunComplete(run);
         }
@@ -78,7 +89,7 @@ namespace RPGArena.UI
             var panel = NewOverlay();
             var g = Grade();
             Label(panel, "VICTORY!", 0.9f, 46, new Color(1f, 0.9f, 0.4f));
-            Label(panel, $"Battle Grade:  {g}", 0.83f, 30, GradeColor(g));
+            Label(panel, $"Battle Grade:  {g}      <color=#F2C14E>+{lastReward} gold</color>  ({run.gold} total)", 0.83f, 30, GradeColor(g));
             Label(panel, $"Choose a boon  —  Next: {Pretty(run.NextBoss)}", 0.77f, 24, Color.white);
             Label(panel, RandomTip(), 0.72f, 18, new Color(0.75f, 0.85f, 1f));   // teach on the WIN screen too, not only on defeat
 
@@ -90,10 +101,82 @@ namespace RPGArena.UI
                 BoonCard(panel, boon, x, () =>
                 {
                     run.acquiredBoons.Add(boon.name);
-                    run.AdvanceBoss();
-                    Reload();
+                    ShowShop(run);           // spend the spoils before marching on
                 });
             }
+        }
+
+        // --- Supply Camp (the between-bosses shop) ------------------------------------
+        private TMP_Text shopGold;
+        private readonly List<System.Action> shopRefreshers = new();
+
+        private void ShowShop(RunState run)
+        {
+            var panel = NewOverlay();
+            shopRefreshers.Clear();
+            Label(panel, "SUPPLY CAMP", 0.9f, 44, new Color(1f, 0.9f, 0.4f));
+            shopGold = Text((RectTransform)panel.transform, "", new Vector2(0.5f, 0.83f), new Vector2(900, 40), 28, TextAnchor.MiddleCenter);
+            shopGold.color = new Color(0.98f, 0.80f, 0.32f);
+            Label(panel, "Stock up — potions and bombs are used from the ITEMS button in battle.", 0.77f, 19, new Color(0.75f, 0.85f, 1f));
+
+            int shown = 0;
+            foreach (var item in itemCatalog)
+            {
+                if (item == null || item.ability == null) continue;
+                float x = 0.18f + (shown % 4) * 0.213f;
+                float yRow = shown < 4 ? 0.55f : 0.30f;
+                ItemCard(panel, run, item, x, yRow);
+                shown++;
+                if (shown >= 8) break;
+            }
+
+            MakeBtn(panel, $"March on  —  Next: {Pretty(run.NextBoss)}", 0.12f, () => { run.AdvanceBoss(); Reload(); });
+            RefreshShop(run);
+        }
+
+        private void RefreshShop(RunState run)
+        {
+            if (shopGold != null) shopGold.text = $"GOLD:  {run.gold}";
+            foreach (var r in shopRefreshers) r?.Invoke();
+        }
+
+        private void ItemCard(GameObject parent, RunState run, ItemDefinition item, float anchorX, float anchorY)
+        {
+            var go = new GameObject("ItemCard"); go.transform.SetParent(parent.transform, false);
+            var img = go.AddComponent<Image>(); img.color = new Color(0.15f, 0.20f, 0.32f, 0.97f);
+            var rt = img.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(anchorX, anchorY); rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = new Vector2(340, 210);
+
+            var name = Text(rt, item.displayName, new Vector2(0.5f, 0.88f), new Vector2(320, 36), 24, TextAnchor.MiddleCenter);
+            name.color = new Color(1f, 0.9f, 0.5f);
+            Text(rt, item.description, new Vector2(0.5f, 0.56f), new Vector2(310, 100), 17, TextAnchor.UpperCenter);
+            var owned = Text(rt, "", new Vector2(0.5f, 0.30f), new Vector2(310, 26), 16, TextAnchor.MiddleCenter);
+            owned.color = new Color(0.7f, 0.78f, 0.9f);
+
+            var buyGo = new GameObject("Buy"); buyGo.transform.SetParent(rt, false);
+            var buyImg = buyGo.AddComponent<Image>(); buyImg.color = new Color(0.16f, 0.38f, 0.24f, 0.95f);
+            var brt = buyImg.rectTransform; brt.anchorMin = brt.anchorMax = new Vector2(0.5f, 0.13f); brt.pivot = new Vector2(0.5f, 0.5f); brt.sizeDelta = new Vector2(300, 44);
+            var buyBtn = buyGo.AddComponent<Button>(); buyBtn.targetGraphic = buyImg;
+            var buyLabel = Text(brt, "", new Vector2(0.5f, 0.5f), new Vector2(300, 44), 19, TextAnchor.MiddleCenter);
+
+            buyBtn.onClick.AddListener(() =>
+            {
+                if (run.gold < item.goldCost) return;
+                run.gold -= item.goldCost;
+                run.AddItem(item.name);
+                GameBootstrap.Instance?.Audio?.PlaySfx("ui_click");
+                RefreshShop(run);
+            });
+
+            System.Action refresh = () =>
+            {
+                bool affordable = run.gold >= item.goldCost;
+                owned.text = $"owned: {run.CountItem(item.name)}";
+                buyLabel.text = $"BUY  —  {item.goldCost}g";
+                buyLabel.color = affordable ? Color.white : new Color(1f, 0.55f, 0.5f);
+                buyImg.color = affordable ? new Color(0.16f, 0.38f, 0.24f, 0.95f) : new Color(0.2f, 0.22f, 0.26f, 0.9f);
+                buyBtn.interactable = affordable;
+            };
+            shopRefreshers.Add(refresh);
         }
 
         // Pick up to three distinct random boons from the pool.

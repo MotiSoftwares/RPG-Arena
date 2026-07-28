@@ -167610,6 +167610,12 @@ MonoBehaviour:
   - Warrior
   - Mage
   - Thief
+  itemCatalog:
+  - {fileID: 11400000, guid: b11a7aac2c1d9434a89971c4ee7d475d, type: 2}
+  - {fileID: 11400000, guid: abed21acdd6cf9044ae6a409fe0d87cf, type: 2}
+  - {fileID: 11400000, guid: 528548550b26f1848ba22ff883babbb7, type: 2}
+  - {fileID: 11400000, guid: e40320a141938834ebb4716cd26c40e7, type: 2}
+  - {fileID: 11400000, guid: 020c38fb9de6af84a9a7c0c49ed79bd1, type: 2}
   onBattleStarted: {fileID: 11400000, guid: 90c2fafe43967714391b7e5fad4e10db, type: 2}
   onBattleWon: {fileID: 11400000, guid: 7755cb59b38f1884b8840356c088cee5, type: 2}
   onBattleLost: {fileID: 11400000, guid: 657f440bf23332a44b9d34be3cca5dbe, type: 2}
@@ -196003,6 +196009,12 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9a5e8efc7bebc1f43a88506456f14889, type: 2}
   - {fileID: 11400000, guid: 641ae4a51a3d8c241b989821a9e27df1, type: 2}
   - {fileID: 11400000, guid: 1cc5d82c145c703409dc7a96f1755db4, type: 2}
+  itemCatalog:
+  - {fileID: 11400000, guid: b11a7aac2c1d9434a89971c4ee7d475d, type: 2}
+  - {fileID: 11400000, guid: abed21acdd6cf9044ae6a409fe0d87cf, type: 2}
+  - {fileID: 11400000, guid: 528548550b26f1848ba22ff883babbb7, type: 2}
+  - {fileID: 11400000, guid: e40320a141938834ebb4716cd26c40e7, type: 2}
+  - {fileID: 11400000, guid: 020c38fb9de6af84a9a7c0c49ed79bd1, type: 2}
   uiFont: {fileID: 11400000, guid: 59ee34472c5892a4196858080cc2141e, type: 2}
 --- !u!4 &1286005669
 Transform:

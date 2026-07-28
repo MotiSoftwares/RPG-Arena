@@ -18,6 +18,24 @@ namespace RPGArena.Core
         // Placeholder list in M0 — the boon system itself arrives in M2.
         public readonly List<string> acquiredBoons = new();
 
+        // Gold earned from victories (grade-scaled) and minion drops; spent in the Supply Camp
+        // shop between bosses.
+        public int gold;
+
+        // Owned consumables by ItemDefinition asset name — one entry per copy. A new run starts
+        // with one free Healing Potion so the item button teaches itself in fight one.
+        public readonly List<string> inventory = new() { "Item_HealingPotion" };
+
+        public int CountItem(string itemName)
+        {
+            int n = 0;
+            foreach (var s in inventory) if (s == itemName) n++;
+            return n;
+        }
+
+        public void AddItem(string itemName) => inventory.Add(itemName);
+        public bool RemoveItem(string itemName) => inventory.Remove(itemName);
+
         // How far the player is in the gauntlet (0 = first boss).
         public int currentBossIndex;
 
@@ -48,6 +66,9 @@ namespace RPGArena.Core
             partyClassNames.Clear();
             acquiredBoons.Clear();
             currentBossIndex = 0;
+            gold = 0;
+            inventory.Clear();
+            inventory.Add("Item_HealingPotion");   // the starter freebie
         }
     }
 }
