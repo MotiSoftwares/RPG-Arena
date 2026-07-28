@@ -47,5 +47,7 @@ MonoBehaviour:
     hpThresholdPercent: 0.4
     enrage: 1
     attackMultiplier: 1.35
+  modelHeight: 3.6
   staggerThreshold: 110
   staggeredTurns: 1
+  minions: []

@@ -372,10 +372,10 @@ namespace RPGArena.Combat
                 Context.boss.transform.position = bossPos;
                 Context.boss.transform.rotation = Quaternion.Euler(0, -90, 0);
                 Vector3 faceHeroes = (Context.heroes.Count > 0 ? Context.heroes[0].transform.position : Vector3.zero) - bossPos; faceHeroes.y = 0f;
-                // The boss is BIG but still parses at a glance next to ~2.5u heroes: ~5u tall (2× hero)
-                // reads as "huge monster" without swallowing the frame or clipping the camera. Mostly
-                // face the heroes (low camera blend) so its attacks visibly aim at the party.
-                AttachBody(Context.boss.gameObject, Context.boss.modelPrefab, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.0f, 3.0f, 0, faceHeroes, 1f, 5.0f, 0.18f);
+                // The boss is BIG but still parses at a glance next to ~2.5u heroes. Height is
+                // per-boss data: the dragon looms at 5u, humanoid bosses read right around 3.2-3.6.
+                // Mostly face the heroes (low camera blend) so attacks visibly aim at the party.
+                AttachBody(Context.boss.gameObject, Context.boss.modelPrefab, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.0f, 3.0f, 0, faceHeroes, 1f, Mathf.Max(2f, boss.modelHeight), 0.18f);
                 var bm = Context.boss.gameObject.AddComponent<CombatantMotion>();
                 bm.lungeDistance = 0.8f;
                 bm.bobAmplitude = Context.boss.modelPrefab != null ? 0f : 0.12f;   // a heavier-feeling 2D boss bobs

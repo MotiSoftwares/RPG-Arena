@@ -191,7 +191,7 @@ namespace RPGArena.UI
                         ? Color.Lerp(new Color(1f, 0.96f, 0.6f), Color.white, Mathf.PingPong(Time.unscaledTime * 4f, 1f))
                         : Gold;
                 if (bossWeakness != null)
-                    bossWeakness.text = (weaknessSeen || ctx.weaknessRevealed) ? FormatWeakness(ctx.boss) : "<color=#7A8398>study the dragon to reveal its weakness</color>";
+                    bossWeakness.text = (weaknessSeen || ctx.weaknessRevealed) ? FormatWeakness(ctx.boss) : $"<color=#7A8398>study {ctx.boss.displayName.ToLower()} to reveal its weakness</color>";
                 RefreshStatusRow(bossStatusRow, ctx.boss, 0, true);
 
                 // Searing Fury: the escalating-damage warning that makes Break essential.

@@ -39,6 +39,10 @@ namespace RPGArena.Combat
         public AIBehavior aiBehavior;
         public List<BossPhase> phases = new();
 
+        [Header("Presentation")]
+        [Tooltip("Auto-scale the model to this world height. A dragon looms at ~5; a humanoid boss reads right at ~3.2-3.6 (a 5u human is a parade balloon, not a threat).")]
+        public float modelHeight = 5f;
+
         [Header("Stagger")]
         public float staggerThreshold = 100f;
         public int staggeredTurns = 1;          // how many of the boss's turns a Break costs it
