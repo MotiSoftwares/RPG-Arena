@@ -592,6 +592,12 @@ namespace RPGArena.UI
             canvas = go.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 50;                       // above the HUD so numbers read on top
+            // Scale with the screen like every other canvas — without this, damage numbers rendered
+            // at raw font pixels (tiny on a 4K game view, huge at 720p).
+            var scaler = go.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920, 1080);
+            scaler.matchWidthOrHeight = 0.5f;
             go.AddComponent<GraphicRaycaster>();
             canvasRect = go.GetComponent<RectTransform>();
 

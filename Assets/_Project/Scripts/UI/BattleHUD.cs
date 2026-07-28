@@ -44,7 +44,7 @@ namespace RPGArena.UI
         static readonly Color Track    = new Color(0f, 0f, 0f, 0.55f);
 
         private TMP_Text bossName, bossHpText, log, telegraph, bossWeakness, bossStaggerText, coachCaption, valorText, menuTitle, bossFuryText;
-        private GameObject bossFuryPanel;
+        private GameObject bossFuryPanel, logPanel;
         private bool coachDone;
         private Image bossHpFill, bossStaggerFill, valorFill;
         private GameObject telegraphPanel, coachPanel;
@@ -461,6 +461,7 @@ namespace RPGArena.UI
             logEntries.Add(new LogEntry { text = line, color = color });
             while (logEntries.Count > 5) logEntries.RemoveAt(0);
             if (log) log.text = ComposeLog();
+            if (logPanel != null && !logPanel.activeSelf) logPanel.SetActive(true);
         }
 
         private string ComposeLog()
@@ -529,7 +530,9 @@ namespace RPGArena.UI
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = canvasGo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1280, 720);
+            // 1920x1080 like every other canvas (RunFlow/Pause/MainMenu): consistent scaling AND a
+            // ~33% smaller HUD than the old 1280x720 reference — the battlefield gets the screen back.
+            scaler.referenceResolution = new Vector2(1920, 1080);
             scaler.matchWidthOrHeight = 0.5f;
             canvasGo.AddComponent<GraphicRaycaster>();
             var root = canvasGo.GetComponent<RectTransform>();
@@ -593,17 +596,18 @@ namespace RPGArena.UI
                 heroStatusRows.Add(MakeRow(st, new Vector2(0f, 0f), new Vector2(16, 6), new Vector2(330, 16)));
             }
 
-            // ---- ACTION MENU (bottom right) ----
-            var menuPanel = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 16), new Vector2(424, 352), Panel).GetComponent<RectTransform>();
+            // ---- ACTION MENU (bottom right) ---- (372 tall: 5 skill rows + Overdrive + Move fit
+            // with margin — the old 352 clipped the Move button by ~10px when Overdrive showed)
+            var menuPanel = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 16), new Vector2(424, 372), Panel).GetComponent<RectTransform>();
             menuTitle = PanelTitle(menuPanel, "", 14, 8, 20); menuTitle.color = Accent; menuTitle.characterSpacing = 3;
-            var menuInner = MakeRow(menuPanel, new Vector2(0f, 1f), new Vector2(10, -34), new Vector2(404, 312));
+            var menuInner = MakeRow(menuPanel, new Vector2(0f, 1f), new Vector2(10, -34), new Vector2(404, 332));
             menuInner.anchorMin = new Vector2(0f, 1f); menuInner.anchorMax = new Vector2(1f, 1f);
-            menuInner.offsetMin = new Vector2(10, -346); menuInner.offsetMax = new Vector2(-10, -34);
+            menuInner.offsetMin = new Vector2(10, -366); menuInner.offsetMax = new Vector2(-10, -34);
             menuInner.pivot = new Vector2(0.5f, 1f);
             actionPanel = menuInner;
 
             // coach hint (above the menu, first input only)
-            coachPanel = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 376), new Vector2(424, 40), new Color(0.10f, 0.13f, 0.05f, 0.9f));
+            coachPanel = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 396), new Vector2(424, 40), new Color(0.10f, 0.13f, 0.05f, 0.9f));
             coachCaption = MakeText(coachPanel.GetComponent<RectTransform>(),
                                     "Pick a skill:  <color=#7FD08A>%</color> = hit chance · the band = damage · <color=#46C8E6>WEAK</color> is good · <color=#F2C14E>d20!</color> = a risky gamble",
                                     fontBody, 12.5f, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);
@@ -616,10 +620,12 @@ namespace RPGArena.UI
             valorText = MakeText(root, "VALOR", fontHeader, 13, TextAlignmentOptions.Center, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f));
             Place(valorText, new Vector2(0, 14), new Vector2(448, 24)); valorText.color = new Color(0.1f, 0.08f, 0f);
 
-            // ---- LOG (mid left) ----
-            MakePanel(root, new Vector2(0f, 0.5f), new Vector2(16, 86), new Vector2(360, 140), Panel);
-            log = MakeText(root, "", fontBody, 15, TextAlignmentOptions.BottomLeft, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f));
-            Place(log, new Vector2(28, 96), new Vector2(338, 120)); log.richText = true; log.lineSpacing = 6f;
+            // ---- LOG (docked above the party cards; hidden until the first entry so an empty box
+            // never sits on the battlefield) ----
+            logPanel = MakePanel(root, new Vector2(0f, 0f), new Vector2(16, 314), new Vector2(340, 128), Panel);
+            log = MakeText(logPanel.GetComponent<RectTransform>(), "", fontBody, 15, TextAlignmentOptions.BottomLeft, Vector2.zero, Vector2.zero);
+            Stretch(log, 12, 8, 12, 8); log.richText = true; log.lineSpacing = 6f;
+            logPanel.SetActive(false);
         }
 
         // Position a TMP text by anchored pos + size (anchor/pivot already set by MakeText).
