@@ -52,8 +52,19 @@ namespace RPGArena.EditorTools
             new Target { defName = "Mage", packKey = "Mage", boss = false, tint = Color.white },
             new Target { defName = "Archer", packKey = "Archer", boss = false, tint = Color.white },
             new Target { defName = "Thief", packKey = "Archer", boss = false, tint = new Color(0.5f, 0.5f, 0.62f) },
-            new Target { defName = "EvilWarrior", packKey = "Warrior", boss = true, tint = new Color(0.62f, 0.26f, 0.26f) },
-            new Target { defName = "BlackMage", packKey = "Mage", boss = true, tint = new Color(0.45f, 0.34f, 0.62f) },
+
+            // THE BOSSES ARE DELIBERATELY NOT LISTED HERE ANY MORE.
+            //
+            // They used to be: EvilWarrior built from the "Warrior" pack and BlackMage from "Mage",
+            // which meant both bosses wore a tinted copy of a hero rig — the final boss was literally
+            // the player's own Warrior in red. Both now have hand-authored rigs from other packs
+            // (EvilWarriorMutant from the Assassin Pack, BlackMageWizard from WizardPolyArt) with
+            // their own controllers and materials.
+            //
+            // Leaving them in was a live footgun rather than dead config: AssignToDef writes
+            // def.modelPrefab, so one run of this menu item would silently re-point both bosses back
+            // at hero-lookalike prefabs and undo the work with no error and no visible diff until
+            // someone entered play mode. If a boss ever needs rebuilding, do it deliberately.
         };
 
         [MenuItem("RPGArena/Build Character Rigs")]

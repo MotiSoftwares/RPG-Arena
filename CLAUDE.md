@@ -176,6 +176,10 @@ Helper: `scratchpad/compilecheck.ps1`. Two real errors this caught, both invisib
 ## Guardrails
 
 - Don't regenerate rig prefabs blindly — `CharacterRigBuilder` overwrites controllers + `*_URP.mat`.
+  **The two bosses are no longer in its `Targets` list** and must not be re-added: they have
+  hand-authored rigs (EvilWarriorMutant / BlackMageWizard), and `AssignToDef` writes
+  `def.modelPrefab`, so one run of the menu item would silently re-point them at tinted hero
+  lookalikes with no error and no visible diff until play mode.
 - `MainMenuController` is obsolete dead code — build on `MainMenuUI`.
 - `BattleSpawner`/`BattleManager` are NOT scene components — never add them to the scene.
 - Presentation must never block headless logic; keep channel raisers null-safe.
