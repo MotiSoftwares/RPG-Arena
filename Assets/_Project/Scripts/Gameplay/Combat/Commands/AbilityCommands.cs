@@ -66,6 +66,44 @@ namespace RPGArena.Combat.Commands
     {
         public AttackCommand(ActionRequest req) : base(req) { }
 
+        // STEADY raises the roll floor to the whiff threshold, so the special simply cannot go bad;
+        // ALL IN throws away whatever safety the ability was authored with. PRESS uses the authored
+        // floor unchanged, which is what every AI and headless caller gets.
+        private float RiskFloorFor(Ability a, BattleContext ctx)
+        {
+            var cfg = ctx != null ? ctx.balance : null;
+            if (cfg == null) return a.riskFloor;
+            switch (req.stake)
+            {
+                case RiskStake.Steady: return Mathf.Max(a.riskFloor, cfg.stakeSteadyFloor);
+                case RiskStake.AllIn: return 0f;
+                default: return a.riskFloor;
+            }
+        }
+
+        // STEADY pays a flat damage tax on top of its narrowed bands. Measured over the full d20:
+        // floor-ing the roll out of Backfire/Whiff is itself worth ~3% EV, so without a tax the
+        // "safe" stake had BOTH the best expected damage and the lowest variance and PRESS was
+        // strictly dominated — i.e. not a choice at all. Now safety costs you real damage.
+        private float StakePowerMult(BattleContext ctx)
+        {
+            if (!req.ability.rollsRiskDie || req.stake != RiskStake.Steady) return 1f;
+            var cfg = ctx != null ? ctx.balance : null;
+            return cfg != null ? cfg.stakeSteadyDamageMult : 1f;
+        }
+
+        private float RiskScaleFor(BattleContext ctx)
+        {
+            var cfg = ctx != null ? ctx.balance : null;
+            if (cfg == null) return 1f;
+            switch (req.stake)
+            {
+                case RiskStake.Steady: return cfg.stakeSteadyScale;
+                case RiskStake.AllIn: return cfg.stakeAllInScale;
+                default: return 1f;
+            }
+        }
+
         public override void Resolve(BattleContext ctx)
         {
             if (!PayCosts(ctx)) return;
@@ -85,10 +123,11 @@ namespace RPGArena.Combat.Commands
                     var info = new DamageInfo
                     {
                         source = caster, target = target, ability = a, element = element,
-                        basePower = a.power * req.Mult,   // ×1 unless a live action-command adjusted it
+                        basePower = a.power * req.Mult * StakePowerMult(ctx),   // ×1 unless a live action-command adjusted it
                         isMagic = a.isMagic, forceHit = a.autoHit,
                         isBreakSkill = a.HasTag("BreakSkill"), hitTier = a.hitTier,
-                        rollsRiskDie = a.rollsRiskDie, riskFloor = a.riskFloor, backfireKind = a.backfireKind
+                        rollsRiskDie = a.rollsRiskDie, riskFloor = RiskFloorFor(a, ctx),
+                        riskStakeScale = RiskScaleFor(ctx), backfireKind = a.backfireKind
                     };
                     var result = ctx.damage.Compute(info);
                     ctx.damage.Apply(result, ctx);

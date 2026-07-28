@@ -12,9 +12,19 @@ $log  = "$env:LOCALAPPDATA\Unity\Editor\Editor.log"
 
 Start-Sleep -Seconds $WaitSeconds
 
-# String literals inside a DLL are UTF-16, and Editor.log is written by Unity as UTF-8; read it
-# without -Encoding so PowerShell picks the right one, then grep for the compiler's own marker.
-$errs = Get-Content $log -Tail 400 | Select-String -Pattern "error CS" |
+# Only errors from the MOST RECENT compile count. Grepping a fixed tail reports errors from a
+# compile you already FIXED, which is exactly as misleading as missing a real one - either way you
+# stop trusting the one tool that catches silent breakage.
+#
+# Unity logs "[ScriptCompilation] Requested script compilation because: ..." when a new pass is
+# queued, and the resulting errors land after it. So anything before the LAST such marker belongs to
+# a superseded compile and must be ignored.
+$lines = Get-Content $log -Tail 4000
+$start = 0
+for ($i = $lines.Count - 1; $i -ge 0; $i--) {
+  if ($lines[$i] -match '\[ScriptCompilation\] Requested script compilation') { $start = $i; break }
+}
+$errs = $lines[$start..($lines.Count - 1)] | Select-String -Pattern "error CS" |
         ForEach-Object { $_.Line.Trim() } | Select-Object -Unique | Select-Object -Last 10
 
 if ($errs) {

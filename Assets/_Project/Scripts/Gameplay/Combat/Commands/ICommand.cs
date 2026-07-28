@@ -2,6 +2,10 @@ using RPGArena.Characters;
 
 namespace RPGArena.Combat.Commands
 {
+    // How hard the player chose to push a SPECIAL's risk die. Press is the authored behaviour and
+    // the default everywhere, so AI and headless callers never have to think about it.
+    public enum RiskStake { Press = 0, Steady, AllIn }
+
     // Carries everything one action needs: the Ability + caster + target(s). Built by the
     // BattleManager from the chosen ability (§4.3).
     public struct ActionRequest
@@ -16,6 +20,10 @@ namespace RPGArena.Combat.Commands
         public float timingMult;
         public float Mult => timingMult <= 0f ? 1f : timingMult;
 
+        // The player's stake on a risk-die SPECIAL. Press == 0 == the default enum value, so an
+        // unset struct is the old behaviour exactly.
+        public RiskStake stake;
+
         public ActionRequest(Ability ability, Entity caster, params Entity[] targets)
             : this(ability, caster, 1f, targets) { }
 
@@ -25,6 +33,16 @@ namespace RPGArena.Combat.Commands
             this.caster = caster;
             this.targets = targets;
             this.timingMult = timingMult;
+            this.stake = RiskStake.Press;
+        }
+
+        public ActionRequest(Ability ability, Entity caster, float timingMult, RiskStake stake, params Entity[] targets)
+        {
+            this.ability = ability;
+            this.caster = caster;
+            this.targets = targets;
+            this.timingMult = timingMult;
+            this.stake = stake;
         }
     }
 

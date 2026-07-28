@@ -9,6 +9,7 @@ using RPGArena.Characters;
 using RPGArena.Combat;
 using RPGArena.Combat.Status;
 using RPGArena.Combat.Events;
+using RPGArena.Combat.Commands;   // RiskStake — the stake the player sets on a SPECIAL
 
 namespace RPGArena.UI
 {
@@ -438,12 +439,15 @@ namespace RPGArena.UI
         // (x1.18 damage AND stagger — timing feeds basePower), teal for normal, anything else is
         // sloppy (x0.9). No input = sloppy. The multiplier rides the ActionRequest into logic.
         private void StartTimingBar(Entity hero, Ability ab, Entity target)
+            => StartTimingBar(hero, ab, target, RiskStake.Press);
+
+        private void StartTimingBar(Entity hero, Ability ab, Entity target, RiskStake stake)
         {
             if (timingCo != null) StopCoroutine(timingCo);
-            timingCo = StartCoroutine(TimingBarRoutine(hero, ab, target));
+            timingCo = StartCoroutine(TimingBarRoutine(hero, ab, target, stake));
         }
 
-        private IEnumerator TimingBarRoutine(Entity hero, Ability ab, Entity target)
+        private IEnumerator TimingBarRoutine(Entity hero, Ability ab, Entity target, RiskStake stake)
         {
             ClearChildren(actionPanel);
             if (menuTitle != null) menuTitle.text = $"{ab.displayName.ToUpper()} — STRIKE ON GOLD!";
@@ -508,8 +512,35 @@ namespace RPGArena.UI
             juice?.Announce(hero.transform.position + Vector3.up * 2.5f, call, cc, mult > 1.1f ? 44f : 30f);
 
             ClearChildren(actionPanel);
-            controller.SubmitAction(ab, target, mult);
+            controller.SubmitAction(ab, target, mult, stake);
             timingCo = null;
+        }
+
+        // --- the stake: how hard do you push the d20? ---------------------------------
+        // The SPECIAL used to be a slot machine — press, watch, accept. The stake makes it a read on
+        // the board: is the boss one hit from dead, or would a backfire right now lose the run?
+        // Each option is annotated with what it costs as well as what it buys, because a stake whose
+        // downside is hidden is not a decision.
+        private void BuildStakeMenu(Entity hero, Ability ab, Entity target)
+        {
+            ClearChildren(actionPanel);
+            if (menuTitle != null) menuTitle.text = $"{ab.displayName.ToUpper()} — HOW HARD DO YOU PUSH?";
+            float y = 0f;
+
+            var steady = MakeSimpleButton(actionPanel, "◇  STEADY  —  can't backfire, smaller payoff", new Vector2(0, -y), Accent, true);
+            steady.onClick.AddListener(() => StartTimingBar(hero, ab, target, RiskStake.Steady));
+            y += 40f;
+
+            var press = MakeSimpleButton(actionPanel, "◆  PRESS  —  the die as written", new Vector2(0, -y), Accent, true);
+            press.onClick.AddListener(() => StartTimingBar(hero, ab, target, RiskStake.Press));
+            y += 40f;
+
+            var allIn = MakeSimpleButton(actionPanel, "★  ALL IN  —  bigger jackpot, bigger backfire", new Vector2(0, -y), Gold, true);
+            allIn.onClick.AddListener(() => StartTimingBar(hero, ab, target, RiskStake.AllIn));
+            y += 40f;
+
+            var back = MakeSimpleButton(actionPanel, "←  Back", new Vector2(0, -y), TxtMuted, true);
+            back.onClick.AddListener(() => BuildActionMenu(hero));
         }
 
         // --- overdrive: three answers to three different board states -----------------
@@ -800,6 +831,9 @@ namespace RPGArena.UI
                     return;
                 }
                 var tgt = PickTarget(hero, ab);
+                // A risk-die SPECIAL asks how hard you want to push BEFORE the strike is timed, so
+                // the gamble is a read on the board rather than a slot-machine pull.
+                if (ab.rollsRiskDie && IsDamaging(ab)) { BuildStakeMenu(hero, ab, tgt); return; }
                 if (IsDamaging(ab)) StartTimingBar(hero, ab, tgt);   // action command: earn your multiplier
                 else controller.SubmitAction(ab, tgt);
             });

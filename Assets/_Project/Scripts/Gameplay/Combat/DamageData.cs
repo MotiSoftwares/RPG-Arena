@@ -21,6 +21,10 @@ namespace RPGArena.Combat
         public bool rollsRiskDie;      // this is a SPECIAL: draw the risk die
         public float riskFloor;        // clamp the risk roll to >= this (a safer special)
         public BackfireKind backfireKind;  // what a backfire does to the caster
+        // How far the risk bands are stretched from neutral, set by the player's STAKE. 1 = the
+        // authored bands; below 1 pulls every outcome toward "nothing happened"; above 1 pushes the
+        // jackpot AND the backfire further out. 0 (an unset struct) reads as 1 — see Ability commands.
+        public float riskStakeScale;
     }
 
     // The outcome of one hit. Presentation reads this from OnDamageDealt to drive the

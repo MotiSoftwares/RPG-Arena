@@ -89,6 +89,20 @@ namespace RPGArena.Core
         [Tooltip("SelfRecoil backfire: caster takes this fraction of the would-be damage as self-damage.")]
         public float riskSelfRecoilPct = 0.12f;
 
+        // THE STAKE (push-your-luck). A SPECIAL used to be a slot-machine pull: press the button,
+        // watch the d20, accept whatever came out. The stake turns it into a read on the board —
+        // finish a nearly-dead boss with ALL IN, or take the sure thing when a backfire would wipe
+        // the party. One symmetric scale drives it: band = 1 + (band - 1) * scale, so a stake that
+        // widens the jackpot widens the backfire by exactly as much and can never be free.
+        [Tooltip("STEADY floors the risk roll here — at/above the whiff threshold, so a steady special can never backfire or whiff.")]
+        public float stakeSteadyFloor = 0.30f;
+        [Tooltip("STEADY: how far the bands stay stretched. <1 pulls Big/Jackpot back toward normal — the price of safety.")]
+        public float stakeSteadyScale = 0.5f;
+        [Tooltip("STEADY: flat damage penalty. Removing the bad faces is itself an EV gain, so without this the 'safe' option is the highest-EV one AND the lowest-variance one, which makes PRESS strictly dominated. Safety has to cost something.")]
+        public float stakeSteadyDamageMult = 0.85f;
+        [Tooltip("ALL IN: bands stretched this far. Pushes Jackpot AND Backfire further out, and ignores the ability's authored safety floor.")]
+        public float stakeAllInScale = 1.5f;
+
         [Header("Boss Searing Fury (escalation vented by Break)")]
         // The boss gains one Fury stack each of its turns; every stack raises its OUTGOING damage by
         // rageDamagePerStack. Breaking the boss vents ALL stacks back to zero. So a party that never

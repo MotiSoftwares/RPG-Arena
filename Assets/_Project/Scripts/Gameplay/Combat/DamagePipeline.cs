@@ -161,20 +161,29 @@ namespace RPGArena.Combat
                 r.risked = true;
                 riskRoll = Mathf.Max(Mathf.Clamp01(info.riskFloor), riskRoll);   // a "safe" special floors the roll out of Backfire
                 r.riskFace = Mathf.Clamp(Mathf.FloorToInt(riskRoll * 20f) + 1, 1, 20);
+
+                // THE STAKE stretches every band away from (or back toward) neutral by the same
+                // factor. Doing it symmetrically is what makes push-your-luck a real decision: a
+                // stake that fattens the jackpot fattens the backfire by exactly as much, so no
+                // stake is ever strictly better than another — which one is right depends on
+                // whether you can afford the bad half tonight.
+                // 0 (an unset struct) reads as 1, so every AI and headless call is bit-identical.
+                float stake = info.riskStakeScale <= 0f ? 1f : info.riskStakeScale;
+
                 if (riskRoll < cfg.riskBackfireThreshold)
                 {
                     r.riskBand = RiskBand.Backfire;
                     if (info.backfireKind == BackfireKind.SelfRecoil)
-                        r.selfDamage = Mathf.Max(1, Mathf.RoundToInt(dmg * cfg.riskSelfRecoilPct));
-                    dmg *= cfg.riskBackfireDamageMult;
+                        r.selfDamage = Mathf.Max(1, Mathf.RoundToInt(dmg * cfg.riskSelfRecoilPct * stake));
+                    dmg *= Stake(cfg.riskBackfireDamageMult, stake);
                 }
-                else if (riskRoll < cfg.riskWhiffThreshold) { r.riskBand = RiskBand.Whiff; dmg *= cfg.riskWhiffDamageMult; }
+                else if (riskRoll < cfg.riskWhiffThreshold) { r.riskBand = RiskBand.Whiff; dmg *= Stake(cfg.riskWhiffDamageMult, stake); }
                 else if (riskRoll >= cfg.riskJackpotThreshold)
                 {
-                    r.riskBand = RiskBand.Jackpot; dmg *= cfg.riskJackpotDamageMult;
+                    r.riskBand = RiskBand.Jackpot; dmg *= Stake(cfg.riskJackpotDamageMult, stake);
                     if (!r.crit) { r.crit = true; dmg *= (src != null ? src.CritDamage : 1.5f); }
                 }
-                else if (riskRoll >= cfg.riskBigThreshold) { r.riskBand = RiskBand.Big; dmg *= cfg.riskBigDamageMult; }
+                else if (riskRoll >= cfg.riskBigThreshold) { r.riskBand = RiskBand.Big; dmg *= Stake(cfg.riskBigDamageMult, stake); }
                 else r.riskBand = RiskBand.Normal;
             }
 
@@ -212,6 +221,11 @@ namespace RPGArena.Combat
                 r.staggerBuilt *= cfg.glanceDamageMult;
             return r;
         }
+
+        // Stretch a risk band away from neutral. scale 1 returns the authored value untouched, which
+        // is what keeps the default stake bit-identical to before the mechanic existed. Clamped at 0
+        // so an extreme scale can never turn a damage multiplier negative (a "hit" that heals).
+        private static float Stake(float bandMult, float scale) => Mathf.Max(0f, 1f + (bandMult - 1f) * scale);
 
         // Non-mutating preview for the action menu (informed gamble, §E.1): the min/max final
         // damage band (variance ends, no crit) plus the element reaction, so the HUD can show

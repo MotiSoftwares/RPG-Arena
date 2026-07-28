@@ -65,12 +65,16 @@ namespace RPGArena.Combat
         // Timed-strike variant: the HUD's action-command bar passes the multiplier it earned
         // (PERFECT ×1.18 … sloppy ×0.9). Logic stays deterministic — the mult rides the request.
         public void SubmitAction(Ability ability, Entity target, float timingMult)
+            => SubmitAction(ability, target, timingMult, RiskStake.Press);
+
+        // Stake variant: the HUD offers STEADY / PRESS / ALL IN before a risk-die SPECIAL resolves.
+        public void SubmitAction(Ability ability, Entity target, float timingMult, RiskStake stake)
         {
             if (ActiveHero == null || ability == null) return;
             // Re-validate cost/cooldown here too (not only in the HUD): an unaffordable or on-cooldown
             // submission must NOT silently consume the hero's whole turn — reject it, keep the menu open.
             if (!CanAfford(ActiveHero, ability)) return;
-            pendingAction = new ActionRequest(ability, ActiveHero, timingMult, ResolveTargets(ActiveHero, ability, target));
+            pendingAction = new ActionRequest(ability, ActiveHero, timingMult, stake, ResolveTargets(ActiveHero, ability, target));
         }
 
         // --- BRACE (the defensive action command) --------------------------------------
