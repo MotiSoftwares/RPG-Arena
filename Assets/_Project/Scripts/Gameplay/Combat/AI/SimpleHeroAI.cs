@@ -64,8 +64,10 @@ namespace RPGArena.Combat.AI
 
                     // CASH IN a setup that is already on the target — this is the whole design.
                     if (frozen && el == ElementType.Physical) score += comboPayoffBonus + (marked ? 2f : 0f);  // SHATTER (x2.3, pierces resist)
+                    else if (marked && oiled && el == ElementType.Physical) score += comboPayoffBonus * 0.85f; // QUARRY (the physical trio's ceiling)
                     else if (wet && el == ElementType.Ice) score += comboPayoffBonus;                          // forced FREEZE
                     else if (oiled && el == ElementType.Fire) score += comboPayoffBonus * 0.8f;                // IGNITE
+                    else if (oiled && el == ElementType.Physical) score += 1.5f;                               // slick bonus
                     else if (wet && el == ElementType.Physical) score += 1.5f;                                 // soaked bonus
                     else if (marked && el == ElementType.Physical) score += 1.2f;
                 }
@@ -79,7 +81,10 @@ namespace RPGArena.Combat.AI
                     score = setupScore;
                     // Wet is the keystone (it opens Freeze -> Shatter), so it's worth the most.
                     if (lays.flag == StatusFlag.Wet) score += 1.4f;
-                    if (lays.flag == StatusFlag.Marked) score += 0.4f;
+                    // Oil and Mark are the two halves of QUARRY: whichever one is MISSING is the
+                    // valuable play, so a party without an Ice school still builds toward a payoff.
+                    if (lays.flag == StatusFlag.Oiled) score += marked ? 1.6f : 0.6f;
+                    if (lays.flag == StatusFlag.Marked) score += oiled ? 1.6f : 0.4f;
                 }
                 else continue;   // buffs/stances/defend: not modelled by the reference brain
 

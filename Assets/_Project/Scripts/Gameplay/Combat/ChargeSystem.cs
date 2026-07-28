@@ -41,6 +41,13 @@ namespace RPGArena.Combat
         public void SpendOverdrive(BattleContext ctx, Entity caller, OverdriveMode mode)
         {
             if (!IsFull || ctx == null) return;
+
+            // VALIDATE BEFORE SPENDING. Sunder is the only mode that can be illegal (nothing left to
+            // break), and silently converting it into a Surge would spend a full meter on something
+            // the player did not ask for. Reject instead, before a single point of Valor is touched.
+            if (mode == OverdriveMode.Sunder && (ctx.boss == null || !ctx.boss.IsAlive || ctx.boss.isStaggered))
+                return;
+
             valor = 0f;
             switch (mode)
             {
@@ -49,17 +56,8 @@ namespace RPGArena.Combat
                     // INSTANT BREAK: skip the stagger meter entirely. The answer to a telegraphed
                     // wipe you cannot out-damage — it cancels the charge, vents Fury, and opens the
                     // burst window on your terms instead of the boss's.
-                    var boss = ctx.boss;
-                    if (boss != null && boss.IsAlive && !boss.isStaggered)
-                    {
-                        ctx.Log("=== OVERDRIVE — SUNDER! The party breaks the boss open. ===");
-                        ctx.stagger?.Break(boss, ctx);
-                    }
-                    else
-                    {
-                        // Nothing to break — don't eat the meter for nothing; fall back to the surge.
-                        goto case OverdriveMode.Surge;
-                    }
+                    ctx.Log("=== OVERDRIVE — SUNDER! The party breaks the boss open. ===");
+                    ctx.stagger?.Break(ctx.boss, ctx);
                     break;
                 }
                 case OverdriveMode.Rally:

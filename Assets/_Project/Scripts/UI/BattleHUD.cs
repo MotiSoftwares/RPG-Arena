@@ -852,9 +852,11 @@ namespace RPGArena.UI
             bool phys = el == ElementType.Physical;
             if (st.Has(StatusFlag.Frozen) && phys && st.Has(StatusFlag.Marked)) return "  <color=#FFD24A>>>SHATTER+BRITTLE!</color>";
             if (st.Has(StatusFlag.Frozen) && phys) return "  <color=#FFD24A>>>SHATTER ×2.3!</color>";
+            if (st.Has(StatusFlag.Marked) && st.Has(StatusFlag.Oiled) && phys) return "  <color=#FFB347>>>QUARRY ×1.9!</color>";
             if (st.Has(StatusFlag.Wet) && el == ElementType.Ice) return "  <color=#7FE3FF>>>FREEZE!</color>";
-            if (st.Has(StatusFlag.Wet) && phys) return "  <color=#9BD1FF>>>soaked +dmg</color>";
             if (st.Has(StatusFlag.Oiled) && el == ElementType.Fire) return "  <color=#FFA24A>>>IGNITE!</color>";
+            if (st.Has(StatusFlag.Wet) && phys) return "  <color=#9BD1FF>>>soaked +dmg</color>";
+            if (st.Has(StatusFlag.Oiled) && phys) return "  <color=#FFCF9B>>>slick +dmg</color>";
             if (st.Has(StatusFlag.Marked) && phys) return "  <color=#E8B9FF>>>marked</color>";
             return "";
         }

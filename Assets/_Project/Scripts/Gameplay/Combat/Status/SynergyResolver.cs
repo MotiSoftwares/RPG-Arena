@@ -30,15 +30,10 @@ namespace RPGArena.Combat.Status
                 outcome.note = "Oiled+Fire";
             }
 
-            // Oiled + Physical => the slick coating leaves the target exposed: a little extra damage
-            // and a solid stagger bump. This gives Thief's Oil Bomb STANDALONE value against the
-            // Fire-ABSORBING Dragon, where its Oiled+Fire payoff would only heal the boss (§4.12).
-            if (targetStatus.Has(StatusFlag.Oiled) && element == ElementType.Physical)
-            {
-                outcome.damageMultiplier *= 1.15f;
-                outcome.bonusStaggerBuild += 12f;
-                outcome.note = string.IsNullOrEmpty(outcome.note) ? "Oiled+Physical" : outcome.note + " +slick";
-            }
+            // NOTE ON PHYSICAL LINES: they are resolved as an EXCLUSIVE LADDER further down, not as
+            // independent bonuses. Stacking them multiplied out to ~5.8x (Oiled x soaked x SHATTER x
+            // QUARRY), which blew past the intended SHATTER ceiling and collapsed fights to under
+            // four rounds. Exactly one physical line pays, and it is always the best one available.
 
             // Wet + Lightning => +50% damage and a guaranteed control proc.
             if (targetStatus.Has(StatusFlag.Wet) && element == ElementType.Lightning)
@@ -55,29 +50,54 @@ namespace RPGArena.Combat.Status
                 outcome.note = "Wet+Ice (Freeze)";
             }
 
-            // Wet + Physical => the soaked target is heavier and exposed: a little extra damage and a
-            // solid stagger bump. This gives Thief's Water Bomb STANDALONE value for the NO-MAGE
-            // physical trio (which can't freeze): soak, then pound to drive the Break that vents the
-            // dragon's Searing Fury. Mirrors the Oiled+Physical line for the actually-applied flag.
-            if (targetStatus.Has(StatusFlag.Wet) && element == ElementType.Physical)
+            // THE PHYSICAL LADDER — exactly ONE rung pays, always the highest available. Physical
+            // is the element every class can throw, so if these stacked, a party that piled on every
+            // setup got a multiplicative jackpot (measured ~5.8x) that dwarfed the intended SHATTER
+            // ceiling and ended fights in under four rounds. As a ladder the ordering guarantees the
+            // design intent BY CONSTRUCTION rather than by tuning: coordinating a full cross-school
+            // freeze always beats a same-school setup, which always beats a single flag.
+            if (element == ElementType.Physical)
             {
-                outcome.damageMultiplier *= 1.15f;
-                outcome.bonusStaggerBuild += 12f;
-                outcome.note = string.IsNullOrEmpty(outcome.note) ? "Wet+Physical" : outcome.note + " +soaked";
+                bool frozen = targetStatus.Has(StatusFlag.Frozen);
+                bool marked = targetStatus.Has(StatusFlag.Marked);
+                bool oiled = targetStatus.Has(StatusFlag.Oiled);
+                bool wet = targetStatus.Has(StatusFlag.Wet);
+
+                if (frozen)
+                {
+                    // SHATTER — the marquee line: Wet -> Ice(freeze) -> smash, three heroes deep.
+                    outcome.damageMultiplier *= 2.3f;
+                    outcome.bonusStaggerBuild += 25f;
+                    outcome.note = Append(outcome.note, "SHATTER!");
+                }
+                else if (marked && oiled)
+                {
+                    // QUARRY — the all-physical party's own ceiling. Lower than SHATTER (1.9 vs 2.3)
+                    // because it needs no cross-school coordination, but it is a REAL payoff for a
+                    // trio that has no Ice at all and previously could only ever chip.
+                    outcome.damageMultiplier *= 1.9f;
+                    outcome.bonusStaggerBuild += 18f;
+                    outcome.note = Append(outcome.note, "QUARRY!");
+                }
+                else if (oiled)
+                {
+                    // Slick: a single-flag consolation that keeps the setup worth casting alone.
+                    outcome.damageMultiplier *= 1.15f;
+                    outcome.bonusStaggerBuild += 12f;
+                    outcome.note = Append(outcome.note, "Oiled+Physical");
+                }
+                else if (wet)
+                {
+                    // Soaked: the same consolation for the other coating.
+                    outcome.damageMultiplier *= 1.15f;
+                    outcome.bonusStaggerBuild += 12f;
+                    outcome.note = Append(outcome.note, "Wet+Physical");
+                }
             }
 
-            // Frozen + Physical => SHATTER: the party's highest-ceiling line, completing the
-            // 3-action Wet -> Ice(freeze) -> smash combo (§5.8/§7.2). It must out-damage simply
-            // casting Ice three times (each ×1.5 + a bonus turn), so it both BURSTS hard (×2.3) and
-            // slams the Break meter (+stagger) — the payoff for coordinating three heroes.
-            if (targetStatus.Has(StatusFlag.Frozen) && element == ElementType.Physical)
-            {
-                outcome.damageMultiplier *= 2.3f;
-                outcome.bonusStaggerBuild += 25f;
-                outcome.note = string.IsNullOrEmpty(outcome.note) ? "SHATTER!" : outcome.note + " +SHATTER!";
-            }
-
-            // Marked => more crit and more stagger on every hit against the target.
+            // Marked => more crit and more stagger on every hit against the target. This rides on
+            // TOP of the ladder deliberately: Mark is an accuracy/crit tool, not a damage line, so
+            // it sharpens whatever rung you landed on instead of competing with it.
             if (targetStatus.Has(StatusFlag.Marked))
             {
                 outcome.critChanceBonus += 0.25f;
@@ -90,10 +110,14 @@ namespace RPGArena.Combat.Status
             if (targetStatus.Has(StatusFlag.Marked) && targetStatus.Has(StatusFlag.Frozen))
             {
                 outcome.critChanceBonus += 0.4f;
-                outcome.note = string.IsNullOrEmpty(outcome.note) ? "Brittle!" : outcome.note + " +Brittle";
+                outcome.note = Append(outcome.note, "Brittle");
             }
 
             return outcome;
         }
+
+        private static string Append(string note, string add)
+            => string.IsNullOrEmpty(note) ? add : note + " +" + add;
     }
 }
+
