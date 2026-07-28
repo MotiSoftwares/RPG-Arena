@@ -58,6 +58,7 @@ namespace RPGArena.UI
             string id;
             bool critLayer = false;
             if (!r.hit) id = "miss";
+            else if (r.glanced) id = "hit";                       // dull connect, no elemental flourish
             else if (r.isHeal || r.absorbed) id = Audio.HasSfx("hit_holy") ? "hit_holy" : "heal";
             else
             {

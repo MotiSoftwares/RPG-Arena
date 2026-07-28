@@ -151,6 +151,7 @@ namespace RPGArena.UI
         {
             string who = r.target != null ? r.target.displayName : "?";
             if (!r.hit) AddLog($"{who}  miss", TxtMuted);
+            else if (r.glanced) AddLog($"{who}  -{r.amount}  graze", TxtMuted);
             else if (r.absorbed) AddLog($"{who}  ABSORBED {r.amount} — healed", new Color(0.55f, 0.80f, 1f));
             else if (r.isHeal) AddLog($"{who}  +{r.amount} HP", HpGreen);
             else

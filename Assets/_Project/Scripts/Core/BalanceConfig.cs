@@ -55,6 +55,12 @@ namespace RPGArena.Core
 
         // Anti-feel-bad: after this many misses in a row, the next attack is forced to hit.
         public int missStreakCap = 2;
+
+        [Header("Glancing blows (dead-turn elimination)")]
+        [Tooltip("Damage a GLANCING blow deals (a failed accuracy roll that still grazes). One action per hero per round means a flat whiff is a wasted turn — measured at ~24% of all attacks.")]
+        [Range(0.1f, 0.6f)] public float glanceDamageMult = 0.35f;
+        [Tooltip("How badly the accuracy roll must fail (0..1 past the hit chance) before it becomes a CLEAN MISS instead of a glance. Higher = more glances, fewer dead turns.")]
+        [Range(0f, 1f)] public float cleanMissOvershoot = 0.55f;
         [Tooltip("Each point of (Accuracy - Evasion) shifts hit chance by this. Lowered so high-accuracy heroes don't just pin every shot to the ceiling — accuracy helps, but the gamble stays.")]
         public float accuracyToPercent = 0.005f;
         [Tooltip("Incoming damage multiplier while the target is Defending.")]

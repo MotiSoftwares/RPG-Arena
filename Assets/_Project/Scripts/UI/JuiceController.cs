@@ -250,6 +250,7 @@ namespace RPGArena.UI
             // IMPACT beat: VFX blooms on the target body, damage number pops, hit-stop + shake fire.
             string text; Color color; float size;
             if (!r.hit) { text = "MISS"; color = CResist; size = 26; }
+            else if (r.glanced) { text = r.amount + "  graze"; color = CResist; size = 28; }
             else if (r.isHeal || r.absorbed) { text = (r.absorbed ? "ABSORB +" : "+") + r.amount; color = CHeal; size = 32; }
             else if (r.crit) { text = r.amount + "!"; color = CCrit; size = 48; }
             else if (r.reaction == ElementReaction.Weak) { text = r.amount + "  WEAK!"; color = CWeak; size = 44; }
@@ -300,11 +301,12 @@ namespace RPGArena.UI
 
             if (r.hit && !r.isHeal && !r.absorbed && r.source != null)
             {
-                float recoilScale = r.crit ? 1.8f : (r.reaction == ElementReaction.Weak ? 1.4f : 1f);   // weight the flinch to the hit
+                // A graze is a weak connect: small flinch, no hit-stop, barely a shake.
+                float recoilScale = r.glanced ? 0.4f : r.crit ? 1.8f : (r.reaction == ElementReaction.Weak ? 1.4f : 1f);
                 r.target.GetComponent<Characters.CombatantMotion>()?.Recoil(dir, recoilScale);
                 r.target.GetComponentInChildren<Characters.AnimationDriver>()?.PlayHit();
-                HitStop(r.crit ? hitStopCrit : hitStopNormal);
-                shakeAmount = Mathf.Max(shakeAmount, r.crit ? shakeOnCrit : (r.reaction == ElementReaction.Weak ? shakeOnCrit * 0.8f : shakeOnHit));
+                if (!r.glanced) HitStop(r.crit ? hitStopCrit : hitStopNormal);
+                shakeAmount = Mathf.Max(shakeAmount, r.glanced ? shakeOnHit * 0.35f : r.crit ? shakeOnCrit : (r.reaction == ElementReaction.Weak ? shakeOnCrit * 0.8f : shakeOnHit));
                 if (r.crit) { flashAmount = Mathf.Max(flashAmount, flashOnCrit); fovPunch = Mathf.Max(fovPunch, 9f); }   // crit snaps the camera in
                 else if (r.reaction == ElementReaction.Weak) fovPunch = Mathf.Max(fovPunch, 4.5f);
             }

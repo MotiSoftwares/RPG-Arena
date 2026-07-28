@@ -32,7 +32,8 @@ namespace RPGArena.Combat
         public Ability ability;        // the ability used (drives per-ability animation: cast/area/attack)
         public ElementType element;    // the attack's element (drives element-coloured VFX)
         public int amount;             // final HP delta magnitude (>= 0)
-        public bool hit;               // false == missed
+        public bool hit;               // false == missed outright (now rare: most failed rolls GLANCE)
+        public bool glanced;           // the accuracy roll failed but the blow still grazed for reduced damage
         public bool crit;
         public bool absorbed;          // wrong element: the hit healed the target instead
         public bool isHeal;            // true when this result restores HP (absorb or a heal)

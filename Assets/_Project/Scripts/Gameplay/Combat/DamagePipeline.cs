@@ -61,12 +61,26 @@ namespace RPGArena.Combat
             // gamble (~60-85%), not a near-certainty. Makes the dice matter.
             bool guaranteed = info.forceHit;
             r.hitChance = guaranteed ? 1f : hitChance;
+            // GLANCING BLOWS. A turn-based game gives you one action per hero per round, so a flat
+            // whiff is a dead turn — measured at ~24% of all attacks, the single biggest "nothing
+            // happened" complaint. A failed accuracy roll now GRAZES for a fraction of the damage
+            // instead of evaporating: accuracy still matters (a glance is a bad outcome) but the
+            // player always sees their strike connect. A truly terrible roll can still whiff
+            // outright, so dodging/evasion keeps meaning.
+            float glanceMult = 1f;
             if (!guaranteed && hitRoll > hitChance)
             {
-                r.hit = false;
-                // A missed committed skill still builds a little stagger (anti-feel-bad).
-                r.staggerBuilt = info.isBreakSkill ? cfg.staggerBuildNormalHit : 0f;
-                return r;
+                // How badly the roll failed, 0 (just barely) .. 1 (hopeless).
+                float overshoot = Mathf.Clamp01((hitRoll - hitChance) / Mathf.Max(0.01f, 1f - hitChance));
+                if (overshoot > cfg.cleanMissOvershoot)
+                {
+                    r.hit = false;
+                    // A missed committed skill still builds a little stagger (anti-feel-bad).
+                    r.staggerBuilt = info.isBreakSkill ? cfg.staggerBuildNormalHit : 0f;
+                    return r;
+                }
+                r.glanced = true;
+                glanceMult = cfg.glanceDamageMult;
             }
 
             // 2) BASE DAMAGE: offense stat × ability power × variance roll × enrage multiplier × Fury.
@@ -75,7 +89,7 @@ namespace RPGArena.Combat
             float offense = src != null ? (info.isMagic ? src.MagicAttack : src.Attack) : 0f;
             float furyMult = (src != null && src.rageStacks > 0) ? (1f + src.rageStacks * cfg.rageDamagePerStack) : 1f;
             float dmg = offense * Mathf.Max(0f, info.basePower) * damageRoll
-                      * (src != null ? src.damageOutMultiplier : 1f) * furyMult;
+                      * (src != null ? src.damageOutMultiplier : 1f) * furyMult * glanceMult;
 
             // 3) ELEMENT modifier. Absorb (negative sentinel) flips the hit into a heal.
             var reaction = (tgt != null && tgt.elementProfile != null)
@@ -125,7 +139,8 @@ namespace RPGArena.Combat
             // 7) CRIT (Marked raises the chance; some finishers always crit).
             float critChance = (src != null ? src.CritChance : 0f) + syn.critChanceBonus;
             bool forcedCrit = info.ability != null && info.ability.guaranteedCrit;
-            if (forcedCrit || critRoll <= critChance)
+            // A graze can never be a critical — the blow barely landed.
+            if (!r.glanced && (forcedCrit || critRoll <= critChance))
             {
                 r.crit = true;
                 dmg *= (src != null ? src.CritDamage : 1.5f);
@@ -185,6 +200,7 @@ namespace RPGArena.Combat
             // the telegraph is a real, winnable play rather than arithmetic that never lands in time.
             if (tgt != null && tgt.telegraphedAbility != null) build *= 1.5f;
             r.staggerBuilt = build + syn.bonusStaggerBuild;
+            if (r.glanced) r.staggerBuilt *= cfg.glanceDamageMult;   // a graze barely rocks them
             return r;
         }
 

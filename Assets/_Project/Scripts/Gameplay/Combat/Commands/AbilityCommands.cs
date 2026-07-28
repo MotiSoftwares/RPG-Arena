@@ -95,6 +95,7 @@ namespace RPGArena.Combat.Commands
         private void LogHit(BattleContext ctx, DamageResult r, Entity target)
         {
             if (!r.hit) { ctx.Log($"      -> {Name(target)}: MISS (chance {r.hitChance:P0})"); return; }
+            if (r.glanced) { ctx.Log($"      -> {Name(target)} takes {r.amount} GRAZE (chance {r.hitChance:P0}, HP {target.currentHP}/{target.stats.maxHP})"); return; }
             string tag = r.absorbed ? "ABSORBED→healed" :
                          r.reaction == ElementReaction.Weak ? "WEAK!" :
                          r.reaction == ElementReaction.Resist ? "resist" :
