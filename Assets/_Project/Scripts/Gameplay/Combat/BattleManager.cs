@@ -104,9 +104,11 @@ namespace RPGArena.Combat
                 case TargetRule.Self:
                     return new[] { actor };
                 case TargetRule.SingleAlly:
-                    return new[] { single != null ? single : actor };
+                    // MIRRORED INVARIANT — BattleController.ResolveTargets clamps identically.
+                    return new[] { TargetingSystem.ClampToAlly(actor, single) };
                 default: // SingleEnemy / Summon
-                    var t = single != null ? single : TargetingSystem.FirstAlive(opponents);
+                    var t = TargetingSystem.ClampToEnemy(actor, single);
+                    if (t == null) t = TargetingSystem.FirstAlive(opponents);
                     return t != null ? new[] { t } : new Entity[0];
             }
         }

@@ -246,6 +246,61 @@ namespace RPGArena.Tests
             Assert.Greater(second, first, "Each rest must cost more than the last.");
         }
 
+        // --- target side clamps --------------------------------------------------------
+        // Found by driving a LIVE battle and watching the log say "Mage uses Heal -> The Dragon
+        // healed 70". SingleAlly used to return whatever target it was handed, so one bad reference
+        // anywhere healed the boss. Both battle loops now clamp through TargetingSystem.
+        [Test]
+        public void A_Support_Ability_Can_Never_Resolve_Onto_The_Enemy()
+        {
+            var cfg = TestUtil.Cfg();
+            var mage = TestUtil.Make(cfg, new StatBlock { maxHP = 150 });
+            var ally = TestUtil.Make(cfg, new StatBlock { maxHP = 320 });
+            var boss = TestUtil.Make(cfg, new StatBlock { maxHP = 2500 }, isBoss: true);
+            mage.team = Team.Heroes; ally.team = Team.Heroes; boss.team = Team.Enemies;
+
+            Assert.AreSame(mage, TargetingSystem.ClampToAlly(mage, boss),
+                "A heal aimed at the boss must fall back to the caster, never touch the boss.");
+            Assert.AreSame(ally, TargetingSystem.ClampToAlly(mage, ally), "A real ally is still targetable.");
+            Assert.AreSame(mage, TargetingSystem.ClampToAlly(mage, null), "No target given falls back to the caster.");
+
+            TestUtil.Destroy(mage, ally, boss);
+        }
+
+        [Test]
+        public void An_Attack_Can_Never_Resolve_Onto_Your_Own_Side()
+        {
+            var cfg = TestUtil.Cfg();
+            var hero = TestUtil.Make(cfg, new StatBlock { maxHP = 320 });
+            var ally = TestUtil.Make(cfg, new StatBlock { maxHP = 150 });
+            var boss = TestUtil.Make(cfg, new StatBlock { maxHP = 2500 }, isBoss: true);
+            hero.team = Team.Heroes; ally.team = Team.Heroes; boss.team = Team.Enemies;
+
+            Assert.IsNull(TargetingSystem.ClampToEnemy(hero, ally),
+                "A same-side proposal must return null so the caller re-picks a legal target.");
+            Assert.AreSame(boss, TargetingSystem.ClampToEnemy(hero, boss), "A real enemy passes through.");
+            // ...and from the enemy's side of the fence, symmetrically.
+            Assert.AreSame(hero, TargetingSystem.ClampToEnemy(boss, hero));
+            Assert.IsNull(TargetingSystem.ClampToEnemy(boss, boss));
+
+            TestUtil.Destroy(hero, ally, boss);
+        }
+
+        [Test]
+        public void A_Revive_Can_Still_Target_A_Fallen_Ally()
+        {
+            var cfg = TestUtil.Cfg();
+            var healer = TestUtil.Make(cfg, new StatBlock { maxHP = 150 });
+            var downed = TestUtil.Make(cfg, new StatBlock { maxHP = 320 });
+            healer.team = Team.Heroes; downed.team = Team.Heroes;
+            downed.TakeDamage(9999);
+
+            Assert.AreSame(downed, TargetingSystem.ClampToAlly(healer, downed),
+                "The side clamp must not filter out the dead — revives target the fallen.");
+
+            TestUtil.Destroy(healer, downed);
+        }
+
         [Test]
         public void A_New_Run_Carries_Nothing_Forward()
         {

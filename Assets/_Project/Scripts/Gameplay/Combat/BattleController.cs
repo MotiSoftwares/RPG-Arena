@@ -681,11 +681,12 @@ namespace RPGArena.Combat
                     var allies = actor.team == Team.Heroes ? Context.heroes : Context.Enemies;
                     return TargetingSystem.AllAlive(allies).ToArray();
                 case TargetRule.Self: return new[] { actor };
-                case TargetRule.SingleAlly: return new[] { single != null ? single : actor };
+                // MIRRORED INVARIANT — BattleManager.ResolveTargets clamps identically.
+                case TargetRule.SingleAlly: return new[] { TargetingSystem.ClampToAlly(actor, single) };
                 default:
                     // Adds-first: while the boss has living minions, a hero's untargeted single-enemy
                     // attack strikes the skirmish line before the boss (classic clear-the-adds phase).
-                    var t = single;
+                    var t = TargetingSystem.ClampToEnemy(actor, single);
                     if (t == null && actor.team == Team.Heroes)
                         foreach (var m in Context.minions) if (m != null && m.IsAlive) { t = m; break; }
                     if (t == null) t = TargetingSystem.FirstAlive(opponents);
