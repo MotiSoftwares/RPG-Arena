@@ -71,6 +71,20 @@ Run N headless fights and aggregate the log (build a `BattleContext` like `Party
 - Still uneven: damage skews Mage-heavy; the no-Mage W+T+A trio only ever gets Wet+Physical (no Ice
   to Freeze with) and is the slowest clear at ~9 rounds.
 
+## Combo web (reworked July 29) — three lines, one ladder
+
+- **FROST** (needs a Mage): Wet → Ice = FREEZE → Physical = **SHATTER ×2.3**. The marquee line.
+- **HUNT** (no Ice needed): Marked + Oiled → Physical = **QUARRY ×1.9**. The all-physical trio's own
+  ceiling; deliberately under SHATTER because it needs no cross-school coordination.
+- **COATING** (entry level): a single Wet *or* Oiled → Physical = ×1.15 +12 stagger.
+- Sources: Wet = Thief Water Bomb / Mage Blizzard · Oiled = **Archer Pitch Arrow** (was the redundant
+  Mark Target; Thief Shadow Mark already covered Marked) · Marked = Thief Shadow Mark.
+- **Physical lines are an EXCLUSIVE LADDER — never make them additive again.** Physical is the element
+  every class throws; stacked, a loaded target hit ~5.8× and fights collapsed to 3.6 rounds. Marked's
+  crit and Brittle ride on top on purpose (Mark is an accuracy tool, not a damage line).
+- Health check: all 4 trios should clear 12/12 seeds within a ~6-round band, each showing a DIFFERENT
+  dominant synergy in the log.
+
 ## Staging rule (learned the hard way)
 
 **Keep the fight axis LATERAL.** Heroes rotate to face their target, so if the boss sits much deeper
@@ -79,6 +93,19 @@ what a nice-looking receding diagonal caused. Keep every combatant within ~1.5u 
 then `AttachBody`'s `camBlend` (~0.34) yaws the profile into a 3/4 front view. Verify numerically:
 `Vector3.Dot(body.forward, (cam.position - body.position).normalized)` should be **positive** for
 every combatant (>0.15 = front visible; negative = back turned).
+
+## ⚠ VERIFY COMPILATION BEFORE TRUSTING ANY TEST RESULT
+
+`read_console` can return **zero entries while compilation is failing**. Unity then keeps serving the
+last good DLL, so `run_tests` happily reports 29/29 green **against stale code** — I burned an hour
+on this. Symptoms: play mode won't enter/stay, and edits appear to have no effect.
+
+**The source of truth is `%LOCALAPPDATA%\Unity\Editor\Editor.log`** — grep it for `error CS`. Note
+that a *data* (.asset) change applies without recompiling, so "my asset edit worked" does NOT mean
+the assembly is current. Compare `Library/ScriptAssemblies/RPGArena.*.dll` mtimes against the newest
+`.cs`; string literals in a DLL are UTF-16, so grep with Unicode encoding, not UTF-8.
+Helper: `scratchpad/compilecheck.ps1`. Two real errors this caught, both invisible in the console:
+`goto case` targeting a `default:` label, and an unbalanced brace from an edit.
 
 ## Hard-won gotchas (verify before re-deriving)
 
