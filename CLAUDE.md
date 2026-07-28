@@ -64,8 +64,21 @@ Run N headless fights and aggregate the log (build a `BattleContext` like `Party
   entirely — a trio can win 8/8 on other seeds and still fail the gate. **Sweep trios × seeds before
   tuning**, and prefer a lever with a real design reason over one that only fixes seed 99
   (`staggerBuildBreakSkill 30→36` was chosen precisely because Break skills counter the new charge).
-- Still uneven: damage is Mage-dominated and the W+M+A trio has no Wet applier, so it can never
-  Freeze/Shatter — a content gap, not a bug.
+- ~~W+M+A can never combo~~ **FIXED**: Ice Lance only Freezes a WET target and that trio had no Wet
+  source, so Freeze/Shatter/Brittle were unreachable. **Blizzard now applies Wet**, giving the Mage a
+  self-contained Blizzard→IceLance(FREEZE)→physical(SHATTER) line. 0 → 69 synergies per 8 fights.
+  Dragon HP settled at **2500** (4 trios × 11 seeds, all 10/10, fights 5–10 rounds).
+- Still uneven: damage skews Mage-heavy; the no-Mage W+T+A trio only ever gets Wet+Physical (no Ice
+  to Freeze with) and is the slowest clear at ~9 rounds.
+
+## Staging rule (learned the hard way)
+
+**Keep the fight axis LATERAL.** Heroes rotate to face their target, so if the boss sits much deeper
+in Z than the party, "face the boss" literally means "turn your back to the player" — that is exactly
+what a nice-looking receding diagonal caused. Keep every combatant within ~1.5u of the same depth,
+then `AttachBody`'s `camBlend` (~0.34) yaws the profile into a 3/4 front view. Verify numerically:
+`Vector3.Dot(body.forward, (cam.position - body.position).normalized)` should be **positive** for
+every combatant (>0.15 = front visible; negative = back turned).
 
 ## Hard-won gotchas (verify before re-deriving)
 
