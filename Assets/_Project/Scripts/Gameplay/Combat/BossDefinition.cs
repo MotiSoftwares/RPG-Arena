@@ -43,6 +43,9 @@ namespace RPGArena.Combat
         public float staggerThreshold = 100f;
         public int staggeredTurns = 1;          // how many of the boss's turns a Break costs it
 
+        [Header("Minions (live battles only — headless tests stay trio-vs-boss)")]
+        public List<MinionDefinition> minions = new();
+
 #if UNITY_EDITOR
         // Catch a misconfigured boss in the Inspector instead of a silent NRE mid-fight (§3.4).
         private void OnValidate()

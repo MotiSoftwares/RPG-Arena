@@ -109,8 +109,15 @@ namespace RPGArena.UI
             onBattleWon?.Unsubscribe(OnWon);
         }
 
-        // Play the death animation on a fallen combatant's rigged model (no-op for billboards).
-        private void OnDied(Characters.Entity e) => e?.GetComponentInChildren<Characters.AnimationDriver>()?.PlayDie();
+        // Play the death animation on a fallen combatant's rigged model (no-op for billboards),
+        // and pop the gold payout over a slain minion.
+        private void OnDied(Characters.Entity e)
+        {
+            if (e == null) return;
+            e.GetComponentInChildren<Characters.AnimationDriver>()?.PlayDie();
+            if (e.goldDrop > 0)
+                SpawnFloating(e.transform.position + Vector3.up * 2.2f, $"+{e.goldDrop}g", new Color(0.98f, 0.80f, 0.32f), 34);
+        }
 
         // On victory, every surviving hero plays its Victory pose.
         private void OnWon(bool _)

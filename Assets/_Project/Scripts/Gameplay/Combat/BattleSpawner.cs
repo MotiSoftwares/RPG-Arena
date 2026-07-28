@@ -25,6 +25,23 @@ namespace RPGArena.Combat
             return e;
         }
 
+        // A boss's add: enemy-team, non-boss (no stagger/threat mechanics), carries its drop payout.
+        public static Entity SpawnMinion(MinionDefinition def, BalanceConfig cfg, int index, Transform parent = null)
+        {
+            var go = new GameObject($"Minion_{def.displayName}_{index + 1}");
+            if (parent) go.transform.SetParent(parent);
+            var e = go.AddComponent<Entity>();
+            e.displayName = def.displayName + (index > 0 ? $" {(char)('A' + index)}" : " A");
+            e.team = Team.Enemies;
+            e.isBoss = false;
+            e.primaryStat = def.primaryStat;
+            e.staggerThreshold = float.MaxValue;   // adds don't stagger
+            e.modelPrefab = def.modelPrefab;
+            e.goldDrop = def.goldDrop;
+            e.Initialize(def.baseStats, cfg, def.elementProfile, def.abilities, def.aiBehavior);
+            return e;
+        }
+
         public static Entity SpawnBoss(BossDefinition def, BalanceConfig cfg, Transform parent = null)
         {
             var go = new GameObject($"Boss_{def.bossName}");

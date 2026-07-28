@@ -143,8 +143,8 @@ namespace RPGArena.Combat
 
                         if (actor.Brain != null)
                         {
-                            // AI-controlled (the boss).
-                            var opponents = actor.team == Team.Heroes ? new List<Entity> { Context.boss } : Context.heroes;
+                            // AI-controlled (the boss or a minion).
+                            var opponents = actor.team == Team.Heroes ? Context.Enemies : Context.heroes;
                             var ability = actor.Brain.DecideAction(Context, actor, opponents, out var tgt);
                             if (ability != null)
                             {
@@ -286,8 +286,23 @@ namespace RPGArena.Combat
 
             Context.boss = BattleSpawner.SpawnBoss(boss, balance);
 
+            // The boss's adds (live battles only — headless tests never come through here).
+            minionDefs.Clear();
+            if (boss.minions != null)
+                for (int i = 0; i < boss.minions.Count; i++)
+                {
+                    var md = boss.minions[i];
+                    if (md == null) continue;
+                    var m = BattleSpawner.SpawnMinion(md, balance, i);
+                    minionDefs[m] = md;
+                    Context.minions.Add(m);
+                }
+
             PlaceCombatants();
         }
+
+        // Which definition spawned each minion — read at death time for the item-drop roll.
+        private readonly Dictionary<Entity, MinionDefinition> minionDefs = new();
 
         // Stage the combatants on the orthographic arena: heroes on the left facing the boss
         // on the right. Each gets a placeholder capsule "body" (swapped for real rigged models
@@ -326,6 +341,27 @@ namespace RPGArena.Combat
                 var bm = Context.boss.gameObject.AddComponent<CombatantMotion>();
                 bm.lungeDistance = 0.8f;
                 bm.bobAmplitude = Context.boss.modelPrefab != null ? 0f : 0.12f;   // a heavier-feeling 2D boss bobs
+            }
+
+            // Minions form a skirmish line in front of their master, staggered so they never
+            // block the boss silhouette from the camera.
+            for (int i = 0; i < Context.minions.Count; i++)
+            {
+                var m = Context.minions[i];
+                minionDefs.TryGetValue(m, out var md);
+                var mp = new Vector3(3.1f + i * 2.0f, 0f, -0.9f - i * 0.5f);
+                m.transform.position = mp;
+                Vector3 faceParty = new Vector3(-4.4f, 0f, 0f) - mp; faceParty.y = 0f;
+                float mh = md != null ? md.modelHeight : 2.2f;
+                AttachBody(m.gameObject, m.modelPrefab, m.stageSprite, new Color(0.45f, 0.2f, 0.2f), 1.2f, 2.0f, 0, faceParty, 1f, mh, 0.22f);
+                if (md != null && md.animatorOverride != null)
+                {
+                    var anim = m.GetComponentInChildren<Animator>();
+                    if (anim != null) anim.runtimeAnimatorController = md.animatorOverride;
+                }
+                var mm = m.gameObject.AddComponent<CombatantMotion>();
+                mm.lungeDistance = 0.6f;
+                mm.bobAmplitude = 0f;
             }
 
             DressStage();
@@ -502,17 +538,22 @@ namespace RPGArena.Combat
         // --- helpers ------------------------------------------------------------------
         private Entity[] ResolveTargets(Entity actor, Ability ability, Entity single)
         {
-            var opponents = actor.team == Team.Heroes ? new List<Entity> { Context.boss } : Context.heroes;
+            var opponents = actor.team == Team.Heroes ? Context.Enemies : Context.heroes;
             switch (ability.targetRule)
             {
                 case TargetRule.AllEnemies: return TargetingSystem.AllAlive(opponents).ToArray();
                 case TargetRule.AllAllies:
-                    var allies = actor.team == Team.Heroes ? Context.heroes : new List<Entity> { Context.boss };
+                    var allies = actor.team == Team.Heroes ? Context.heroes : Context.Enemies;
                     return TargetingSystem.AllAlive(allies).ToArray();
                 case TargetRule.Self: return new[] { actor };
                 case TargetRule.SingleAlly: return new[] { single != null ? single : actor };
                 default:
-                    var t = single != null ? single : TargetingSystem.FirstAlive(opponents);
+                    // Adds-first: while the boss has living minions, a hero's untargeted single-enemy
+                    // attack strikes the skirmish line before the boss (classic clear-the-adds phase).
+                    var t = single;
+                    if (t == null && actor.team == Team.Heroes)
+                        foreach (var m in Context.minions) if (m != null && m.IsAlive) { t = m; break; }
+                    if (t == null) t = TargetingSystem.FirstAlive(opponents);
                     return t != null ? new[] { t } : new Entity[0];
             }
         }
@@ -534,6 +575,7 @@ namespace RPGArena.Combat
         {
             var all = new List<Entity>(Context.heroes);
             if (Context.boss != null) all.Add(Context.boss);
+            foreach (var m in Context.minions) if (m != null) all.Add(m);
             return all;
         }
 
@@ -541,7 +583,29 @@ namespace RPGArena.Combat
         private void CheckDeaths()
         {
             foreach (var e in All())
-                if (!e.IsAlive && announced.Add(e)) { Context.Log($"{e.displayName} has fallen."); onEntityDied?.Raise(e); }
+                if (!e.IsAlive && announced.Add(e))
+                {
+                    Context.Log($"{e.displayName} has fallen.");
+                    // Minion drops: gold always, the authored item on a lucky roll.
+                    if (e.team == Team.Enemies && !e.isBoss)
+                    {
+                        var run = GameBootstrap.Instance?.Run;
+                        if (run != null && minionDefs.TryGetValue(e, out var md))
+                        {
+                            if (md.goldDrop > 0)
+                            {
+                                run.gold += md.goldDrop;
+                                Context.Log($"    +{md.goldDrop} gold  (total {run.gold})");
+                            }
+                            if (md.itemDrop != null && Context.rng.NextDouble() < md.itemDropChance)
+                            {
+                                run.AddItem(md.itemDrop.name);
+                                Context.Log($"    {md.itemDrop.displayName} dropped!");
+                            }
+                        }
+                    }
+                    onEntityDied?.Raise(e);
+                }
         }
 
         private BattleManager.Outcome Evaluate()

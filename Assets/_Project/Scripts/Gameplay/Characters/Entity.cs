@@ -55,6 +55,10 @@ namespace RPGArena.Characters
         // barely build stagger) can't keep the Fury in check, so you must combo/break to survive.
         public int rageStacks;
 
+        // Minions only: gold paid out when this entity dies (read by presentation for the "+Xg"
+        // floater; awarded to the RunState by the battle loop). 0 for heroes and bosses.
+        public int goldDrop;
+
         [Header("Stagger (bosses)")]
         public float staggerMeter;
         public float staggerThreshold = 100f;

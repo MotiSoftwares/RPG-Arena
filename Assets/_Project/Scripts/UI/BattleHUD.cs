@@ -509,7 +509,11 @@ namespace RPGArena.UI
             {
                 case TargetRule.SingleAlly: return TargetingSystem.LowestHP(ctx.heroes);
                 case TargetRule.Self: return hero;
-                default: return ctx.boss;
+                default:
+                    // Adds-first (mirrors BattleController.ResolveTargets): clear the skirmish line,
+                    // then the boss.
+                    foreach (var m in ctx.minions) if (m != null && m.IsAlive) return m;
+                    return ctx.boss;
             }
         }
 

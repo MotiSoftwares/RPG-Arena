@@ -13,6 +13,21 @@ namespace RPGArena.Combat
         // Combatants.
         public readonly List<Entity> heroes = new();
         public Entity boss;
+        // The boss's adds (live battles only; headless tests leave this empty). Victory is still
+        // "boss dead" — surviving minions flee with their master slain.
+        public readonly List<Entity> minions = new();
+
+        // Boss + living minions: the hero-side target pool.
+        public List<Entity> Enemies
+        {
+            get
+            {
+                var list = new List<Entity>();
+                if (boss != null) list.Add(boss);
+                foreach (var m in minions) if (m != null && m.IsAlive) list.Add(m);
+                return list;
+            }
+        }
 
         // Systems & tuning.
         public BalanceConfig balance;
