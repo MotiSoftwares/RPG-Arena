@@ -11,6 +11,10 @@ namespace RPGArena.UI
     // path avoids the "stuck paused after restart" failure the rubric warns about.
     public class PauseMenu : MonoBehaviour
     {
+        // This menu OWNS Time.timeScale; it publishes the state to Core.GamePause so the gameplay
+        // and juice layers (which must not reference UI) can respect it. Convenience alias:
+        public static bool IsPaused => Core.GamePause.IsPaused;
+
         [SerializeField] private TMP_FontAsset uiFont;   // SlimUI Poppins-Bold SDF (wired in scene); falls back to TMP default
         private TMP_FontAsset font;
         private GameObject panel;
@@ -29,27 +33,40 @@ namespace RPGArena.UI
             if (kb != null && kb.escapeKey.wasPressedThisFrame) Toggle();
         }
 
-        private void Toggle()
+        private void Toggle() => SetPaused(!paused);
+
+        private void SetPaused(bool value)
         {
-            paused = !paused;
-            panel.SetActive(paused);
-            Time.timeScale = paused ? 0f : 1f;
-            GameBootstrap.Instance?.Audio?.SetPaused(paused);   // mixer "Paused" snapshot: muffled music, frozen SFX
+            paused = value;
+            Core.GamePause.Set(value);
+            panel.SetActive(value);
+            Time.timeScale = value ? 0f : 1f;
+            GameBootstrap.Instance?.Audio?.SetPaused(value);   // mixer "Paused" snapshot: muffled music, frozen SFX
         }
 
-        private void Resume() { paused = false; panel.SetActive(false); Time.timeScale = 1f; GameBootstrap.Instance?.Audio?.SetPaused(false); }
+        // A juice effect can end mid-pause and try to hand the clock back to 1 in its finally
+        // block; re-assert the pause every frame so the game can never quietly resume behind
+        // the overlay (belt-and-braces alongside the IsPaused checks in JuiceController).
+        private void LateUpdate()
+        {
+            if (paused && Time.timeScale != 0f) Time.timeScale = 0f;
+        }
+
+        // A scene load must never leave a stale "paused" flag behind for the next battle.
+        private void OnDisable() { if (paused) Core.GamePause.Set(false); }
+        private void OnDestroy() { Core.GamePause.Set(false); }
+
+        private void Resume() => SetPaused(false);
 
         private void Restart()
         {
-            Time.timeScale = 1f;
-            GameBootstrap.Instance?.Audio?.SetPaused(false);
+            SetPaused(false);
             UnityEngine.SceneManagement.SceneManager.LoadScene("BattleArena");
         }
 
         private void ToMenu()
         {
-            Time.timeScale = 1f;
-            GameBootstrap.Instance?.Audio?.SetPaused(false);
+            SetPaused(false);
             var boot = GameBootstrap.Instance;
             if (boot != null) boot.Scenes.LoadScene("MainMenu");
             else UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");

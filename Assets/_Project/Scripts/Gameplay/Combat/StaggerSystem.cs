@@ -36,11 +36,13 @@ namespace RPGArena.Combat
             }
 
             // The signature payoff: breaking the boss mid-charge cancels its telegraphed
-            // attack (e.g. the Dragon's Flame Breath fizzles out, §7.2).
+            // attack (e.g. the Dragon's Flame Breath fizzles out, §7.2). Racing the charge is the
+            // fight's headline decision, so it also pays the party a burst of Valor.
             if (boss.telegraphedAbility != null)
             {
                 ctx.Log($"    >>> {boss.telegraphedAbility.displayName} CANCELLED by the Break! <<<");
                 boss.telegraphedAbility = null;
+                ctx.charge?.Add(25f, ctx, "charge broken");   // null in headless tests — gate-safe
             }
 
             ctx.RaiseStaggerBroken(boss);

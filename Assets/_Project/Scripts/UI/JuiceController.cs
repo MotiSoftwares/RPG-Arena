@@ -122,13 +122,34 @@ namespace RPGArena.UI
         }
 
         // Play the death animation on a fallen combatant's rigged model (no-op for billboards),
-        // and pop the gold payout over a slain minion.
+        // and pop the gold payout over a slain minion. Minion corpses SINK into the meadow after
+        // the death anim so the battlefield doesn't fill with frozen bodies.
         private void OnDied(Characters.Entity e)
         {
             if (e == null) return;
             e.GetComponentInChildren<Characters.AnimationDriver>()?.PlayDie();
             if (e.goldDrop > 0)
                 SpawnFloating(e.transform.position + Vector3.up * 2.2f, $"+{e.goldDrop}g", new Color(0.98f, 0.80f, 0.32f), 34);
+            if (e.team == Characters.Team.Enemies && !e.isBoss)
+                StartCoroutine(SinkCorpse(e));
+        }
+
+        private IEnumerator SinkCorpse(Characters.Entity e)
+        {
+            yield return new WaitForSeconds(2.6f);                        // let the death anim land
+            if (e == null) yield break;
+            var body = e.transform.Find("Body");
+            var shadow = e.transform.Find("Shadow");
+            if (shadow != null) shadow.gameObject.SetActive(false);
+            if (body == null) yield break;
+            Vector3 from = body.position;
+            for (float t = 0f; t < 1.6f; t += Time.deltaTime)
+            {
+                if (body == null) yield break;
+                body.position = from + Vector3.down * (2.2f * (t / 1.6f));
+                yield return null;
+            }
+            if (e != null) e.gameObject.SetActive(false);
         }
 
         // On victory, every surviving hero plays its Victory pose.
@@ -185,12 +206,18 @@ namespace RPGArena.UI
                 if (melee && srcMotion != null)
                 {
                     float gap = new Vector2(dir.x, dir.z).magnitude;
+                    // Stop at the edge of the target's body, not a fixed 2.4u — a whelp and a
+                    // 5u dragon need very different stopping distances or you clip inside them.
+                    float reach = TargetRadius(r.target) + 0.9f;
+                    float travel = Mathf.Max(0.6f, gap - reach);
                     // Swing starts when the runner ARRIVES; mixamo one-handers connect ~0.35s in.
-                    srcMotion.DashStrike(dir, Mathf.Max(0.6f, gap - 2.4f), () => drv?.PlayAttack());
-                    impactDelay = srcMotion.approachTime + 0.35f;
+                    srcMotion.DashStrike(dir, travel, () => drv?.PlayAttack());
+                    // Impact rides the ACTUAL travel time (distance/speed), matching the new dash.
+                    impactDelay = Mathf.Clamp(travel / srcMotion.runSpeed, 0.28f, 0.95f) + 0.35f;
                 }
                 else
                 {
+                    srcMotion?.FaceTarget(dir);   // aim before you shoot
                     srcMotion?.Lunge(dir);
                     if (drv != null)
                     {
@@ -281,6 +308,19 @@ namespace RPGArena.UI
                 if (r.crit) { flashAmount = Mathf.Max(flashAmount, flashOnCrit); fovPunch = Mathf.Max(fovPunch, 9f); }   // crit snaps the camera in
                 else if (r.reaction == ElementReaction.Weak) fovPunch = Mathf.Max(fovPunch, 4.5f);
             }
+        }
+
+        // Horizontal half-extent of a combatant's body — how close an attacker may run before they'd
+        // be standing inside them. Measured from the renderers so it scales with the boss/minion.
+        private static float TargetRadius(Entity e)
+        {
+            var body = e != null ? e.transform.Find("Body") : null;
+            if (body == null) return 1.2f;
+            var rends = body.GetComponentsInChildren<Renderer>();
+            if (rends.Length == 0) return 1.2f;
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+            return Mathf.Clamp(Mathf.Max(b.extents.x, b.extents.z), 0.5f, 3.2f);
         }
 
         // World anchors for presentation on a target: where its spell VFX lands (the model's bounds
@@ -376,7 +416,9 @@ namespace RPGArena.UI
             }
             finally
             {
-                Time.timeScale = 1f;
+                // Hand the clock back to whoever legitimately owns it: a hit-stop that ends while
+                // the player is in the pause menu must NOT resume the game behind the overlay.
+                Time.timeScale = PauseMenu.IsPaused ? 0f : 1f;
                 timeEffectActive = false;
             }
         }
@@ -385,10 +427,11 @@ namespace RPGArena.UI
 
         private void LateUpdate()
         {
-            // WATCHDOG: a time effect must never park the game at timeScale 0. If the clock has been
-            // frozen for over 1.5 unscaled seconds (a leaked/stalled effect coroutine), force-restore
-            // it — dropping one hit-stop beats freezing the whole battle.
-            if (Time.timeScale > 0.001f) frozenClockTimer = 0f;
+            // WATCHDOG: OUR time effects must never park the game at timeScale 0. If a hit-stop /
+            // slow-mo we own has held the clock frozen for over 1.5 unscaled seconds (a leaked or
+            // stalled coroutine), force-restore — dropping one hit-stop beats freezing the battle.
+            // Deliberate pauses are not ours to cancel: skip while the pause menu holds the clock.
+            if (Time.timeScale > 0.001f || PauseMenu.IsPaused || !timeEffectActive) frozenClockTimer = 0f;
             else
             {
                 frozenClockTimer += Mathf.Min(Time.unscaledDeltaTime, 0.05f);

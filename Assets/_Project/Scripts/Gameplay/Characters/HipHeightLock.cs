@@ -20,12 +20,19 @@ namespace RPGArena.Characters
         [Tooltip("How far below bind height the hips may still travel (preserves natural crouches; clamps full sinks).")]
         public float maxDip = 0.25f;
 
+        // Set while a clip is SUPPOSED to put the hips on the floor (death, knockdown). Without this
+        // the clamp holds the corpse upright — fighters died standing at half-height.
+        public bool suspended;
+
         private Transform hips;
         private float bindLocalY;
         private bool ready;
+        private Animator animator;
+        private static readonly int DieState = Animator.StringToHash("Die");
 
         private void Awake()
         {
+            animator = GetComponentInChildren<Animator>();
             hips = FindHipBone(transform);
             if (hips != null)
             {
@@ -36,7 +43,13 @@ namespace RPGArena.Characters
 
         private void LateUpdate()
         {
-            if (!ready) return;
+            if (!ready || suspended) return;
+            // A death/knockdown clip legitimately drops the whole skeleton — let it.
+            if (animator != null)
+            {
+                var st = animator.GetCurrentAnimatorStateInfo(0);
+                if (st.shortNameHash == DieState || st.IsName("Die") || st.IsName("DieRecovery")) return;
+            }
             var lp = hips.localPosition;
             float minY = bindLocalY - maxDip;
             if (lp.y < minY) { lp.y = minY; hips.localPosition = lp; }

@@ -101,6 +101,7 @@ namespace RPGArena.UI
         private bool introChecked;
         private JuiceController juice;      // for PERFECT!/BRACED! floaters
         private GameObject bracePanel;      // the defensive action-command prompt
+        private GameObject menuPanelGo;     // the whole action-menu panel (hidden between hero turns)
         private Image braceImg;
         private TMP_Text braceText;
         private bool braceShownLanded;
@@ -131,6 +132,7 @@ namespace RPGArena.UI
             if (controller.AwaitingInput && controller.ActiveHero != lastMenuHero)
             {
                 lastMenuHero = controller.ActiveHero;
+                if (menuPanelGo != null) menuPanelGo.SetActive(true);
                 BuildActionMenu(controller.ActiveHero);
                 if (!coachDone && coachPanel != null) coachPanel.SetActive(true);
             }
@@ -139,6 +141,7 @@ namespace RPGArena.UI
                 lastMenuHero = null;
                 ClearChildren(actionPanel);
                 if (menuTitle != null) menuTitle.text = "";
+                if (menuPanelGo != null) menuPanelGo.SetActive(false);   // no empty box during enemy turns
                 if (!coachDone && coachPanel != null) { coachPanel.SetActive(false); coachDone = true; }
             }
         }
@@ -167,7 +170,9 @@ namespace RPGArena.UI
         private void OnTelegraph(Ability a)
         {
             if (telegraph == null) return;
-            telegraph.text = $"⚠  DRAGON IS CHARGING: {a.displayName.ToUpper()}  —  BREAK IT OR DEFEND  ⚠";
+            string who = controller != null && controller.Context != null && controller.Context.boss != null
+                ? controller.Context.boss.displayName.ToUpper() : "THE BOSS";
+            telegraph.text = $"⚠  {who} IS CHARGING: {a.displayName.ToUpper()}  —  BREAK IT OR DEFEND  ⚠";
             if (telegraphPanel != null) telegraphPanel.SetActive(true);
         }
         private void HideTelegraphNow() { if (telegraphPanel != null) telegraphPanel.SetActive(false); }
@@ -357,8 +362,10 @@ namespace RPGArena.UI
                 float k = controller.BraceTimeLeft / Mathf.Max(0.01f, controller.braceWindow);
                 bracePanel.transform.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(Time.unscaledTime * 16f));
                 if (braceImg != null) braceImg.color = Color.Lerp(new Color(0.32f, 0.06f, 0.05f, 0.95f), new Color(0.62f, 0.10f, 0.07f, 0.97f), k);
+                // Keyboard reads bypass the pause overlay's raycaster, so gate on pause explicitly —
+                // otherwise the player could pause, press SPACE at leisure, and buy a free brace.
                 var kb = Keyboard.current;
-                if (kb != null && kb.spaceKey.wasPressedThisFrame)
+                if (!PauseMenu.IsPaused && kb != null && kb.spaceKey.wasPressedThisFrame)
                 {
                     controller.SubmitBrace();
                     GameBootstrap.Instance?.Audio?.PlaySfx("ui_click");
@@ -419,19 +426,28 @@ namespace RPGArena.UI
             var hint = MakeText(actionPanel, "SPACE or click to strike — gold = PERFECT (+18%)", fontBody, 13, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
             Place(hint, new Vector2(0, -108), new Vector2(380, 20)); hint.color = TxtMuted;
 
-            bool locked = false;
-            var btn = trackGo.AddComponent<Button>(); btn.targetGraphic = track;
-            btn.onClick.AddListener(() => locked = true);
-
             const float sweep = 0.85f;
+            const float armAfter = 0.15f;   // grace: the click/keypress that OPENED the bar must not lock it
             float t = 0f, pos = 0f;
+            bool locked = false;
+
+            var btn = trackGo.AddComponent<Button>(); btn.targetGraphic = track;
+            // The Track sits exactly where the ability cards were, and those are only destroyed at
+            // end of frame — without the grace, a habitual double-click locks at pos~0.2 (SLOPPY).
+            btn.onClick.AddListener(() => { if (t >= armAfter) locked = true; });
+
+            yield return null;   // never observe the click frame's own key state
+
             while (!locked && t < sweep)
             {
+                // A paused game must not sweep: the bar runs on unscaled time, so without this the
+                // needle would race on behind the pause menu and auto-resolve the attack as SLOPPY.
+                if (PauseMenu.IsPaused) { yield return null; continue; }
                 t += Time.unscaledDeltaTime;
                 pos = Mathf.Clamp01(t / sweep);
                 nrt.anchorMin = new Vector2(pos, 0f); nrt.anchorMax = new Vector2(pos, 1f);
                 var kb = Keyboard.current;
-                if (kb != null && kb.spaceKey.wasPressedThisFrame) locked = true;
+                if (t >= armAfter && kb != null && kb.spaceKey.wasPressedThisFrame) locked = true;
                 yield return null;
             }
 
@@ -824,7 +840,9 @@ namespace RPGArena.UI
 
             // ---- ACTION MENU (bottom right) ---- (410 tall: 5 skill rows + Overdrive + Move +
             // Items all fit with margin — smaller sizes used to clip the last row)
-            var menuPanel = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 16), new Vector2(424, 410), Panel).GetComponent<RectTransform>();
+            menuPanelGo = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 16), new Vector2(424, 410), Panel);
+            var menuPanel = menuPanelGo.GetComponent<RectTransform>();
+            menuPanelGo.SetActive(false);   // shown only while a hero is choosing
             menuTitle = PanelTitle(menuPanel, "", 14, 8, 20); menuTitle.color = Accent; menuTitle.characterSpacing = 3;
             var menuInner = MakeRow(menuPanel, new Vector2(0f, 1f), new Vector2(10, -34), new Vector2(404, 370));
             menuInner.anchorMin = new Vector2(0f, 1f); menuInner.anchorMax = new Vector2(1f, 1f);

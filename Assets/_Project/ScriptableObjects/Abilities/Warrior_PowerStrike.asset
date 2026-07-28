@@ -23,7 +23,8 @@ MonoBehaviour:
   hits: 1
   mpCost: 0
   cooldown: 0
-  mpRegenOnUse: 0
+  mpRegenOnUse: 6
+  flatPower: 0
   hitTier: 1
   autoHit: 0
   rollsRiskDie: 0

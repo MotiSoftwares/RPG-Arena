@@ -80,7 +80,9 @@ namespace RPGArena.Combat
         public bool BraceWindowOpen => Time.time < braceOpenUntil && !braceLanded;
         public bool BraceLanded => braceLanded && Time.time < braceOpenUntil + 0.6f;
         public float BraceTimeLeft => Mathf.Max(0f, braceOpenUntil - Time.time);
-        public void SubmitBrace() { if (Time.time < braceOpenUntil) braceLanded = true; }
+        // Pause freezes Time.time, so the window would otherwise stay "open" forever behind the
+        // pause menu — reject braces submitted while the game is paused (no free reads).
+        public void SubmitBrace() { if (Time.time < braceOpenUntil && !GamePause.IsPaused) braceLanded = true; }
 
         // Single source of truth for affordability (MP + cooldown), used by BOTH the controller (to
         // reject) and the HUD (to grey buttons out) so the two can never drift.
@@ -203,6 +205,7 @@ namespace RPGArena.Combat
                                 pendingReposition = false;
                                 Reposition(actor);     // spends the turn; cmd stays null so no attack resolves
                                 ActiveHero = null;
+                                yield return Wait();   // let the move READ before the next turn snaps in
                             }
                             else
                             {
@@ -351,19 +354,45 @@ namespace RPGArena.Combat
             new Color(0.6f, 0.35f, 0.8f), new Color(0.35f, 0.75f, 0.4f)
         };
 
+        // Battle-line formation: a receding DIAGONAL from the camera's lower-left into the scene —
+        // melee closest to the lens, casters stepping back and away. Each hero lands in their own
+        // slice of the frame instead of the overlapping clump an even x-spacing produced, and the
+        // diagonal points the eye straight at the boss (composition, not just spacing).
+        private static Vector3 HeroSlot(bool backRow, int indexInRow)
+            => backRow ? new Vector3(-3.35f - indexInRow * 1.40f, 0f, -0.75f + indexInRow * 1.60f)
+                       : new Vector3(-1.55f - indexInRow * 1.30f, 0f, -2.35f + indexInRow * 1.10f);
+
+        // Re-place every hero into tidy row slots (party order preserved). Used at battle start and
+        // again after a mid-battle row swap so the wedge never ends up with holes.
+        private void LayoutHeroes(bool animate)
+        {
+            int front = 0, back = 0;
+            foreach (var h in Context.heroes)
+            {
+                var slot = HeroSlot(h.backRow, h.backRow ? back++ : front++);
+                h.transform.position = slot;   // the logical anchor (HUD/targeting) moves immediately
+                var motion = h.GetComponent<CombatantMotion>();
+                if (motion == null) continue;
+                if (animate) motion.SlideBase(slot);   // the BODY jogs across
+                else motion.MoveBase(slot);
+            }
+        }
+
         private void PlaceCombatants()
         {
-            var bossPos = new Vector3(4.7f, 0f, 1.3f);   // boss anchor: a real gap to charge across, but inside the tighter 45° framing (x=6 hid it behind the skill panel)
+            var bossPos = new Vector3(3.45f, 0f, 1.55f);   // upper-right of frame: dominant, a real gap to charge across, clear of the skill panel
+            int frontIdx = 0, backIdx = 0;
             for (int i = 0; i < Context.heroes.Count; i++)
             {
                 var h = Context.heroes[i];
                 h.backRow = h.primaryStat != PrimaryStat.STR;                          // STR melee = front line; casters/ranged = back
-                float rowZ = h.backRow ? 1.6f : -1.0f;                                 // formation: deeper front/back split so the rows read apart
-                h.transform.position = new Vector3(-4.4f + i * 1.7f, 0f, rowZ);        // wider spacing so the heroes aren't shoulder-to-shoulder
+                h.transform.position = HeroSlot(h.backRow, h.backRow ? backIdx++ : frontIdx++);
                 h.transform.rotation = Quaternion.Euler(0, 90, 0);
                 Vector3 faceBoss = bossPos - h.transform.position; faceBoss.y = 0f;
                 float scale = h.modelPrefab != null ? 1.2f : 1f;     // make the 3D heroes read larger
-                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss, scale, 0f, 0.35f);
+                // camBlend 0.18: mostly facing the enemy (a heavier blend parked heroes ~30° off
+                // their own target, so every swing visibly missed), with just enough yaw for a 3/4 read.
+                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss, scale, 0f, 0.18f);
                 var motion = h.gameObject.AddComponent<CombatantMotion>();    // lunge/recoil (+ procedural bob if no model)
                 if (h.modelPrefab != null) motion.bobAmplitude = 0f;          // the Animator's Idle replaces the bob
             }
@@ -387,7 +416,9 @@ namespace RPGArena.Combat
             {
                 var m = Context.minions[i];
                 minionDefs.TryGetValue(m, out var md);
-                var mp = new Vector3(3.1f + i * 2.0f, 0f, -0.9f - i * 0.5f);
+                // adds push FORWARD of their master toward the party — they read as the threat you
+                // must clear first, and they never eclipse the boss's silhouette
+                var mp = new Vector3(1.65f + i * 1.40f, 0f, -1.35f - i * 1.35f);
                 m.transform.position = mp;
                 Vector3 faceParty = new Vector3(-4.4f, 0f, 0f) - mp; faceParty.y = 0f;
                 float mh = md != null ? md.modelHeight : 2.2f;
@@ -434,6 +465,7 @@ namespace RPGArena.Combat
 
             for (int i = 0; i < Context.heroes.Count; i++) AddShadow(Context.heroes[i].gameObject, 1.5f);
             if (Context.boss != null) AddShadow(Context.boss.gameObject, 2.8f);
+            foreach (var m in Context.minions) if (m != null) AddShadow(m.gameObject, 1.7f);   // adds were floating shadowless
         }
 
         // A camera-facing flattened dark blob at a combatant's feet — a cheap, readable contact shadow.
@@ -483,6 +515,13 @@ namespace RPGArena.Combat
         // (or the caster for self-buffs) and destroys it after a few seconds.
         private void PlayNonDamagingFx(Entity caster, Ability ability, Entity[] targets)
         {
+            // Turn toward whoever this is for before casting — buffing an ally while facing the
+            // opposite way was one of the "unnatural" reads.
+            if (targets != null && targets.Length > 0 && targets[0] != null && targets[0] != caster)
+            {
+                Vector3 look = targets[0].transform.position - caster.transform.position; look.y = 0f;
+                caster.GetComponent<CombatantMotion>()?.FaceTarget(look);
+            }
             caster.GetComponentInChildren<RPGArena.Characters.AnimationDriver>()?.PlayCast();
             if (ability.vfxPrefab == null) return;
             // Buff/heal/aura prefabs are authored around the character's feet — ground them at EACH
@@ -539,6 +578,11 @@ namespace RPGArena.Combat
                 // Safety net for imported clips with big vertical hip root-motion (Generic rigs sink
                 // into the floor when applyRootMotion is off) — clamps the hips to ~bind height.
                 model.AddComponent<Characters.HipHeightLock>();
+                // Every animated body needs a driver. Hero prefabs author one; the vendor boss/minion
+                // prefabs (BlackMageWizard, the Nightmare whelps) do NOT — without this they never
+                // play a single attack/hit/death clip and just stand there frozen all fight.
+                if (model.GetComponentInChildren<Characters.AnimationDriver>() == null)
+                    model.AddComponent<Characters.AnimationDriver>();
                 return;
             }
 
@@ -596,16 +640,13 @@ namespace RPGArena.Combat
             }
         }
 
-        // Swap a hero between the front and back row mid-battle (the positioning move). Slides the
-        // model to the new row and re-bases its procedural motion so it holds the new spot.
+        // Swap a hero between the front and back row mid-battle (the positioning move). The whole
+        // wedge re-forms around the change so the formation never ends up with holes.
         private void Reposition(Entity hero)
         {
             if (hero == null) return;
             hero.backRow = !hero.backRow;
-            var p = hero.transform.position;
-            var np = new Vector3(p.x, 0f, hero.backRow ? 1.6f : -1.0f);
-            hero.transform.position = np;
-            hero.GetComponent<CombatantMotion>()?.MoveBase(np);
+            LayoutHeroes(true);
             Context.Log($"{hero.displayName} repositions to the {(hero.backRow ? "back" : "front")} row.");
         }
 

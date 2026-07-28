@@ -45,13 +45,18 @@ namespace RPGArena.Combat.AI
             //    bloodies. Three HP-gated rotations escalate the pressure; AoE never charges, it just hits.
             float hpFrac = self.stats.maxHP > 0 ? (float)self.currentHP / self.stats.maxHP : 1f;
             var wing = wingBuffet != null ? wingBuffet : tailSweep;   // graceful fallback if unassigned
+            var charge = chargingBreath != null ? chargingBreath : flameBreath;
             List<Ability> cycle;
+            // Every rotation now CHARGES once, and more often as it bloodies. The charge turn is the
+            // whole point of the fight's rhythm: it announces a huge AoE one turn ahead, which the
+            // party can either race to BREAK (cancelling it outright) or eat. Without it the dragon
+            // was a metronome that just mauled the same hero forever — no read, no counterplay.
             if (hpFrac <= phase3HpFraction)
-                cycle = new List<Ability> { clawSwipe, flameBreath, clawSwipe, wing };           // FINAL FURY: 2 AoE/4
+                cycle = new List<Ability> { charge, clawSwipe, charge, wing };                   // FINAL FURY: charge every other turn
             else if (hpFrac <= phase2HpFraction)
-                cycle = new List<Ability> { clawSwipe, clawSwipe, wing, clawSwipe };             // ENRAGED: 1 AoE/4
+                cycle = new List<Ability> { clawSwipe, charge, wing, clawSwipe };                // ENRAGED
             else
-                cycle = new List<Ability> { clawSwipe, clawSwipe, clawSwipe, tailSweep };        // STALKING: mostly focus the threat
+                cycle = new List<Ability> { clawSwipe, tailSweep, clawSwipe, charge };           // STALKING: one charge per cycle
 
             int idx = ((self.aiCycleIndex % cycle.Count) + cycle.Count) % cycle.Count;
             self.aiCycleIndex = (idx + 1) % cycle.Count;

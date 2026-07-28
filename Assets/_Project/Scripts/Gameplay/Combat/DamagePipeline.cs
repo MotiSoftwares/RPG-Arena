@@ -181,6 +181,9 @@ namespace RPGArena.Combat
             float build = cfg.staggerBuildNormalHit;
             if (reaction == ElementReaction.Weak) build += (cfg.staggerBuildWeaknessHit - cfg.staggerBuildNormalHit);
             if (info.isBreakSkill) build += (cfg.staggerBuildBreakSkill - cfg.staggerBuildNormalHit);
+            // A CHARGING boss is over-extended: every hit rocks it 50% harder, so racing to Break
+            // the telegraph is a real, winnable play rather than arithmetic that never lands in time.
+            if (tgt != null && tgt.telegraphedAbility != null) build *= 1.5f;
             r.staggerBuilt = build + syn.bonusStaggerBuild;
             return r;
         }

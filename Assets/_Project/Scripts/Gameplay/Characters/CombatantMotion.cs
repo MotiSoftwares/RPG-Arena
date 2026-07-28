@@ -17,9 +17,10 @@ namespace RPGArena.Characters
         public float recoilDistance = 0.3f;
         public float springback = 9f;
         [Header("Melee dash (approach -> strike -> return)")]
-        public float approachTime = 0.28f;   // eased run-in duration (JuiceController schedules the impact off this)
-        public float strikeHold = 0.55f;     // time held at the foe while the swing plays + connects
-        public float returnTime = 0.26f;     // eased run-back duration
+        public float approachTime = 0.28f;   // legacy floor; real duration is distance/runSpeed
+        public float runSpeed = 6.5f;        // world units/sec — matched to the run clip's stride
+        public float strikeHold = 0.55f;     // fallback when the swing clip's length can't be read
+        public float returnTime = 0.26f;     // legacy floor for the run-back
 
         private Transform body;
         private Vector3 baseWorldPos;
@@ -52,6 +53,40 @@ namespace RPGArena.Characters
         // Re-anchor the procedural motion to a new world spot (used when a hero repositions rows).
         public void MoveBase(Vector3 worldPos) { baseWorldPos = worldPos; }
 
+        // Walk to a new anchor instead of teleporting there — a row swap should read as the hero
+        // JOGGING between the lines (Run animation + eased travel), not blinking across the field.
+        public void SlideBase(Vector3 worldPos, float duration = 0.45f)
+        {
+            if (!ready) { baseWorldPos = worldPos; return; }
+            StartCoroutine(SlideRoutine(worldPos, Mathf.Max(0.05f, duration)));
+        }
+
+        private System.Collections.IEnumerator SlideRoutine(Vector3 target, float duration)
+        {
+            var driver = GetComponentInChildren<AnimationDriver>();
+            Vector3 from = baseWorldPos;
+            Quaternion homeRot = body.rotation;
+            Vector3 dir = target - from; dir.y = 0f;
+            Quaternion runRot = dir.sqrMagnitude > 0.001f ? Quaternion.LookRotation(dir.normalized, Vector3.up) : homeRot;
+
+            driver?.SetMoving(true);
+            for (float t = 0f; t < duration; t += Time.deltaTime)
+            {
+                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / duration));
+                baseWorldPos = Vector3.Lerp(from, target, k);
+                body.rotation = Quaternion.Slerp(homeRot, runRot, Mathf.Clamp01(t / 0.15f));
+                yield return null;
+            }
+            baseWorldPos = target;
+            driver?.SetMoving(false);
+            for (float t = 0f; t < 0.18f; t += Time.deltaTime)   // settle back into the stage pose
+            {
+                body.rotation = Quaternion.Slerp(runRot, homeRot, Mathf.Clamp01(t / 0.18f));
+                yield return null;
+            }
+            body.rotation = homeRot;
+        }
+
         // Snap toward a world direction, then spring back — a strike.
         public void Lunge(Vector3 worldDir) => Lunge(worldDir, lungeDistance);
 
@@ -83,17 +118,23 @@ namespace RPGArena.Characters
         {
             dashing = true;
             var driver = GetComponentInChildren<AnimationDriver>();
+            var animator = GetComponentInChildren<Animator>();
             // Face the run fully (drop the 3/4 camera-blend pose) so the charge visibly aims at the
             // foe; restored on the way back. Rotate the visual body only — the host anchors the HUD.
             Quaternion homeRot = body.rotation;
             Quaternion runRot = Quaternion.LookRotation(target.normalized, Vector3.up);
 
+            // Travel time follows DISTANCE at a believable sprint pace. A fixed duration meant a
+            // long charge played at ~20 units/sec — the feet cycle at ~4, so the hero ice-skated.
+            float dist = target.magnitude;
+            float runDur = Mathf.Clamp(dist / runSpeed, 0.28f, 0.95f);
+
             driver?.SetMoving(true);
             float t = 0f;
-            while (t < approachTime)
+            while (t < runDur)
             {
                 t += Time.deltaTime;
-                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / approachTime));
+                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / runDur));
                 offset = target * k;
                 body.rotation = Quaternion.Slerp(homeRot, runRot, Mathf.Clamp01(t / 0.12f));
                 yield return null;
@@ -102,28 +143,60 @@ namespace RPGArena.Characters
             driver?.SetMoving(false);
             onArrive?.Invoke();
 
-            yield return new WaitForSeconds(strikeHold);            // the swing plays + connects here
+            // Hold for the ACTUAL swing length instead of a guess, so the retreat never starts
+            // mid-attack (which read as the hero flinching away from their own strike).
+            yield return null;                     // let the trigger land so we can read the state
+            float hold = strikeHold;
+            if (animator != null)
+            {
+                var st = animator.GetCurrentAnimatorStateInfo(0);
+                if (st.length > 0.05f && st.length < 4f) hold = st.length * 0.85f;
+            }
+            yield return new WaitForSeconds(hold);
 
             driver?.SetMoving(true);                                // backpedal home, still facing the foe
             Vector3 from = offset; t = 0f;
-            while (t < returnTime)
+            float backDur = Mathf.Clamp(dist / (runSpeed * 0.85f), 0.26f, 0.9f);
+            while (t < backDur)
             {
                 t += Time.deltaTime;
-                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / returnTime));
+                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / backDur));
                 offset = Vector3.Lerp(from, Vector3.zero, k);
                 yield return null;
             }
             offset = Vector3.zero;
             driver?.SetMoving(false);
             t = 0f;                                                 // settle back into the 3/4 stage pose
-            while (t < 0.16f)
+            while (t < 0.18f)
             {
                 t += Time.deltaTime;
-                body.rotation = Quaternion.Slerp(runRot, homeRot, Mathf.Clamp01(t / 0.16f));
+                body.rotation = Quaternion.Slerp(runRot, homeRot, Mathf.Clamp01(t / 0.18f));
                 yield return null;
             }
             body.rotation = homeRot;
             dashing = false;
+        }
+
+        // Turn to face a world direction over a short beat — used by ranged/casting attackers so
+        // they actually AIM at their target instead of firing from a 3/4 stage pose.
+        public void FaceTarget(Vector3 worldDir, float turnTime = 0.15f)
+        {
+            if (!ready || dashing) return;
+            worldDir.y = 0f;
+            if (worldDir.sqrMagnitude < 0.0001f) return;
+            StartCoroutine(FaceRoutine(Quaternion.LookRotation(worldDir.normalized, Vector3.up), turnTime));
+        }
+
+        private System.Collections.IEnumerator FaceRoutine(Quaternion look, float turnTime)
+        {
+            Quaternion from = body.rotation;
+            for (float t = 0f; t < turnTime; t += Time.deltaTime)
+            {
+                if (dashing) yield break;                 // a dash owns the rotation; don't fight it
+                body.rotation = Quaternion.Slerp(from, look, Mathf.Clamp01(t / turnTime));
+                yield return null;
+            }
+            if (!dashing) body.rotation = look;
         }
 
         // Knock back away from the attacker — a flinch. Default magnitude.

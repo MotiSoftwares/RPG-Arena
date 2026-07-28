@@ -52,6 +52,13 @@ namespace RPGArena.Characters
         public void PlayRoar() { if (Has(RoarHash)) animator.SetTrigger(RoarHash); else PlayAreaAttack(); }
         public void PlayVictory() { if (Has(VictoryHash)) animator.SetTrigger(VictoryHash); }
         public void PlayHit() { if (Has(HitHash)) animator.SetTrigger(HitHash); }
-        public void PlayDie() { if (Has(DieHash)) animator.SetTrigger(DieHash); }
+
+        public void PlayDie()
+        {
+            // Release the hip clamp first — a death clip is SUPPOSED to put the body on the ground.
+            var lockComp = GetComponentInParent<HipHeightLock>();
+            if (lockComp != null) lockComp.suspended = true;
+            if (Has(DieHash)) animator.SetTrigger(DieHash);
+        }
     }
 }
