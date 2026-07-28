@@ -21,6 +21,18 @@ namespace RPGArena.Characters
         private static readonly int MovingHash = Animator.StringToHash("Moving");
         private static readonly int RoarHash = Animator.StringToHash("Roar");
 
+        // WHERE IN AN ATTACK CLIP THE BLOW ACTUALLY LANDS, as a fraction of the clip.
+        //
+        // Presentation used to assume every swing connects a flat 0.35s in ("mixamo one-handers
+        // connect ~0.35s"). The clips the game actually plays run from 0.67s to 3.60s, so that
+        // constant put the damage number, hit-stop and VFX 15% into the Evil Warrior's 2.43s swipe
+        // and past the end of the Thief's jab. A FRACTION scales with whatever clip is playing —
+        // including the attack-variant blend trees, where the clip is picked at random each swing.
+        //
+        // Per-rig and serialized: a lumbering brute and a duellist genuinely connect at different
+        // points, so this is tunable per prefab rather than one global number.
+        [Range(0.1f, 0.9f)] public float contactFraction = 0.42f;
+
         private Animator animator;
         private readonly HashSet<int> paramHashes = new();
 
@@ -64,6 +76,27 @@ namespace RPGArena.Characters
                 if (midAttack) return;
             }
             animator.SetTrigger(HitHash);
+        }
+
+        // Seconds from now until the action clip CURRENTLY PLAYING reaches its contact frame.
+        //
+        // Returns a negative number when the animator is not (yet) in an action state, which the
+        // caller uses to keep polling: a trigger set this frame takes a frame or two to transition,
+        // and on a rig with no Animator at all there is nothing to wait for. Callers must always
+        // keep their own timeout — an interrupted state must never stall the battle.
+        public float TimeToContact()
+        {
+            if (animator == null) return -1f;
+            var st = animator.GetCurrentAnimatorStateInfo(0);
+            if (!st.IsName("Attack") && !st.IsName("Cast") && !st.IsName("AreaAttack")) return -1f;
+
+            var info = animator.GetCurrentAnimatorClipInfo(0);
+            if (info == null || info.Length == 0 || info[0].clip == null) return -1f;
+            float len = info[0].clip.length;
+            if (len <= 0.01f) return -1f;
+
+            float played = (st.normalizedTime % 1f) * len;
+            return Mathf.Max(0f, len * contactFraction - played);
         }
 
         public void PlayDie()

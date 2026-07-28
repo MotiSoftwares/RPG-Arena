@@ -179,6 +179,31 @@ namespace RPGArena.UI
             StartCoroutine(AttackBeat(r));
         }
 
+        // Wait until the attacker's CURRENT action clip reaches its contact frame, rather than for a
+        // fixed number of seconds. The clips in play run 0.67s–3.60s, so one constant cannot be
+        // right for more than one of them; asking the clip that is actually playing also handles the
+        // attack-variant blend trees, where the motion is chosen at random each swing.
+        //
+        // `fallback` stays authoritative in two places: while the animator has not yet entered the
+        // action state (a trigger set this frame needs a frame or two), and as a ceiling, so an
+        // interrupted or missing state can never stall the battle waiting for a frame that never comes.
+        private IEnumerator WaitForContact(Entity source, float fallback)
+        {
+            var drv = source != null ? source.GetComponentInChildren<Characters.AnimationDriver>() : null;
+            if (drv == null) { yield return new WaitForSeconds(fallback); yield break; }
+
+            float giveUp = Time.time + 0.30f;
+            float toContact = drv.TimeToContact();
+            while (toContact < 0f && Time.time < giveUp)
+            {
+                yield return null;
+                toContact = drv.TimeToContact();
+            }
+
+            if (toContact < 0f) { yield return new WaitForSeconds(fallback); yield break; }
+            yield return new WaitForSeconds(Mathf.Min(toContact, fallback + 0.8f));
+        }
+
         private IEnumerator AttackBeat(DamageResult r)
         {
             // Schedule on a shared timeline so several hits resolved in one frame play one-by-one.
@@ -198,6 +223,8 @@ namespace RPGArena.UI
             //   other      — cast in place, impact on the swing's natural contact frame.
             bool melee = false;
             bool projectileDelivered = false;
+            bool meleeSwing = false;      // a dash-and-swing, whose contact frame the clip can tell us
+            float dashTime = 0f;          // the run-in; the swing only STARTS once it lands
             float impactDelay = 0.42f;
             if (r.hit && r.source != null)
             {
@@ -219,7 +246,11 @@ namespace RPGArena.UI
                     // Swing starts when the runner ARRIVES; mixamo one-handers connect ~0.35s in.
                     srcMotion.DashStrike(dir, travel, () => drv?.PlayAttack());
                     // Impact rides the ACTUAL travel time (distance/speed), matching the new dash.
-                    impactDelay = Mathf.Clamp(travel / srcMotion.runSpeed, 0.28f, 0.95f) + 0.35f;
+                    // The 0.35s tail is only the FALLBACK now: once the dash lands, the wait below
+                    // asks the swing clip itself where it connects.
+                    dashTime = Mathf.Clamp(travel / srcMotion.runSpeed, 0.28f, 0.95f);
+                    impactDelay = dashTime + 0.35f;
+                    meleeSwing = drv != null;
                 }
                 else
                 {
@@ -234,9 +265,11 @@ namespace RPGArena.UI
 
                     if (r.ability != null && r.ability.vfxPrefab != null && r.ability.vfxIsProjectile && !area)
                     {
-                        // Release the shot on the cast/draw's natural release frame, then fly.
+                        // Release the shot on the cast/draw's OWN release frame. The Archer's draw is
+                        // 1.03s and her overdraw 3.60s — a flat 0.45s loosed the arrow before she had
+                        // drawn the string on one and long before the other.
                         const float releaseDelay = 0.45f;
-                        yield return new WaitForSeconds(releaseDelay);
+                        yield return WaitForContact(r.source, releaseDelay);
                         TargetAnchors(r.source, 1.2f, 2.0f, out Vector3 muzzle, out _);
                         // Spawn already positioned + aimed: these prefabs burst-fire a world-space
                         // particle on their very first frame, so origin-spawn = shot into the bushes.
@@ -251,7 +284,16 @@ namespace RPGArena.UI
             }
 
             BattleController.PresentationBusyUntil = Mathf.Max(BattleController.PresentationBusyUntil, Time.time + impactDelay + 0.65f);
-            yield return new WaitForSeconds(impactDelay);
+            // A projectile's impact is its ARRIVAL, which ProjectileFlight already timed exactly, so
+            // only the swing consults the clip. Everything else keeps the estimate.
+            if (meleeSwing)
+            {
+                // Two beats, not one: run in, THEN connect. The swing does not start until the dash
+                // callback fires, so asking the clip before arrival would just read the Run state.
+                yield return new WaitForSeconds(dashTime);
+                yield return WaitForContact(r.source, 0.35f);
+            }
+            else yield return new WaitForSeconds(impactDelay);
 
             // IMPACT beat: VFX blooms on the target body, damage number pops, hit-stop + shake fire.
             string text; Color color; float size;
