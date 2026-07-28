@@ -511,6 +511,76 @@ namespace RPGArena.UI
             timingCo = null;
         }
 
+        // --- overdrive: three answers to three different board states -----------------
+        private void BuildOverdriveMenu(Entity hero)
+        {
+            ClearChildren(actionPanel);
+            if (menuTitle != null) menuTitle.text = "OVERDRIVE — CHOOSE YOUR SPEND";
+            var ctx = controller.Context;
+            var boss = ctx != null ? ctx.boss : null;
+            float y = 0f;
+
+            // Each option is annotated with WHY you would pick it right now, so the choice teaches
+            // itself instead of needing a wiki.
+            int fallen = 0, wounded = 0;
+            if (ctx != null)
+                foreach (var h in ctx.heroes)
+                {
+                    if (h == null) continue;
+                    if (!h.IsAlive) fallen++;
+                    else if (h.currentHP < h.stats.maxHP * 0.5f) wounded++;
+                }
+            bool bossCharging = boss != null && boss.telegraphedAbility != null;
+            bool canSunder = boss != null && boss.IsAlive && !boss.isStaggered;
+
+            MakeOverdriveOption(hero, ref y, "⚔  SURGE",
+                $"×{(controller.balance != null ? controller.balance.overdriveDamageMult : 1.35f):0.00} party damage for {(controller.balance != null ? controller.balance.overdriveHeroTurns : 3)} hero turns",
+                "close out a fight you're already winning", Gold, true, ChargeSystem.OverdriveMode.Surge);
+
+            MakeOverdriveOption(hero, ref y, "✖  SUNDER",
+                canSunder ? "BREAK the boss instantly — vents Fury, cancels its charge" : "the boss is already broken",
+                bossCharging ? "<color=#FFD24A>it is charging RIGHT NOW</color>" : "skip the meter, open the burst window",
+                Accent, canSunder, ChargeSystem.OverdriveMode.Sunder);
+
+            MakeOverdriveOption(hero, ref y, "✚  RALLY",
+                $"heal the party {(controller.balance != null ? controller.balance.overdriveRallyHealPercent : 45)}% and REVIVE the fallen",
+                fallen > 0 ? $"<color=#FF7A6B>{fallen} hero down</color>" : wounded > 0 ? $"{wounded} badly wounded" : "save it — nobody needs it yet",
+                HpGreen, true, ChargeSystem.OverdriveMode.Rally);
+
+            var back = MakeSimpleButton(actionPanel, "←  Back to skills", new Vector2(0, -y), Accent, true);
+            back.onClick.AddListener(() => BuildActionMenu(hero));
+        }
+
+        private void MakeOverdriveOption(Entity hero, ref float y, string title, string effect, string hint, Color accent, bool enabled, ChargeSystem.OverdriveMode mode)
+        {
+            var go = new GameObject("Overdrive"); go.transform.SetParent(actionPanel, false);
+            var img = go.AddComponent<Image>(); Soft(img);
+            img.color = enabled ? new Color(accent.r * 0.26f, accent.g * 0.26f, accent.b * 0.26f, 0.95f)
+                                : new Color(0.12f, 0.13f, 0.16f, 0.8f);
+            var rt = img.rectTransform;
+            rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(0, 1);
+            rt.anchoredPosition = new Vector2(0, -y); rt.sizeDelta = new Vector2(0, 58);
+            rt.offsetMin = new Vector2(6, rt.offsetMin.y); rt.offsetMax = new Vector2(-6, rt.offsetMax.y);
+            var btn = go.AddComponent<Button>(); btn.targetGraphic = img; btn.interactable = enabled;
+            var cb = btn.colors; cb.highlightedColor = new Color(1.3f, 1.3f, 1.3f); cb.fadeDuration = 0.07f; btn.colors = cb;
+
+            var t1 = MakeText(rt, title, fontHeader, 16, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
+            Stretch(t1, 14, 36, 12, 4); t1.color = enabled ? accent : TxtMuted;
+            t1.enableWordWrapping = false; t1.overflowMode = TextOverflowModes.Overflow;
+            var t2 = MakeText(rt, effect, fontBody, 12, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
+            Stretch(t2, 14, 18, 12, 24); t2.color = TxtMain; t2.richText = true;
+            var t3 = MakeText(rt, hint, fontBody, 11, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
+            Stretch(t3, 14, 3, 12, 40); t3.color = TxtMuted; t3.richText = true;
+
+            if (enabled) btn.onClick.AddListener(() =>
+            {
+                GameBootstrap.Instance?.Audio?.PlaySfx("crit");
+                controller.SubmitOverdrive(mode);
+                BuildActionMenu(hero);
+            });
+            y += 62f;
+        }
+
         // --- target picker ------------------------------------------------------------
         // Only single-enemy skills need a choice, and only while the boss actually has living adds.
         private bool NeedsTargetChoice(Ability ab)
@@ -589,8 +659,8 @@ namespace RPGArena.UI
             var charge = ctx != null ? ctx.charge : null;
             if (charge != null && charge.IsFull)
             {
-                var od = MakeSimpleButton(actionPanel, "★  OVERDRIVE — surge the party!", new Vector2(0, -y), Gold, true);
-                od.onClick.AddListener(() => { controller.SubmitOverdrive(); BuildActionMenu(hero); });
+                var od = MakeSimpleButton(actionPanel, "★  OVERDRIVE — spend the meter", new Vector2(0, -y), Gold, true);
+                od.onClick.AddListener(() => BuildOverdriveMenu(hero));
                 y += 38f;
             }
             var move = MakeSimpleButton(actionPanel, $"↕  Move to {(hero.backRow ? "FRONT" : "BACK")} row", new Vector2(0, -y), Accent, true);

@@ -56,6 +56,9 @@ namespace RPGArena.Core
         // Anti-feel-bad: after this many misses in a row, the next attack is forced to hit.
         public int missStreakCap = 2;
 
+        [Tooltip("Overdrive RALLY: percent of max HP healed to the party (a fallen hero is revived at 25%).")]
+        public int overdriveRallyHealPercent = 45;
+
         [Header("Glancing blows (dead-turn elimination)")]
         [Tooltip("Damage a GLANCING blow deals (a failed accuracy roll that still grazes). One action per hero per round means a flat whiff is a wasted turn — measured at ~24% of all attacks.")]
         [Range(0.1f, 0.6f)] public float glanceDamageMult = 0.35f;

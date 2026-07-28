@@ -30,18 +30,68 @@ namespace RPGArena.Combat
             ctx?.Log($"    Valor +{Mathf.RoundToInt(amount)} ({reason}) — {Mathf.RoundToInt(valor)}/{Mathf.RoundToInt(max)}");
         }
 
-        // Spend a full meter: every living hero's outgoing damage surges for a few turns. The surge
-        // multiplies on top of Break (x1.85) / Shatter (x2.3) / crit, so "charge up, then Shatter in
-        // the Break window" is the highest, most RELIABLE ceiling in the game.
-        public void SpendOverdrive(BattleContext ctx, Entity caller)
+        // What a full meter can be spent on. A single "press to win" button is not a decision —
+        // three answers to three different problems is. Which one is right depends on the board:
+        // are you ahead and want to close (SURGE), is the boss charging something lethal
+        // (SUNDER), or did that AoE just leave the party one hit from a wipe (RALLY)?
+        public enum OverdriveMode { Surge, Sunder, Rally }
+
+        public void SpendOverdrive(BattleContext ctx, Entity caller) => SpendOverdrive(ctx, caller, OverdriveMode.Surge);
+
+        public void SpendOverdrive(BattleContext ctx, Entity caller, OverdriveMode mode)
         {
             if (!IsFull || ctx == null) return;
             valor = 0f;
-            overdriveActive = true;
-            overdriveTurnsLeft = ctx.balance != null ? ctx.balance.overdriveHeroTurns : 3;
-            float mult = ctx.balance != null ? ctx.balance.overdriveDamageMult : 1.35f;
-            foreach (var h in ctx.heroes) if (h != null && h.IsAlive) h.damageOutMultiplier = mult;
-            ctx.Log($"=== OVERDRIVE! The party surges (x{mult:0.00} damage for {overdriveTurnsLeft} hero turns). ===");
+            switch (mode)
+            {
+                case OverdriveMode.Sunder:
+                {
+                    // INSTANT BREAK: skip the stagger meter entirely. The answer to a telegraphed
+                    // wipe you cannot out-damage — it cancels the charge, vents Fury, and opens the
+                    // burst window on your terms instead of the boss's.
+                    var boss = ctx.boss;
+                    if (boss != null && boss.IsAlive && !boss.isStaggered)
+                    {
+                        ctx.Log("=== OVERDRIVE — SUNDER! The party breaks the boss open. ===");
+                        ctx.stagger?.Break(boss, ctx);
+                    }
+                    else
+                    {
+                        // Nothing to break — don't eat the meter for nothing; fall back to the surge.
+                        goto case OverdriveMode.Surge;
+                    }
+                    break;
+                }
+                case OverdriveMode.Rally:
+                {
+                    // SECOND WIND: a big party heal that also revives one fallen hero at low HP.
+                    // The comeback button — losing a hero stops being an instant spiral.
+                    int healPct = ctx.balance != null ? ctx.balance.overdriveRallyHealPercent : 45;
+                    ctx.Log($"=== OVERDRIVE — RALLY! The party rallies (+{healPct}% HP). ===");
+                    foreach (var h in ctx.heroes)
+                    {
+                        if (h == null) continue;
+                        if (!h.IsAlive)
+                        {
+                            h.currentHP = Mathf.Max(1, Mathf.RoundToInt(h.stats.maxHP * 0.25f));
+                            ctx.Log($"    {h.displayName} is back on their feet ({h.currentHP} HP)!");
+                        }
+                        else h.Heal(Mathf.RoundToInt(h.stats.maxHP * (healPct / 100f)));
+                    }
+                    break;
+                }
+                default:
+                {
+                    // SURGE: the damage window. Multiplies on top of Break (x1.85) / Shatter (x2.3) /
+                    // crit, so "charge up, then Shatter inside a Break" is the reliable ceiling.
+                    overdriveActive = true;
+                    overdriveTurnsLeft = ctx.balance != null ? ctx.balance.overdriveHeroTurns : 3;
+                    float mult = ctx.balance != null ? ctx.balance.overdriveDamageMult : 1.35f;
+                    foreach (var h in ctx.heroes) if (h != null && h.IsAlive) h.damageOutMultiplier = mult;
+                    ctx.Log($"=== OVERDRIVE — SURGE! The party surges (x{mult:0.00} damage for {overdriveTurnsLeft} hero turns). ===");
+                    break;
+                }
+            }
         }
 
         // Call after each hero's turn during a surge; closes the window (restores damage) at zero.

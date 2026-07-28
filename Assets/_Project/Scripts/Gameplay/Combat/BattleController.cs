@@ -109,7 +109,14 @@ namespace RPGArena.Combat
         // The HUD's gold OVERDRIVE button: spend a FULL Valor meter on the party-wide damage surge.
         // A free activation — the hero still takes their action this turn (now surge-boosted), so you
         // "charge up, unleash, then dump a Shatter in the Break window" for the biggest reliable hit.
-        public void SubmitOverdrive() { if (ActiveHero != null) Context?.charge?.SpendOverdrive(Context, ActiveHero); }
+        public void SubmitOverdrive() => SubmitOverdrive(ChargeSystem.OverdriveMode.Surge);
+
+        // A full Valor meter is a CHOICE, not a button: surge the party's damage, sunder the boss
+        // open instantly, or rally the party back from the brink.
+        public void SubmitOverdrive(ChargeSystem.OverdriveMode mode)
+        {
+            if (ActiveHero != null) Context?.charge?.SpendOverdrive(Context, ActiveHero, mode);
+        }
 
         private IEnumerator RunBattle()
         {
