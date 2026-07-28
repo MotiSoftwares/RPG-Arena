@@ -80,6 +80,18 @@ namespace RPGArena.UI
             BuildCanvas();
         }
 
+        // THE camera-ownership seam: this controller rewrites the camera from its cached base every
+        // LateUpdate (shake/dolly/FOV punches layer on top), so anything that wants to MOVE the
+        // camera — the intro cinematic, a future boss-kill cam — must drive it through here rather
+        // than fight the stomp. Passing the current values each frame animates the base smoothly.
+        public void SetCameraBase(Vector3 localPos, float fov)
+        {
+            camBasePos = localPos;
+            camBaseFov = fov;
+        }
+        public Vector3 CameraBasePos => camBasePos;
+        public float CameraBaseFov => camBaseFov;
+
         // A crisp dark outline so floating numbers stay legible over the bright meadow without a panel.
         private static Material BuildOutlineMaterial(TMP_FontAsset f)
         {

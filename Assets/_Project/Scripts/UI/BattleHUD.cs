@@ -93,10 +93,28 @@ namespace RPGArena.UI
         }
 
         private Entity lastMenuHero;
+        private GameObject canvasRoot;      // whole HUD canvas — hidden during the intro cinematic
+        private IBattleIntro intro;
+        private bool introChecked;
 
         private void Update()
         {
             if (controller == null || controller.Context == null) return;
+
+            // Stay hidden while a pre-fight cinematic owns the screen; pop in when it hands off.
+            if (!introChecked)
+            {
+                introChecked = true;
+                foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+                    if (mb is IBattleIntro bi) { intro = bi; break; }
+            }
+            if (intro != null && !intro.IsIntroDone)
+            {
+                if (canvasRoot != null && canvasRoot.activeSelf) canvasRoot.SetActive(false);
+                return;
+            }
+            if (canvasRoot != null && !canvasRoot.activeSelf) canvasRoot.SetActive(true);
+
             RefreshBars();
             AnimateBars();
 
@@ -596,6 +614,7 @@ namespace RPGArena.UI
             scaler.referenceResolution = new Vector2(1920, 1080);
             scaler.matchWidthOrHeight = 0.5f;
             canvasGo.AddComponent<GraphicRaycaster>();
+            canvasRoot = canvasGo;
             var root = canvasGo.GetComponent<RectTransform>();
 
             // ---- BOSS (top center) ----

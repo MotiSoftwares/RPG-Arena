@@ -39,12 +39,19 @@ Unity 3D turn-based boss-battler (URP). Party of 3 heroes (from Warrior/Mage/Thi
 ## Overhaul plan (status)
 
 - [x] Recon + this file
-- [ ] **P1 Combat visuals**: boss scale+framing, weapon grip sockets, real projectile flight, run-in/out movement with easing, URP VFX visibility pass, dragon idle/facing
-- [ ] **P2 Animation events**: contact-timed impacts via AnimationEvents + event bus; kill hardcoded waits
-- [ ] **P3 UI**: one 1920×1080 reference, smaller panels, hide empty log, fix overflows, camera reposition (via JuiceController base fields)
-- [ ] **P4 Features**: items+currency (RunState) + shop in RunFlow + in-battle Use Item command; minions (BattleContext list + TargetRule.Summon + drops); audio mixer snapshots + pause muffle; cinematic intro (IBattleIntro); particle material pass
-- [ ] **P5 Premium art (ComfyUI)**: menu/loading art, boss portraits, logo, on-brand polish
-- [ ] Final: tests green, console clean, screenshot gallery
+- [x] **P1 Combat visuals**: boss 9.5→5.0 + reframe; bolt-on weapons removed (native Paladin gear, socketed Mage staff, Arissa bow hidden); real projectiles (`ProjectileFlight` — Erb prefabs are SELF-PROPELLED: spawn aimed at target, lifetime=dist/speed so the death-explosion lands ON the target); eased melee dash + Run animator states + swing-on-arrival; 31 ability vfx remapped; FourEvilDragonsPBR mats → URP.
+- [x] **P3 UI**: all canvases 1920×1080; log hidden till content; menu fits Items row; JuiceCanvas scaler (popups were raw pixels).
+- [x] **P4 Features**: gold + Supply Camp shop + in-battle items (`ItemDefinition` wraps an Ability; `flatPower` for stat-free item heals); minions (`MinionDefinition` + `SequenceAI` rotation brain + adds-first targeting + gold/item drops — LIVE battles only, headless tests stay trio-vs-boss); audio mixer "Paused" snapshot (620Hz lowpass, authored via internal AudioMixerController reflection) + elemental hit SFX (ElevenLabs) + dragon_roar telegraph; cinematic intro (`BattleIntroCinematic : IBattleIntro`, drives camera via `JuiceController.SetCameraBase` — NEVER move the camera directly, JuiceController stomps it every LateUpdate; HUD auto-hides during intro).
+- [ ] **P2 Animation events**: infrastructure half-done (dash arrival callback + projectile arrival ARE event-driven); remaining: AnimationEvents on FBX clips (`ModelImporterClipAnimation.events`, normalized time) to replace the 0.35s swing-connect + 0.45s cast-release constants in JuiceController.AttackBeat.
+- [ ] **P5 Premium art (ComfyUI)**: menu/loading art, boss portraits, logo. Also: Archer needs a GanzSe bow with a proper grip socket (she's currently unarmed-mime); TargetRule.Summon still unimplemented (mid-fight minion summons); HUD target picker for choosing minion vs boss explicitly.
+- [x] Final (this pass): 29/29 EditMode green after every feature; validated visually via Step+screenshot loop.
+
+## Hard-won gotchas (verify before re-deriving)
+
+- **Unfocused-editor stall root cause**: `WaitForSecondsRealtime` never resumes under `EditorApplication.Step()` with the editor unfocused → hit-stop parked `Time.timeScale` at 0 forever. Fixed: TimeEffect integrates `unscaledDeltaTime` manually + a LateUpdate watchdog force-restores after 1.5s frozen. Don't reintroduce realtime waits in presentation.
+- Burst screenshots inside one `execute_code` call flush the same frame — capture ONE screenshot per call (step ~5 after) for sequences.
+- Direct-play BattleArena has NO GameBootstrap/RunState (items/gold hidden). Test via an INACTIVE GameObject + AddComponent + reflection-set `Instance`/`Run` (Awake never fires on inactive).
+- Erb "projectile" prefabs: root ParticleSystem startSpeed 15, world-space, sub-emitters explode on particle death. Never spawn at identity/origin; configure BEFORE first sim frame (same call as Instantiate).
 
 ## Guardrails
 
