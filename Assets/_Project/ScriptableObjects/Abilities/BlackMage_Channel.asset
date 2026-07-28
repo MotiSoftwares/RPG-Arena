@@ -26,6 +26,10 @@ MonoBehaviour:
   mpRegenOnUse: 0
   hitTier: 0
   autoHit: 0
+  rollsRiskDie: 0
+  riskFloor: 0
+  backfireKind: 0
+  backfireStatus: {fileID: 0}
   statusesToApply: []
   telegraphsAbility: {fileID: 11400000, guid: 7213f9632f6fe9a4fba2eab0eae28f9e, type: 2}
   stanceAction: 0
@@ -44,7 +48,8 @@ MonoBehaviour:
   bonusVsFlagMult: 1.5
   executeBelowHpPct: 0
   executeMult: 1.6
-  vfxPrefab: {fileID: 8145502431507700120, guid: 000832214335ffd4782827d2a4510f4a, type: 3}
+  vfxPrefab: {fileID: 3744133877081091469, guid: a2a060732547fe64581bb0cb3c2bdf1d, type: 3}
+  vfxIsProjectile: 0
   sfxId: 
   animationTrigger: Attack
   tags: []

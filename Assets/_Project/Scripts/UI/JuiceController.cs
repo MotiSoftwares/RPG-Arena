@@ -137,41 +137,69 @@ namespace RPGArena.UI
         {
             // Schedule on a shared timeline so several hits resolved in one frame play one-by-one.
             float start = Mathf.Max(Time.time, nextBeat);
-            nextBeat = start + 0.24f;
-            BattleController.PresentationBusyUntil = Mathf.Max(BattleController.PresentationBusyUntil, start + 0.95f);
+            nextBeat = start + 0.30f;
+            BattleController.PresentationBusyUntil = Mathf.Max(BattleController.PresentationBusyUntil, start + 1.1f);
             float lead = start - Time.time;
             if (lead > 0f) yield return new WaitForSeconds(lead);
 
             TargetAnchors(r.target, r.target.isBoss ? 1.6f : 1.0f, r.target.isBoss ? 3.6f : 2.2f, out Vector3 bodyCenter, out Vector3 head);
             Vector3 dir = r.source != null ? (r.target.transform.position - r.source.transform.position) : Vector3.forward;
 
-            // APPROACH + WIND-UP: melee attackers dash in; ranged/magic stay put. Play the swing/cast.
+            // APPROACH + WIND-UP. Three shapes, all landing the impact ON the contact beat:
+            //   melee      — run to the foe (eased, with the Run anim), swing ON ARRIVAL, connect mid-swing;
+            //   projectile — cast/draw, LAUNCH the authored prefab from the caster's chest, arc to the
+            //                target nose-first, impact when it ARRIVES (was: spawned static at the target);
+            //   other      — cast in place, impact on the swing's natural contact frame.
             bool melee = false;
+            bool projectileDelivered = false;
+            float impactDelay = 0.42f;
             if (r.hit && r.source != null)
             {
                 var srcMotion = r.source.GetComponent<Characters.CombatantMotion>();
-                melee = r.ability != null && !r.ability.isMagic
-                        && r.ability.targetRule != TargetRule.AllEnemies
+                var drv = r.source.GetComponentInChildren<Characters.AnimationDriver>();
+                bool area = r.ability != null && r.ability.targetRule == TargetRule.AllEnemies;
+                melee = r.ability != null && !r.ability.isMagic && !area
+                        && !r.ability.HasTag("Ranged")
+                        && !r.ability.vfxIsProjectile          // thrown weapons (Lucky Seven…) fly, they don't dash
                         && r.source.team != r.target.team;
+
                 if (melee && srcMotion != null)
                 {
                     float gap = new Vector2(dir.x, dir.z).magnitude;
-                    srcMotion.DashStrike(dir, Mathf.Max(0.6f, gap - 2.4f));   // RUN in to the foe, strike, run back
+                    // Swing starts when the runner ARRIVES; mixamo one-handers connect ~0.35s in.
+                    srcMotion.DashStrike(dir, Mathf.Max(0.6f, gap - 2.4f), () => drv?.PlayAttack());
+                    impactDelay = srcMotion.approachTime + 0.35f;
                 }
-                else srcMotion?.Lunge(dir);
-                var drv = r.source.GetComponentInChildren<Characters.AnimationDriver>();
-                if (drv != null)
+                else
                 {
-                    if (r.ability != null && r.ability.targetRule == TargetRule.AllEnemies) drv.PlayAreaAttack();
-                    else if (r.ability != null && r.ability.isMagic) drv.PlayCast();
-                    else drv.PlayAttack();
+                    srcMotion?.Lunge(dir);
+                    if (drv != null)
+                    {
+                        if (area) drv.PlayAreaAttack();
+                        else if (r.ability != null && r.ability.isMagic) drv.PlayCast();
+                        else drv.PlayAttack();
+                    }
+
+                    if (r.ability != null && r.ability.vfxPrefab != null && r.ability.vfxIsProjectile && !area)
+                    {
+                        // Release the shot on the cast/draw's natural release frame, then fly.
+                        const float releaseDelay = 0.45f;
+                        yield return new WaitForSeconds(releaseDelay);
+                        TargetAnchors(r.source, 1.2f, 2.0f, out Vector3 muzzle, out _);
+                        // Spawn already positioned + aimed: these prefabs burst-fire a world-space
+                        // particle on their very first frame, so origin-spawn = shot into the bushes.
+                        Vector3 pdir = bodyCenter - muzzle;
+                        var aim = pdir.sqrMagnitude > 0.001f ? Quaternion.LookRotation(pdir.normalized) : Quaternion.identity;
+                        var fx = Instantiate(r.ability.vfxPrefab, muzzle, aim);
+                        float flight = ProjectileFlight.Launch(fx, muzzle, bodyCenter);
+                        impactDelay = flight;                        // impact = moment of arrival
+                        projectileDelivered = true;
+                    }
                 }
             }
 
-            // Wind-up window before contact. The Animator's attack/cast trigger blends in then the
-            // swing CONNECTS ~0.35-0.45s later — firing the impact at the old ~0.17s landed the VFX +
-            // damage while the hero was still mid-windup (the "not synced" look). Wait for the swing.
-            yield return new WaitForSeconds(melee ? 0.38f : 0.42f);
+            BattleController.PresentationBusyUntil = Mathf.Max(BattleController.PresentationBusyUntil, Time.time + impactDelay + 0.65f);
+            yield return new WaitForSeconds(impactDelay);
 
             // IMPACT beat: VFX blooms on the target body, damage number pops, hit-stop + shake fire.
             string text; Color color; float size;
@@ -214,8 +242,9 @@ namespace RPGArena.UI
                 Color burstCol = (r.isHeal || r.absorbed) ? new Color(0.4f, 1f, 0.5f) : ElementColor(r.element);
                 ElementType vfxEl = (r.isHeal || r.absorbed) ? ElementType.Holy : r.element;
                 SpawnVFX(bodyCenter, burstCol, vfxEl, r.crit ? 64 : 44, r.target.isBoss ? 2.4f : 1.25f);
-                // Layer the ability's authored effect on top (impact/explosion prefabs read strongly here).
-                if (r.ability != null && r.ability.vfxPrefab != null)
+                // Layer the ability's authored effect on top (impact/explosion prefabs read strongly
+                // here) — unless a projectile already delivered it to this exact spot.
+                if (!projectileDelivered && r.ability != null && r.ability.vfxPrefab != null)
                 {
                     var fx = Instantiate(r.ability.vfxPrefab, bodyCenter, Quaternion.identity);
                     fx.transform.localScale *= r.target.isBoss ? 1.6f : 1.25f;
@@ -311,7 +340,12 @@ namespace RPGArena.UI
                 }
                 else
                 {
-                    yield return new WaitForSecondsRealtime(duration);
+                    // Manually integrate UNSCALED time instead of WaitForSecondsRealtime: the realtime
+                    // wait never resumes when the editor is unfocused and frame-stepped (MCP-driven
+                    // validation), which left timeScale stuck at 0 and froze the whole battle. The
+                    // unscaled clock provably ticks every player-loop frame in both modes.
+                    float t = 0f;
+                    while (t < duration) { t += Mathf.Min(Time.unscaledDeltaTime, 0.05f); yield return null; }
                 }
             }
             finally
@@ -321,8 +355,20 @@ namespace RPGArena.UI
             }
         }
 
+        private float frozenClockTimer;   // watchdog: how long timeScale has sat at ~0 (unscaled)
+
         private void LateUpdate()
         {
+            // WATCHDOG: a time effect must never park the game at timeScale 0. If the clock has been
+            // frozen for over 1.5 unscaled seconds (a leaked/stalled effect coroutine), force-restore
+            // it — dropping one hit-stop beats freezing the whole battle.
+            if (Time.timeScale > 0.001f) frozenClockTimer = 0f;
+            else
+            {
+                frozenClockTimer += Mathf.Min(Time.unscaledDeltaTime, 0.05f);
+                if (frozenClockTimer > 1.5f) { Time.timeScale = 1f; timeEffectActive = false; frozenClockTimer = 0f; }
+            }
+
             // Action camera: FOV punch (crit/break) + a Break dolly push, plus decaying shake — all on
             // UNSCALED time so the move animates through the hit-stop freeze and the BREAK slow-mo. The
             // base pos/FOV are restored as the punches ease to zero, so this never deadlocks the framing.

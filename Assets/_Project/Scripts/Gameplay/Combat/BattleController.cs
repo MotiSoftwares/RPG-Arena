@@ -288,7 +288,7 @@ namespace RPGArena.Combat
 
         private void PlaceCombatants()
         {
-            var bossPos = new Vector3(6.0f, 0f, 0.6f);   // boss anchor: pushed out so there's a real battlefield gap to charge across (was crammed against the party)
+            var bossPos = new Vector3(4.7f, 0f, 1.3f);   // boss anchor: a real gap to charge across, but inside the tighter 45° framing (x=6 hid it behind the skill panel)
             for (int i = 0; i < Context.heroes.Count; i++)
             {
                 var h = Context.heroes[i];
@@ -298,7 +298,7 @@ namespace RPGArena.Combat
                 h.transform.rotation = Quaternion.Euler(0, 90, 0);
                 Vector3 faceBoss = bossPos - h.transform.position; faceBoss.y = 0f;
                 float scale = h.modelPrefab != null ? 1.2f : 1f;     // make the 3D heroes read larger
-                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss, scale);
+                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss, scale, 0f, 0.35f);
                 var motion = h.gameObject.AddComponent<CombatantMotion>();    // lunge/recoil (+ procedural bob if no model)
                 if (h.modelPrefab != null) motion.bobAmplitude = 0f;          // the Animator's Idle replaces the bob
             }
@@ -307,10 +307,10 @@ namespace RPGArena.Combat
                 Context.boss.transform.position = bossPos;
                 Context.boss.transform.rotation = Quaternion.Euler(0, -90, 0);
                 Vector3 faceHeroes = (Context.heroes.Count > 0 ? Context.heroes[0].transform.position : Vector3.zero) - bossPos; faceHeroes.y = 0f;
-                // The dragon LOOMS: auto-scaled to ~9.5 world units tall — taller than the forest's
-                // 6–8u trees and ≈3.7× the heroes — so the boss clearly dominates the stage and reads
-                // as a threat, not a same-size lizard, no matter the source model's native size.
-                AttachBody(Context.boss.gameObject, Context.boss.modelPrefab, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.0f, 3.0f, 0, faceHeroes, 1f, 9.5f);
+                // The boss is BIG but still parses at a glance next to ~2.5u heroes: ~5u tall (2× hero)
+                // reads as "huge monster" without swallowing the frame or clipping the camera. Mostly
+                // face the heroes (low camera blend) so its attacks visibly aim at the party.
+                AttachBody(Context.boss.gameObject, Context.boss.modelPrefab, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.0f, 3.0f, 0, faceHeroes, 1f, 5.0f, 0.18f);
                 var bm = Context.boss.gameObject.AddComponent<CombatantMotion>();
                 bm.lungeDistance = 0.8f;
                 bm.bobAmplitude = Context.boss.modelPrefab != null ? 0f : 0.12f;   // a heavier-feeling 2D boss bobs
@@ -398,15 +398,26 @@ namespace RPGArena.Combat
         private void PlayNonDamagingFx(Entity caster, Ability ability, Entity[] targets)
         {
             caster.GetComponentInChildren<RPGArena.Characters.AnimationDriver>()?.PlayCast();
-            if (ability.vfxPrefab != null)
+            if (ability.vfxPrefab == null) return;
+            // Buff/heal/aura prefabs are authored around the character's feet — ground them at EACH
+            // recipient (a party-wide blessing should visibly bless the whole party, not just hero #1).
+            bool any = false;
+            if (targets != null)
+                foreach (var t in targets)
+                {
+                    if (t == null) continue;
+                    any = true;
+                    var fx = Instantiate(ability.vfxPrefab, t.transform.position + Vector3.up * 0.05f, Quaternion.identity);
+                    Destroy(fx, 4f);
+                }
+            if (!any)
             {
-                var t = (targets != null && targets.Length > 0 && targets[0] != null) ? targets[0] : caster;
-                var fx = Instantiate(ability.vfxPrefab, t.transform.position + Vector3.up * 1.1f, Quaternion.identity);
+                var fx = Instantiate(ability.vfxPrefab, caster.transform.position + Vector3.up * 0.05f, Quaternion.identity);
                 Destroy(fx, 4f);
             }
         }
 
-        private static void AttachBody(GameObject host, GameObject modelPrefab, Sprite sprite, Color color, float width, float height, int order, Vector3 faceDir, float modelScale = 1f, float targetModelHeight = 0f)
+        private static void AttachBody(GameObject host, GameObject modelPrefab, Sprite sprite, Color color, float width, float height, int order, Vector3 faceDir, float modelScale = 1f, float targetModelHeight = 0f, float camBlend = 0.5f)
         {
             if (host.transform.Find("Body") != null) return;
 
@@ -422,7 +433,7 @@ namespace RPGArena.Combat
                 var cam = Camera.main;
                 Vector3 faceCam = (cam != null ? cam.transform.position - host.transform.position : new Vector3(0, 0, -1)); faceCam.y = 0f;
                 Vector3 look = faceFoe.sqrMagnitude > 0.0001f && faceCam.sqrMagnitude > 0.0001f
-                    ? Vector3.Slerp(faceFoe.normalized, faceCam.normalized, 0.5f)
+                    ? Vector3.Slerp(faceFoe.normalized, faceCam.normalized, camBlend)
                     : (faceFoe.sqrMagnitude > 0.0001f ? faceFoe.normalized : Vector3.forward);
                 model.transform.rotation = Quaternion.LookRotation(look, Vector3.up);
                 if (modelScale > 0f && !Mathf.Approximately(modelScale, 1f)) model.transform.localScale *= modelScale;

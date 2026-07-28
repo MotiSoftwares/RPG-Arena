@@ -96,6 +96,8 @@ namespace RPGArena.Combat
 
         [Header("Presentation (read by listeners, never by logic)")]
         public GameObject vfxPrefab;
+        [Tooltip("The vfxPrefab is a directional projectile: spawn it at the CASTER and fly it to the target (instead of blooming it on the target).")]
+        public bool vfxIsProjectile;
         public string sfxId;
         public string animationTrigger = "Attack";
 

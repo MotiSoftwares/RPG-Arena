@@ -16,6 +16,10 @@ namespace RPGArena.Characters
         public float lungeDistance = 0.55f;
         public float recoilDistance = 0.3f;
         public float springback = 9f;
+        [Header("Melee dash (approach -> strike -> return)")]
+        public float approachTime = 0.28f;   // eased run-in duration (JuiceController schedules the impact off this)
+        public float strikeHold = 0.55f;     // time held at the foe while the swing plays + connects
+        public float returnTime = 0.26f;     // eased run-back duration
 
         private Transform body;
         private Vector3 baseWorldPos;
@@ -63,24 +67,62 @@ namespace RPGArena.Characters
         // A melee approach: run a chosen distance toward the foe, HOLD briefly for the strike, then
         // run back. Reads as "charge in and hit" (vs the in-place lunge). Ignored if a run is already
         // in progress so a multi-hit flurry doesn't restart it every frame.
-        public void DashStrike(Vector3 worldDir, float distance)
+        public void DashStrike(Vector3 worldDir, float distance) => DashStrike(worldDir, distance, null);
+
+        // onArrive fires the moment the runner reaches the foe — the presentation layer triggers the
+        // swing there so the attack animation starts AT the target instead of gliding in mid-swing.
+        public void DashStrike(Vector3 worldDir, float distance, System.Action onArrive)
         {
-            if (!ready || dashing) return;
+            if (!ready || dashing) { onArrive?.Invoke(); return; }
             worldDir.y = 0f;
-            if (worldDir.sqrMagnitude < 0.0001f) { Lunge(worldDir, distance); return; }
-            StartCoroutine(DashRoutine(worldDir.normalized * distance));
+            if (worldDir.sqrMagnitude < 0.0001f) { Lunge(worldDir, distance); onArrive?.Invoke(); return; }
+            StartCoroutine(DashRoutine(worldDir.normalized * distance, onArrive));
         }
 
-        private System.Collections.IEnumerator DashRoutine(Vector3 target)
+        private System.Collections.IEnumerator DashRoutine(Vector3 target, System.Action onArrive)
         {
             dashing = true;
+            var driver = GetComponentInChildren<AnimationDriver>();
+            // Face the run fully (drop the 3/4 camera-blend pose) so the charge visibly aims at the
+            // foe; restored on the way back. Rotate the visual body only — the host anchors the HUD.
+            Quaternion homeRot = body.rotation;
+            Quaternion runRot = Quaternion.LookRotation(target.normalized, Vector3.up);
+
+            driver?.SetMoving(true);
             float t = 0f;
-            while (t < 0.18f) { t += Time.deltaTime; offset = Vector3.Lerp(Vector3.zero, target, t / 0.18f); yield return null; }
+            while (t < approachTime)
+            {
+                t += Time.deltaTime;
+                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / approachTime));
+                offset = target * k;
+                body.rotation = Quaternion.Slerp(homeRot, runRot, Mathf.Clamp01(t / 0.12f));
+                yield return null;
+            }
             offset = target;
-            yield return new WaitForSeconds(0.34f);                 // strike HOLD — long enough that the ~0.38s impact lands while the hero is at the foe (synced to the swing)
+            driver?.SetMoving(false);
+            onArrive?.Invoke();
+
+            yield return new WaitForSeconds(strikeHold);            // the swing plays + connects here
+
+            driver?.SetMoving(true);                                // backpedal home, still facing the foe
             Vector3 from = offset; t = 0f;
-            while (t < 0.22f) { t += Time.deltaTime; offset = Vector3.Lerp(from, Vector3.zero, t / 0.22f); yield return null; }
+            while (t < returnTime)
+            {
+                t += Time.deltaTime;
+                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / returnTime));
+                offset = Vector3.Lerp(from, Vector3.zero, k);
+                yield return null;
+            }
             offset = Vector3.zero;
+            driver?.SetMoving(false);
+            t = 0f;                                                 // settle back into the 3/4 stage pose
+            while (t < 0.16f)
+            {
+                t += Time.deltaTime;
+                body.rotation = Quaternion.Slerp(runRot, homeRot, Mathf.Clamp01(t / 0.16f));
+                yield return null;
+            }
+            body.rotation = homeRot;
             dashing = false;
         }
 

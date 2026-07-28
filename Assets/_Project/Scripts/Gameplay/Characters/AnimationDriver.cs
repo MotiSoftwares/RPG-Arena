@@ -18,6 +18,7 @@ namespace RPGArena.Characters
         private static readonly int VictoryHash = Animator.StringToHash("Victory");
         private static readonly int VariantHash = Animator.StringToHash("AttackVariant");
         private static readonly int IdleBlendHash = Animator.StringToHash("IdleBlend");
+        private static readonly int MovingHash = Animator.StringToHash("Moving");
 
         private Animator animator;
         private readonly HashSet<int> paramHashes = new();
@@ -39,6 +40,10 @@ namespace RPGArena.Characters
             if (Has(VariantHash)) animator.SetFloat(VariantHash, Random.Range(0, 3));   // 0/1/2 -> exact blend motion
             if (Has(AttackHash)) animator.SetTrigger(AttackHash);
         }
+
+        // Locomotion: drives the Idle<->Run blend while CombatantMotion dashes the body across the
+        // arena, so melee approaches read as RUNNING, not gliding. No-ops on controllers without it.
+        public void SetMoving(bool moving) { if (Has(MovingHash)) animator.SetBool(MovingHash, moving); }
 
         public void PlayCast() { if (Has(CastHash)) animator.SetTrigger(CastHash); else PlayAttack(); }
         public void PlayAreaAttack() { if (Has(AreaHash)) animator.SetTrigger(AreaHash); else PlayAttack(); }
