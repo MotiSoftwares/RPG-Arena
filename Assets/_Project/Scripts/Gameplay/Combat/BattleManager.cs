@@ -126,11 +126,16 @@ namespace RPGArena.Combat
         private void CheckDeaths()
         {
             foreach (var e in AllCombatants())
-                if (!e.IsAlive && announcedDead.Add(e))
+            {
+                if (e.IsAlive) continue;
+                // MIRRORED INVARIANT — the same guard runs in BattleController.CheckDeaths.
+                if (BoonSystem.TrySecondWind(e, ctx)) continue;
+                if (announcedDead.Add(e))
                 {
                     ctx.Log($"  X {e.displayName} has fallen.");
                     ctx.RaiseEntityDied(e);
                 }
+            }
         }
 
         private void TurnEnd(Entity actor)

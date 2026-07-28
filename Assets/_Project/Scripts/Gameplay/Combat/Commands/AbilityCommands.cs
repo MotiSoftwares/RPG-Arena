@@ -41,6 +41,22 @@ namespace RPGArena.Combat.Commands
                 if (isControl && !synergyForced) continue;
                 target.Status.Apply(s);
                 ctx.Log($"      {Name(target)} gains {s.displayName}");
+
+                var mods = ctx.mods;
+                if (mods == null) continue;
+
+                // PERMAFROST boon: a Freeze also lands the Marked flag, so the FROST line reaches
+                // Brittle without anyone spending a turn on the Mark.
+                if (s.flag == StatusFlag.Frozen && mods.FreezeMarks && !target.Status.Has(mods.freezeAlsoApplies))
+                {
+                    target.Status.Apply(mods.freezeAlsoApplies);
+                    ctx.Log($"      {Name(target)} is {mods.freezeAlsoApplies.displayName} — the frost bites deep (Permafrost)");
+                }
+
+                // TARPITS boon: coatings linger. Extend rather than re-apply — Apply() only refreshes
+                // to the base duration, which would make the boon a no-op.
+                if (mods.bonusCoatingTurns > 0 && (s.flag == StatusFlag.Wet || s.flag == StatusFlag.Oiled))
+                    target.Status.ExtendByFlag(s.flag, mods.bonusCoatingTurns);
             }
         }
     }

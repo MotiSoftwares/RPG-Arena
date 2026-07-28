@@ -43,6 +43,8 @@ Unity 3D turn-based boss-battler (URP). Party of 3 heroes (from Warrior/Mage/Thi
 - [x] **P3 UI**: all canvases 1920×1080; log hidden till content; menu fits Items row; JuiceCanvas scaler (popups were raw pixels).
 - [x] **P4 Features**: gold + Supply Camp shop + in-battle items (`ItemDefinition` wraps an Ability; `flatPower` for stat-free item heals); minions (`MinionDefinition` + `SequenceAI` rotation brain + adds-first targeting + gold/item drops — LIVE battles only, headless tests stay trio-vs-boss); audio mixer "Paused" snapshot (620Hz lowpass, authored via internal AudioMixerController reflection) + elemental hit SFX (ElevenLabs) + dragon_roar telegraph; cinematic intro (`BattleIntroCinematic : IBattleIntro`, drives camera via `JuiceController.SetCameraBase` — NEVER move the camera directly, JuiceController stomps it every LateUpdate; HUD auto-hides during intro).
 - [x] **P4.5 Playability (July 28 pass 2)**: ACTION COMMANDS — timed-strike needle bar on damaging skills (PERFECT ×1.18 via `ActionRequest.timingMult`→basePower; 0 reads as 1 so headless is bit-identical) + BRACE reaction window on enemy blows (×0.7, `BattleController.braceWindow`, HUD polls `BraceWindowOpen`/`SubmitBrace`); combo-ready `>>FREEZE!/>>SHATTER` tags + gold card edges in previews (`BattleHUD.ComboTag`). Animation depth: dragon TailAttack on AoE + Roar(Scream) on telegraph/intro, Hit states for Mage/Thief/Archer, Thief melee punch/kick (was bow-mime), Warrior+Mage 3-clip AttackVariant blend trees. The Black Mage = WizardPolyArt hooded wizard (staff on the pack's animated Weapon bone) at per-boss `BossDefinition.modelHeight` 3.4u.
+- [x] **P6 Game design (July 29)**: enemy INTENT preview (`AIBehavior.PreviewIntent`, must be side-effect free — no rng draws, no cycle-index writes, or the preview lies); OVERDRIVE as a choice (Surge/Sunder/Rally); combo web reworked into 3 lines + exclusive ladder; per-boss identities (Devour / stagger decay); rule-changing boons + run attrition (see the two sections below). 41/41 EditMode.
+- [ ] **P7 Remaining design list**: positioning is half-built (`backRow` already mitigates single-target melee in `DamagePipeline` step 4b, but nothing lets the player CHANGE row mid-fight); turn-order manipulation (speed exists but can't be played); the push-your-luck die is only a damage band (no press-your-luck escalation).
 - [ ] **P2 Animation events**: infrastructure half-done (dash arrival callback + projectile arrival ARE event-driven); remaining: AnimationEvents on FBX clips (`ModelImporterClipAnimation.events`, normalized time) to replace the 0.35s swing-connect + 0.45s cast-release constants in JuiceController.AttackBeat.
 - [ ] **P5 Premium art (ComfyUI)**: menu/loading art, boss portraits, logo. Also: Archer needs a GanzSe bow with a proper grip socket (she's currently unarmed-mime); EvilWarrior still wears the hero Warrior model (Assassin Pack mutant is the candidate); TargetRule.Summon unimplemented; HUD target picker for minion-vs-boss; ambient forest audio loop.
 - Gotcha: `SceneManager.LoadScene` from `execute_code` only applies if you Step a few frames IN THE SAME call right after it; PowerShell `-replace`/`Set-Content` mojibakes UTF-8 C# files (repair: read UTF8 → encode 1252 → decode UTF8) — use .NET File IO or the Edit tool.
@@ -84,6 +86,40 @@ Run N headless fights and aggregate the log (build a `BattleContext` like `Party
   crit and Brittle ride on top on purpose (Mark is an accuracy tool, not a damage line).
 - Health check: all 4 trios should clear 12/12 seeds within a ~6-round band, each showing a DIFFERENT
   dominant synergy in the log.
+
+## Boss identities (July 29) — three fights, not three HP pools
+
+| Boss | Identity | Mechanic | Brain |
+|---|---|---|---|
+| Dragon | elemental **puzzle** | telegraphed charge you race to Break; Fury punishes ignoring the meter | DragonCycleAI |
+| Black Mage | **anti-setup** | `DEVOURS` stockpiled Wet/Oiled/Marked off himself, heals + gains Fury (Frozen is deliberately inedible — the party's escape hatch) | DevourerAI |
+| Evil Warrior | **anti-passivity** | `staggerDecayPerTurn` bleeds unconverted stagger each of his turns, so chip-and-turtle can never bank a Break | AggressiveAI |
+
+Health check (32 fights each): Dragon 32/32 @5.9r, Black Mage 32/32 @4.6r, Evil Warrior 29/32 @5.9r,
+each showing a **different signature** in the log (charges / DEVOURS / shake-offs). Hardest last.
+Sizing gotcha: a boss whose HP is too low never gets to *use* its identity — the Black Mage died in
+2.7 rounds at 850 HP and Devoured exactly zero times. Always confirm the mechanic FIRES before tuning it.
+
+## The run layer (July 29) — boons change rules, wounds carry
+
+**Rule boons.** `RunModifiers` on `BattleContext` (null in headless = vanilla, same contract as
+`charge`). `BoonDefinition` has both stat deltas and rule fields; `BoonSystem.ApplyRules` is called
+once per boon while `Apply` is called once per boon **per hero** — rules are per-run, stats are
+per-hero. `RunFlow.PickThree` guarantees ≥1 rule card per draft and never re-offers an owned one.
+Prefer authoring rule cards: a stat card makes the same fight easier, a rule card makes it a
+different fight. Measured deltas (32 fights): Permafrost −0.6r vs Dragon, Lingering Break +3 wins vs
+Evil Warrior, Tarpits +30% SHATTERs, Second Wind +3 wins / 13 saves vs Evil Warrior.
+
+**Warcry can't be measured headlessly** — the headless loop never *spends* Overdrive, and a sweep
+that leaves `ctx.charge` null makes `AwardFor` early-return, so the card reads as literally zero
+effect. Verify it by valor EARNED per fight with a ChargeSystem attached (232 → 313), not by rounds.
+
+**Attrition.** HP/MP carry between bosses as fractions in `RunState.carryHp/carryMp`, floored at
+`CarryHpFloor 0.50` / `CarryMpFloor 0.60` so a run can never become unwinnable by arithmetic. A hero
+who fell carries 0 and is clamped up to the floor. Grade seeds the next fight's Valor (S 30/A 20/B
+10/C 0). The Supply Camp gained a REST whose price climbs (`120 + 60×n`) so it can't erase attrition.
+**Retry rewinds to `SnapshotForRetry()`** (taken at fight setup, after the carry is applied) — without
+that, attrition + retry is a death spiral where each attempt starts weaker than the failed one before.
 
 ## Staging rule (learned the hard way)
 

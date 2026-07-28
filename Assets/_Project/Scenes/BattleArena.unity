@@ -196107,6 +196107,12 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9a5e8efc7bebc1f43a88506456f14889, type: 2}
   - {fileID: 11400000, guid: 641ae4a51a3d8c241b989821a9e27df1, type: 2}
   - {fileID: 11400000, guid: 1cc5d82c145c703409dc7a96f1755db4, type: 2}
+  - {fileID: 11400000, guid: 0ff70f1d44073bc47b5a6ee6179e5fa3, type: 2}
+  - {fileID: 11400000, guid: d68266abc99fc674299ae20b08a3a01d, type: 2}
+  - {fileID: 11400000, guid: 2234a08c429229d41a48a7febb8347a6, type: 2}
+  - {fileID: 11400000, guid: 35bae67491220984bbbf146249d2dfc3, type: 2}
+  - {fileID: 11400000, guid: 38b53674e47786f43b87550ad42edbc9, type: 2}
+  - {fileID: 11400000, guid: b6c8626f7e092094fb7124ce45ac8da5, type: 2}
   itemCatalog:
   - {fileID: 11400000, guid: b11a7aac2c1d9434a89971c4ee7d475d, type: 2}
   - {fileID: 11400000, guid: abed21acdd6cf9044ae6a409fe0d87cf, type: 2}

@@ -12,6 +12,11 @@ namespace RPGArena.Combat
         private readonly BalanceConfig cfg;
         private readonly System.Random rng;
 
+        // Rule changes drafted from this run's boons; null (and therefore vanilla) in headless tests.
+        // Set by BattleController after construction — kept off the constructor so every existing
+        // `new DamagePipeline(cfg, rng)` call site, including the whole EditMode suite, is untouched.
+        public RunModifiers mods;
+
         public DamagePipeline(BalanceConfig cfg, System.Random rng = null)
         {
             this.cfg = cfg;
@@ -32,14 +37,15 @@ namespace RPGArena.Combat
             // (keeps seeded headless runs stable until a risky ability actually fires). The riskFloor
             // clamp lives in ComputePure so it stays deterministic + unit-testable.
             float riskRoll = info.rollsRiskDie ? (float)rng.NextDouble() : 1f;
-            return ComputePure(info, cfg, hitRoll, damageRoll, critRoll, riskRoll);
+            return ComputePure(info, cfg, hitRoll, damageRoll, critRoll, riskRoll, mods);
         }
 
         // PURE: deterministic given explicit rolls. hitRoll/critRoll in [0,1); damageRoll is the
         // already-chosen variance multiplier. riskRoll in [0,1) drives the SPECIAL's risk die and
         // defaults to 1f (a no-op band) so every non-special call is byte-identical. §4.8 order.
         public static DamageResult ComputePure(DamageInfo info, BalanceConfig cfg,
-                                               float hitRoll, float damageRoll, float critRoll, float riskRoll = 1f)
+                                               float hitRoll, float damageRoll, float critRoll, float riskRoll = 1f,
+                                               RunModifiers mods = null)
         {
             var r = new DamageResult { source = info.source, target = info.target, ability = info.ability, element = info.element, hit = true, damageRoll = damageRoll };
             var src = info.source;
@@ -200,7 +206,10 @@ namespace RPGArena.Combat
             // the telegraph is a real, winnable play rather than arithmetic that never lands in time.
             if (tgt != null && tgt.telegraphedAbility != null) build *= 1.5f;
             r.staggerBuilt = build + syn.bonusStaggerBuild;
-            if (r.glanced) r.staggerBuilt *= cfg.glanceDamageMult;   // a graze barely rocks them
+            // A graze barely rocks them — unless the DUELIST'S EYE boon is drafted, which is the
+            // whole card: it converts the consolation outcome into full progress toward a Break.
+            if (r.glanced && (mods == null || !mods.glancesBuildFullStagger))
+                r.staggerBuilt *= cfg.glanceDamageMult;
             return r;
         }
 

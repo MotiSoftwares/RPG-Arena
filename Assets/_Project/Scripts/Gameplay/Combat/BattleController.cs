@@ -325,15 +325,53 @@ namespace RPGArena.Combat
                 if (def != null) Context.heroes.Add(BattleSpawner.SpawnHero(def, balance, null)); // null brain => player
             }
 
-            // Roguelite boons: apply every boon collected this run to the whole party (Appendix E.2).
+            // Roguelite boons (Appendix E.2). Stat deltas are PER HERO; rule changes are per RUN, so
+            // ApplyRules is called once per boon and Apply once per boon per hero.
+            var mods = new RunModifiers();
             if (run != null && boonRoster != null)
                 foreach (var boonName in run.acquiredBoons)
                 {
                     var bd = boonRoster.Find(b => b != null && b.name == boonName);
-                    if (bd != null) foreach (var h in Context.heroes) BoonSystem.Apply(h, bd);
+                    if (bd == null) continue;
+                    BoonSystem.ApplyRules(mods, bd);
+                    foreach (var h in Context.heroes) BoonSystem.Apply(h, bd);
                 }
-            // Full restore between bosses (and top up after boon maxHP/MP increases).
-            foreach (var h in Context.heroes) { h.currentHP = h.stats.maxHP; h.currentMP = h.stats.maxMP; }
+            Context.mods = mods;
+            Context.damage.mods = mods;                              // the pipeline reads it for graze stagger
+            Context.BossStaggeredTurns += mods.bonusBrokenTurns;     // LINGERING BREAK widens every window
+            mods.secondWindUsed = false;                             // a run-long boon, a once-per-FIGHT effect
+
+            // ATTRITION. This used to be a full HP/MP restore, which quietly made most of the meta
+            // layer decorative: if every fight starts topped up, the battle grade is a number with no
+            // consequence, gold has nothing urgent to buy, and "win with everyone alive" plays exactly
+            // like "win with two heroes at 5 HP". Carrying damage forward is what turns the Supply
+            // Camp into a real decision — heal now, or gamble the gold on bombs for the next boss.
+            //
+            // The floors matter as much as the carry: a run must never become mathematically
+            // unwinnable because of one bad fight, so nobody starts below half HP however badly the
+            // last one went, and a hero who actually fell comes back at exactly the floor.
+            foreach (var h in Context.heroes)
+            {
+                float hpFrac = 1f, mpFrac = 1f;
+                if (run != null && run.TryGetCarry(h.displayName, out float ch, out float cm)) { hpFrac = ch; mpFrac = cm; }
+                hpFrac = Mathf.Clamp(hpFrac, RunState.CarryHpFloor, 1f);
+                mpFrac = Mathf.Clamp(mpFrac, RunState.CarryMpFloor, 1f);
+                h.currentHP = Mathf.Max(1, Mathf.RoundToInt(h.stats.maxHP * hpFrac));
+                h.currentMP = Mathf.Clamp(Mathf.RoundToInt(h.stats.maxMP * mpFrac), 0, h.stats.maxMP);
+            }
+
+            // A clean fast win seeds the next fight's Valor, so the battle grade compounds into the
+            // run instead of being a letter on a screen you click past.
+            if (run != null && Context.charge != null && run.startValor > 0f)
+            {
+                Context.charge.valor = Mathf.Min(Context.charge.max, run.startValor);
+                Context.Log($"The party marches in with momentum — Valor {Mathf.RoundToInt(Context.charge.valor)}.");
+            }
+
+            // Snapshot AFTER the carry is applied: a Retry puts the player back exactly where they
+            // walked into this boss, not where they died. Without this, attrition + retry is a death
+            // spiral — each attempt starts weaker than the last one that already failed.
+            run?.SnapshotForRetry();
 
             Context.boss = BattleSpawner.SpawnBoss(boss, balance);
 
@@ -677,7 +715,11 @@ namespace RPGArena.Combat
         private void CheckDeaths()
         {
             foreach (var e in All())
-                if (!e.IsAlive && announced.Add(e))
+            {
+                if (e.IsAlive) continue;
+                // MIRRORED INVARIANT — the same guard runs in BattleManager.CheckDeaths.
+                if (BoonSystem.TrySecondWind(e, Context)) continue;
+                if (announced.Add(e))
                 {
                     Context.Log($"{e.displayName} has fallen.");
                     // Minion drops: gold always, the authored item on a lucky roll.
@@ -700,6 +742,7 @@ namespace RPGArena.Combat
                     }
                     onEntityDied?.Raise(e);
                 }
+            }
         }
 
         private BattleManager.Outcome Evaluate()

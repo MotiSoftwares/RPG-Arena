@@ -46,6 +46,17 @@ namespace RPGArena.Combat.Status
             }
         }
 
+        // Lengthen every active status carrying a flag. Used by the coating-duration boon, which
+        // extends what is already on the target rather than re-applying it (re-applying would only
+        // refresh to the base duration and the boon would do nothing).
+        public void ExtendByFlag(StatusFlag flag, int extraTurns)
+        {
+            if (flag == StatusFlag.None || extraTurns <= 0) return;
+            for (int i = 0; i < active.Count; i++)
+                if (active[i].def != null && active[i].def.flag == flag)
+                    active[i].remaining += extraTurns;
+        }
+
         public void Clear() => active.Clear();
 
         // Remove a specific status (used when a stance toggle swaps Berserk <-> Guardian).

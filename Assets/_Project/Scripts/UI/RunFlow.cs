@@ -69,16 +69,39 @@ namespace RPGArena.UI
         // Gold payout scales with the battle grade — clean fast wins fund a richer Supply Camp.
         private int GradeGold(string g) => g == "S" ? 260 : g == "A" ? 210 : g == "B" ? 160 : 120;
 
+        // A clean fast win seeds the next fight's Valor, so the grade compounds into the run instead
+        // of being a letter you click past. S is a third of an Overdrive already banked.
+        private static float GradeValor(string g) => g == "S" ? 30f : g == "A" ? 20f : g == "B" ? 10f : 0f;
+
         private void OnWin(bool _)
         {
             var run = GameBootstrap.Instance != null ? GameBootstrap.Instance.Run : null;
             if (run != null)
             {
-                lastReward = GradeGold(Grade());
+                var g = Grade();
+                lastReward = GradeGold(g);
                 run.gold += lastReward;
+                run.startValor = GradeValor(g);
+                RecordAttrition(run);
             }
             if (run != null && run.HasNextBoss) ShowBoonSelect(run);
             else ShowRunComplete(run);
+        }
+
+        // Carry each survivor's remaining HP/MP into the next fight. A hero who FELL is recorded at
+        // zero and clamped up to the floor at setup — they are back on their feet for the next boss,
+        // but at the worst legal state, so losing someone costs you something beyond the round it
+        // happened in.
+        private void RecordAttrition(RunState run)
+        {
+            if (controller == null || controller.Context == null) return;
+            foreach (var h in controller.Context.heroes)
+            {
+                if (h == null || h.stats == null) continue;
+                float hp = h.stats.maxHP > 0 ? (float)h.currentHP / h.stats.maxHP : 1f;
+                float mp = h.stats.maxMP > 0 ? (float)h.currentMP / h.stats.maxMP : 1f;
+                run.SetCarry(h.displayName, h.IsAlive ? hp : 0f, mp);
+            }
         }
 
         private void OnLose(bool _) => ShowDefeat();
@@ -110,34 +133,78 @@ namespace RPGArena.UI
         private TMP_Text shopGold;
         private readonly List<System.Action> shopRefreshers = new();
 
+        private TMP_Text partyCondition;
+
         private void ShowShop(RunState run)
         {
             var panel = NewOverlay();
             shopRefreshers.Clear();
-            Label(panel, "SUPPLY CAMP", 0.9f, 44, new Color(1f, 0.9f, 0.4f));
-            shopGold = Text((RectTransform)panel.transform, "", new Vector2(0.5f, 0.83f), new Vector2(900, 40), 28, TextAnchor.MiddleCenter);
+            Label(panel, "SUPPLY CAMP", 0.94f, 44, new Color(1f, 0.9f, 0.4f));
+            shopGold = Text((RectTransform)panel.transform, "", new Vector2(0.5f, 0.88f), new Vector2(900, 40), 28, TextAnchor.MiddleCenter);
             shopGold.color = new Color(0.98f, 0.80f, 0.32f);
-            Label(panel, "Stock up — potions and bombs are used from the ITEMS button in battle.", 0.77f, 19, new Color(0.75f, 0.85f, 1f));
+
+            // The party's condition is the whole reason this screen is a decision now — the player
+            // has to see the wounds to weigh healing them against buying for the next fight.
+            partyCondition = Text((RectTransform)panel.transform, "", new Vector2(0.5f, 0.82f), new Vector2(1500, 34), 22, TextAnchor.MiddleCenter);
+            Label(panel, "Wounds carry to the next boss. Rest to mend them — or spend it all on the fight ahead.", 0.765f, 19, new Color(0.75f, 0.85f, 1f));
 
             int shown = 0;
             foreach (var item in itemCatalog)
             {
                 if (item == null || item.ability == null) continue;
                 float x = 0.18f + (shown % 4) * 0.213f;
-                float yRow = shown < 4 ? 0.55f : 0.30f;
+                float yRow = shown < 4 ? 0.56f : 0.32f;
                 ItemCard(panel, run, item, x, yRow);
                 shown++;
                 if (shown >= 8) break;
             }
 
-            MakeBtn(panel, $"March on  —  Next: {Pretty(run.NextBoss)}", 0.12f, () => { run.AdvanceBoss(); Reload(); });
+            var rest = MakeBtnAt(panel, "", 0.28f, 0.12f, () =>
+            {
+                if (run.gold < run.RestCost) return;
+                run.gold -= run.RestCost;
+                run.restsPurchased++;
+                run.RestParty(RestFraction);
+                RefreshShop(run);
+            });
+            var restLabel = rest.GetComponentInChildren<TMP_Text>();
+            shopRefreshers.Add(() =>
+            {
+                bool can = run.gold >= run.RestCost;
+                restLabel.text = $"REST  —  {run.RestCost}g";
+                restLabel.color = can ? Color.white : new Color(1f, 0.55f, 0.5f);
+                ((Image)rest.targetGraphic).color = can ? new Color(0.18f, 0.34f, 0.42f, 0.95f) : new Color(0.2f, 0.22f, 0.26f, 0.9f);
+                rest.interactable = can;
+            });
+
+            MakeBtnAt(panel, $"March on  —  Next: {Pretty(run.NextBoss)}", 0.7f, 0.12f, () => { run.AdvanceBoss(); Reload(); });
             RefreshShop(run);
         }
+
+        // One rest brings the whole party up to this fraction of max (it never downgrades anyone who
+        // is already healthier). Below 1.0 on purpose: even a rested party carries something forward,
+        // so a sloppy win is still felt in the next fight.
+        private const float RestFraction = 0.85f;
 
         private void RefreshShop(RunState run)
         {
             if (shopGold != null) shopGold.text = $"GOLD:  {run.gold}";
+            if (partyCondition != null) partyCondition.text = ConditionLine(run);
             foreach (var r in shopRefreshers) r?.Invoke();
+        }
+
+        // "Warrior 62%   Mage 50%   Thief 88%" — colour-coded, using the same floors the next fight
+        // will actually clamp to, so the number shown is the number the player gets.
+        private string ConditionLine(RunState run)
+        {
+            var sb = new System.Text.StringBuilder("PARTY:   ");
+            foreach (var kv in run.carryHp)
+            {
+                int pct = Mathf.RoundToInt(Mathf.Clamp(kv.Value, RunState.CarryHpFloor, 1f) * 100f);
+                string hex = pct >= 85 ? "8FE38F" : pct >= 65 ? "E3D98F" : "E38F8F";
+                sb.Append($"<color=#{hex}>{kv.Key} {pct}%</color>    ");
+            }
+            return run.carryHp.Count == 0 ? "" : sb.ToString();
         }
 
         private void ItemCard(GameObject parent, RunState run, ItemDefinition item, float anchorX, float anchorY)
@@ -179,11 +246,14 @@ namespace RPGArena.UI
             shopRefreshers.Add(refresh);
         }
 
-        // Pick up to three distinct random boons from the pool.
+        // Pick up to three distinct random boons, GUARANTEEING at least one rule-changing card.
+        // Without the guarantee a draft can roll three stat bumps, and "+9 Defense vs +7 Attack vs
+        // +5 Speed" is not a decision — it is the same card three times with different arithmetic.
         private List<BoonDefinition> PickThree()
         {
             var pool = new List<BoonDefinition>();
-            foreach (var b in boonRoster) if (b != null) pool.Add(b);
+            foreach (var b in boonRoster)
+                if (b != null && !boonsAlreadyOffered(b)) pool.Add(b);
             // Fisher–Yates partial shuffle.
             for (int i = 0; i < pool.Count; i++)
             {
@@ -191,7 +261,24 @@ namespace RPGArena.UI
                 (pool[i], pool[j]) = (pool[j], pool[i]);
             }
             if (pool.Count > 3) pool.RemoveRange(3, pool.Count - 3);
+
+            // If the shuffle produced no rule card, swap the last slot for the first unused one.
+            if (!pool.Exists(b => b.IsRule))
+                foreach (var b in boonRoster)
+                    if (b != null && b.IsRule && !pool.Contains(b) && !boonsAlreadyOffered(b))
+                    {
+                        pool[pool.Count - 1] = b;
+                        break;
+                    }
             return pool;
+        }
+
+        // Don't re-offer a boon the run already owns — a second copy of a rule card mostly does
+        // nothing (the rules are booleans), so it would read as a dead slot.
+        private bool boonsAlreadyOffered(BoonDefinition b)
+        {
+            var run = GameBootstrap.Instance != null ? GameBootstrap.Instance.Run : null;
+            return run != null && b != null && b.IsRule && run.acquiredBoons.Contains(b.name);
         }
 
         private void ShowRunComplete(RunState run)
@@ -210,7 +297,13 @@ namespace RPGArena.UI
             Label(panel, "DEFEAT", 0.64f, 56, new Color(0.9f, 0.3f, 0.3f));
             Label(panel, "The party has fallen. Try again?", 0.55f, 26, Color.white);
             Label(panel, RandomTip(), 0.46f, 19, new Color(0.75f, 0.85f, 1f));
-            MakeBtn(panel,"Retry", 0.36f, Reload);
+            // Rewind to the state the player entered this boss with. Retrying from the corpse would
+            // compound attrition every attempt until the fight was unwinnable by arithmetic.
+            MakeBtn(panel, "Retry", 0.36f, () =>
+            {
+                GameBootstrap.Instance?.Run?.RestoreRetrySnapshot();
+                Reload();
+            });
             MakeBtn(panel,"Return to Main Menu", 0.27f, () => { ResetRun(); ToMenu(); });
         }
 
@@ -266,12 +359,22 @@ namespace RPGArena.UI
         private void BoonCard(GameObject parent, BoonDefinition boon, float anchorX, UnityEngine.Events.UnityAction onClick)
         {
             var go = new GameObject("BoonCard"); go.transform.SetParent(parent.transform, false);
-            var img = go.AddComponent<Image>(); img.color = new Color(0.15f, 0.22f, 0.34f, 0.97f);
+            var img = go.AddComponent<Image>();
+            // A rule card is a different KIND of choice from a stat card, so it reads as one at a
+            // glance: warmer plate, gold title, and a "CHANGES THE RULES" banner.
+            bool rule = boon.IsRule;
+            img.color = rule ? new Color(0.26f, 0.21f, 0.12f, 0.97f) : new Color(0.15f, 0.22f, 0.34f, 0.97f);
             var rt = img.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(anchorX, 0.42f); rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = new Vector2(360, 300);
             var btn = go.AddComponent<Button>(); btn.targetGraphic = img;
             btn.onClick.AddListener(() => { GameBootstrap.Instance?.Audio?.PlaySfx("ui_click"); onClick(); });
-            var name = Text(rt, boon.displayName, new Vector2(0.5f, 0.86f), new Vector2(330, 50), 26, TextAnchor.MiddleCenter); name.color = new Color(1f, 0.9f, 0.5f);
-            Text(rt, boon.description, new Vector2(0.5f, 0.42f), new Vector2(330, 200), 19, TextAnchor.UpperCenter);
+            if (rule)
+            {
+                var banner = Text(rt, "CHANGES THE RULES", new Vector2(0.5f, 0.96f), new Vector2(330, 26), 15, TextAnchor.MiddleCenter);
+                banner.color = new Color(1f, 0.78f, 0.25f);
+            }
+            var name = Text(rt, boon.displayName, new Vector2(0.5f, 0.85f), new Vector2(330, 50), 26, TextAnchor.MiddleCenter);
+            name.color = rule ? new Color(1f, 0.82f, 0.35f) : new Color(1f, 0.9f, 0.5f);
+            Text(rt, boon.description, new Vector2(0.5f, 0.41f), new Vector2(330, 200), 18, TextAnchor.UpperCenter);
         }
 
         private void Label(GameObject parent, string text, float anchorY, int size, Color color)
@@ -281,10 +384,13 @@ namespace RPGArena.UI
         }
 
         private Button MakeBtn(GameObject parent, string label, float anchorY, UnityEngine.Events.UnityAction onClick)
+            => MakeBtnAt(parent, label, 0.5f, anchorY, onClick);
+
+        private Button MakeBtnAt(GameObject parent, string label, float anchorX, float anchorY, UnityEngine.Events.UnityAction onClick)
         {
             var go = new GameObject("Button"); go.transform.SetParent(parent.transform, false);
             var img = go.AddComponent<Image>(); img.color = new Color(0.16f, 0.3f, 0.5f, 0.95f);
-            var rt = img.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(0.5f, anchorY); rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = new Vector2(360, 54);
+            var rt = img.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(anchorX, anchorY); rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = new Vector2(360, 54);
             var btn = go.AddComponent<Button>(); btn.targetGraphic = img;
             btn.onClick.AddListener(() => { GameBootstrap.Instance?.Audio?.PlaySfx("ui_click"); onClick(); });
             Text(rt, label, new Vector2(0.5f, 0.5f), new Vector2(360, 54), 22, TextAnchor.MiddleCenter);

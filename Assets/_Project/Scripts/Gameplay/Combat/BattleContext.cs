@@ -37,6 +37,9 @@ namespace RPGArena.Combat
         public ChargeSystem charge;        // party Valor / Overdrive (null in headless tests — every hook null-guards)
         public System.Random rng;
         public int BossStaggeredTurns = 1;
+        // Rule changes drafted from this run's boons. NULL in headless tests, and every consumer
+        // null-guards, so the EditMode suite is invisible to it (same contract as `charge`).
+        public RunModifiers mods;
 
         // Optional event channels — presentation subscribes; null is fine in headless tests.
         public DamageResultChannel onDamageDealt;

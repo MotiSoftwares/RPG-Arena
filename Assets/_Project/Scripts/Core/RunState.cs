@@ -36,6 +36,88 @@ namespace RPGArena.Core
         public void AddItem(string itemName) => inventory.Add(itemName);
         public bool RemoveItem(string itemName) => inventory.Remove(itemName);
 
+        // --- attrition ----------------------------------------------------------------
+        // How much HP/MP each hero carries into the NEXT fight, as a fraction of max, keyed by
+        // display name. Written after a victory, read at the next fight's setup.
+        //
+        // The floors are the safety rail: a run must never become mathematically unwinnable because
+        // of one bad fight. MP floors higher than HP because a Mage with no MP has no game at all,
+        // whereas a Warrior at half HP still has every button.
+        public const float CarryHpFloor = 0.50f;
+        public const float CarryMpFloor = 0.60f;
+
+        public readonly Dictionary<string, float> carryHp = new();
+        public readonly Dictionary<string, float> carryMp = new();
+
+        // Valor the next fight starts with, seeded by the battle grade so a clean fast clear
+        // compounds into the run.
+        public float startValor;
+
+        // Gold spent resting; each rest costs more so the Supply Camp can't become an infinite
+        // healing fountain that erases attrition entirely.
+        public int restsPurchased;
+        public int RestCost => 120 + restsPurchased * 60;
+
+        public bool TryGetCarry(string heroName, out float hpFrac, out float mpFrac)
+        {
+            hpFrac = mpFrac = 1f;
+            if (string.IsNullOrEmpty(heroName) || !carryHp.TryGetValue(heroName, out hpFrac)) return false;
+            carryMp.TryGetValue(heroName, out mpFrac);
+            return true;
+        }
+
+        public void SetCarry(string heroName, float hpFrac, float mpFrac)
+        {
+            if (string.IsNullOrEmpty(heroName)) return;
+            carryHp[heroName] = hpFrac;
+            carryMp[heroName] = mpFrac;
+        }
+
+        // Restore everyone to `fraction` of max, but never DOWNGRADE a hero who is already healthier
+        // (resting must always be an improvement, or buying one would be a trap).
+        public void RestParty(float fraction)
+        {
+            var names = new List<string>(carryHp.Keys);
+            foreach (var n in names)
+            {
+                carryHp[n] = System.Math.Max(carryHp[n], fraction);
+                if (carryMp.TryGetValue(n, out float mp)) carryMp[n] = System.Math.Max(mp, fraction);
+            }
+        }
+
+        // --- retry snapshot -----------------------------------------------------------
+        // The run exactly as it was when the player walked into the current boss. Attrition plus a
+        // naive retry is a death spiral (each attempt starts weaker than the failed one before it),
+        // so a retry rewinds to this instead of to the corpse: same HP, same gold, same unspent
+        // potions. Taken by BattleController at setup, consumed by RunFlow's Retry button.
+        private Dictionary<string, float> snapHp, snapMp;
+        private List<string> snapInventory;
+        private int snapGold, snapRests;
+        private float snapValor;
+        private bool hasSnapshot;
+
+        public void SnapshotForRetry()
+        {
+            snapHp = new Dictionary<string, float>(carryHp);
+            snapMp = new Dictionary<string, float>(carryMp);
+            snapInventory = new List<string>(inventory);
+            snapGold = gold;
+            snapRests = restsPurchased;
+            snapValor = startValor;
+            hasSnapshot = true;
+        }
+
+        public void RestoreRetrySnapshot()
+        {
+            if (!hasSnapshot) return;
+            carryHp.Clear(); foreach (var kv in snapHp) carryHp[kv.Key] = kv.Value;
+            carryMp.Clear(); foreach (var kv in snapMp) carryMp[kv.Key] = kv.Value;
+            inventory.Clear(); inventory.AddRange(snapInventory);
+            gold = snapGold;
+            restsPurchased = snapRests;
+            startValor = snapValor;
+        }
+
         // How far the player is in the gauntlet (0 = first boss).
         public int currentBossIndex;
 
@@ -69,6 +151,11 @@ namespace RPGArena.Core
             gold = 0;
             inventory.Clear();
             inventory.Add("Item_HealingPotion");   // the starter freebie
+            carryHp.Clear();
+            carryMp.Clear();
+            startValor = 0f;
+            restsPurchased = 0;
+            hasSnapshot = false;
         }
     }
 }

@@ -122,7 +122,9 @@ namespace RPGArena.Combat
                 foreach (var r in results)
                     if (r.hit && !r.isHeal) { anyHit = true; if (r.reaction == ElementReaction.Weak || r.comboDetonated) combo = true; }
 
-            if (combo) gain = Mathf.Max(gain, cfg.valorPerComboHit);
+            // WARCRY boon adds to the combo tier only, so it rewards the coordinated line rather
+            // than making the free basic charge faster (which would undo the whole accrual rule).
+            if (combo) gain = Mathf.Max(gain, cfg.valorPerComboHit + (ctx.mods != null ? ctx.mods.bonusValorPerCombo : 0f));
             else if (anyHit) gain = Mathf.Max(gain, cfg.valorPerPlainHit);
 
             bool enemyTarget = used.targetRule == TargetRule.SingleEnemy || used.targetRule == TargetRule.AllEnemies;
