@@ -174,7 +174,10 @@ namespace RPGArena.UI
             if (telegraph == null) return;
             string who = controller != null && controller.Context != null && controller.Context.boss != null
                 ? controller.Context.boss.displayName.ToUpper() : "THE BOSS";
-            telegraph.text = $"⚠  {who} IS CHARGING: {a.displayName.ToUpper()}  —  BREAK IT OR DEFEND  ⚠";
+            // GLYPHS: the SlimUI SDF atlases are Latin-only. Poppins-Bold carries nothing decorative
+            // beyond the em dash, and Rubik-Medium adds only ↕ ← » • × –. Anything else — ⚠ ★ ◆ ⚔ ✖ ⏳
+            // — renders as a tofu box, which is exactly what this warning had been doing.
+            telegraph.text = $"!!  {who} IS CHARGING: {a.displayName.ToUpper()}  —  BREAK IT OR DEFEND  !!";
             if (telegraphPanel != null) telegraphPanel.SetActive(true);
         }
         private void HideTelegraphNow() { if (telegraphPanel != null) telegraphPanel.SetActive(false); }
@@ -191,7 +194,7 @@ namespace RPGArena.UI
                 bossHpText.text = $"{ctx.boss.currentHP} / {ctx.boss.stats.maxHP}";
                 if (bossStaggerText != null)
                     bossStaggerText.text = ctx.boss.isStaggered
-                        ? "★  BROKEN  ★"
+                        ? "—  BROKEN  —"
                         : $"BREAK  {Mathf.RoundToInt(ctx.boss.staggerMeter)} / {Mathf.RoundToInt(ctx.boss.staggerThreshold)}";
                 if (bossStaggerFill != null)
                     bossStaggerFill.color = ctx.boss.isStaggered
@@ -227,7 +230,7 @@ namespace RPGArena.UI
             {
                 SetFill(valorFill, charge.valor, charge.max);
                 if (valorText != null)
-                    valorText.text = charge.overdriveActive ? $"★  OVERDRIVE  {charge.overdriveTurnsLeft}  ★"
+                    valorText.text = charge.overdriveActive ? $"—  OVERDRIVE  {charge.overdriveTurnsLeft}  —"
                                    : charge.IsFull ? "VALOR FULL — unleash OVERDRIVE!"
                                    : $"VALOR   {Mathf.RoundToInt(charge.valor)} / {Mathf.RoundToInt(charge.max)}";
                 valorFill.color = (charge.IsFull || charge.overdriveActive)
@@ -322,14 +325,14 @@ namespace RPGArena.UI
         {
             if (e == null || e.team != Team.Enemies || controller == null || controller.Context == null) return "";
             if (e.telegraphedAbility != null)
-                return $"<color=#FF7A5C>⚠ {e.telegraphedAbility.displayName.ToUpper()}</color>";
+                return $"<color=#FF7A5C>! {e.telegraphedAbility.displayName.ToUpper()}</color>";
             var brain = e.Brain;
             if (brain == null) return "";
             Ability next = null;
             try { next = brain.PreviewIntent(controller.Context, e, controller.Context.heroes); }
             catch { next = null; }
             if (next == null) return "<color=#8A95A8>??? unpredictable</color>";
-            if (next.consumesSetupFlags) return "<color=#FF7A5C>⚠ DEVOURS YOUR SETUPS</color>";
+            if (next.consumesSetupFlags) return "<color=#FF7A5C>! DEVOURS YOUR SETUPS</color>";
 
             string scope = next.targetRule == TargetRule.AllEnemies ? "  <color=#FF9E7A>ALL</color>" : "";
             string col = next.effectType == EffectType.BossMove ? "#FFD24A"
@@ -527,15 +530,15 @@ namespace RPGArena.UI
             if (menuTitle != null) menuTitle.text = $"{ab.displayName.ToUpper()} — HOW HARD DO YOU PUSH?";
             float y = 0f;
 
-            var steady = MakeSimpleButton(actionPanel, "◇  STEADY  —  can't backfire, smaller payoff", new Vector2(0, -y), Accent, true);
+            var steady = MakeSimpleButton(actionPanel, "»  STEADY  —  can't backfire, smaller payoff", new Vector2(0, -y), Accent, true);
             steady.onClick.AddListener(() => StartTimingBar(hero, ab, target, RiskStake.Steady));
             y += 40f;
 
-            var press = MakeSimpleButton(actionPanel, "◆  PRESS  —  the die as written", new Vector2(0, -y), Accent, true);
+            var press = MakeSimpleButton(actionPanel, "»  PRESS  —  the die as written", new Vector2(0, -y), Accent, true);
             press.onClick.AddListener(() => StartTimingBar(hero, ab, target, RiskStake.Press));
             y += 40f;
 
-            var allIn = MakeSimpleButton(actionPanel, "★  ALL IN  —  bigger jackpot, bigger backfire", new Vector2(0, -y), Gold, true);
+            var allIn = MakeSimpleButton(actionPanel, "»  ALL IN  —  bigger jackpot, bigger backfire", new Vector2(0, -y), Gold, true);
             allIn.onClick.AddListener(() => StartTimingBar(hero, ab, target, RiskStake.AllIn));
             y += 40f;
 
@@ -565,11 +568,11 @@ namespace RPGArena.UI
             bool bossCharging = boss != null && boss.telegraphedAbility != null;
             bool canSunder = boss != null && boss.IsAlive && !boss.isStaggered;
 
-            MakeOverdriveOption(hero, ref y, "⚔  SURGE",
+            MakeOverdriveOption(hero, ref y, "»  SURGE",
                 $"×{(controller.balance != null ? controller.balance.overdriveDamageMult : 1.35f):0.00} party damage for {(controller.balance != null ? controller.balance.overdriveHeroTurns : 3)} hero turns",
                 "close out a fight you're already winning", Gold, true, ChargeSystem.OverdriveMode.Surge);
 
-            MakeOverdriveOption(hero, ref y, "✖  SUNDER",
+            MakeOverdriveOption(hero, ref y, "»  SUNDER",
                 canSunder ? "BREAK the boss instantly — vents Fury, cancels its charge" : "the boss is already broken",
                 bossCharging ? "<color=#FFD24A>it is charging RIGHT NOW</color>" : "skip the meter, open the burst window",
                 Accent, canSunder, ChargeSystem.OverdriveMode.Sunder);
@@ -691,7 +694,7 @@ namespace RPGArena.UI
             var charge = ctx != null ? ctx.charge : null;
             if (charge != null && charge.IsFull)
             {
-                var od = MakeSimpleButton(actionPanel, "★  OVERDRIVE — spend the meter", new Vector2(0, -y), Gold, true);
+                var od = MakeSimpleButton(actionPanel, "»  OVERDRIVE — spend the meter", new Vector2(0, -y), Gold, true);
                 od.onClick.AddListener(() => BuildOverdriveMenu(hero));
                 y += 38f;
             }
@@ -704,7 +707,7 @@ namespace RPGArena.UI
             // it is how a physical hero gets to swing AFTER the Mage has frozen the boss.
             if (controller.CanHold)
             {
-                var hold = MakeSimpleButton(actionPanel, "⏳  Hold  —  act after your allies", new Vector2(0, -y), Accent, true);
+                var hold = MakeSimpleButton(actionPanel, "»  Hold  —  act after your allies", new Vector2(0, -y), Accent, true);
                 hold.onClick.AddListener(() => controller.SubmitHold());
                 y += 38f;
             }
@@ -714,7 +717,7 @@ namespace RPGArena.UI
             int owned = run != null ? run.inventory.Count : 0;
             if (owned > 0 && controller.itemCatalog != null && controller.itemCatalog.Count > 0)
             {
-                var items = MakeSimpleButton(actionPanel, $"◆  Items  ({owned})", new Vector2(0, -y), new Color(0.72f, 0.55f, 0.95f), true);
+                var items = MakeSimpleButton(actionPanel, $"»  Items  ({owned})", new Vector2(0, -y), new Color(0.72f, 0.55f, 0.95f), true);
                 items.onClick.AddListener(() => BuildItemMenu(hero));
             }
         }

@@ -26,6 +26,12 @@ Unity 3D turn-based boss-battler (URP). Party of 3 heroes (from Warrior/Mage/Thi
 - VFX: **ErbGameArt "Effects normal/" prefabs are URP-safe** (Fireball, Ice arrow, Magic arrow, Spears rain, Healing buff…). **Hovl Magic effects pack materials are broken** (missing shader GUID `0406db5a…` + built-in Standard mats) — fix shaders before using. Avoid Erb "Effects with projectors/" (built-in-RP Projector).
 - Unused-but-good: `URP GanzSe Free Weapons Pack` (URP weapon meshes), Hovl `MoonSword` slash arcs.
 - Audio: `_Project/Audio/{SFX,Music}`, GameMixer. UI: TMP everywhere (essentials imported); if TMP renders blank, TMP essentials are missing.
+- **HUD glyphs are Latin-only.** The SlimUI SDF atlases carry almost nothing decorative: `Poppins-Bold`
+  has only `—`, `RUBIK-MEDIUM` adds `↕ ← » • × –`. Everything else (`★ ◆ ◇ ⚔ ✖ ⚠ ⏳ ✓ ▲`) renders as a
+  **tofu box** — the boss-telegraph warning and the BROKEN banner shipped that way for a while before
+  anyone looked closely. Use `»` for menu markers and `!!` for warnings. Check with
+  `fontAsset.HasCharacter(ch)` before adding any symbol, and sweep for regressions by walking live
+  `TextMeshProUGUI` objects asserting `txt.font.HasCharacter(ch)` for every non-ASCII char.
 
 ## Known root causes (fixed/being fixed in overhaul — verify before re-diagnosing)
 
