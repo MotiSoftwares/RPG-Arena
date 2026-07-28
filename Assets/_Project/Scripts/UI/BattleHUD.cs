@@ -1,5 +1,7 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 using RPGArena.Core;
@@ -71,6 +73,7 @@ namespace RPGArena.UI
         private void Awake()
         {
             if (controller == null) controller = FindFirstObjectByType<BattleController>();
+            juice = FindFirstObjectByType<JuiceController>();
             if (fontHeader == null) fontHeader = TMP_Settings.defaultFontAsset;
             if (fontBody == null) fontBody = fontHeader;
             BuildUI();
@@ -96,6 +99,12 @@ namespace RPGArena.UI
         private GameObject canvasRoot;      // whole HUD canvas — hidden during the intro cinematic
         private IBattleIntro intro;
         private bool introChecked;
+        private JuiceController juice;      // for PERFECT!/BRACED! floaters
+        private GameObject bracePanel;      // the defensive action-command prompt
+        private Image braceImg;
+        private TMP_Text braceText;
+        private bool braceShownLanded;
+        private Coroutine timingCo;         // the offensive action-command bar
 
         private void Update()
         {
@@ -115,6 +124,7 @@ namespace RPGArena.UI
             }
             if (canvasRoot != null && !canvasRoot.activeSelf) canvasRoot.SetActive(true);
 
+            UpdateBracePrompt();
             RefreshBars();
             AnimateBars();
 
@@ -329,6 +339,115 @@ namespace RPGArena.UI
             return rt;
         }
 
+        // --- action commands ----------------------------------------------------------
+        // Defensive: while an enemy winds up, the BRACE prompt pulses; SPACE inside the window
+        // softens the incoming blow (BattleController resolves it at x0.7).
+        private void UpdateBracePrompt()
+        {
+            if (bracePanel == null || controller == null) return;
+            if (controller.BraceWindowOpen)
+            {
+                if (!bracePanel.activeSelf)
+                {
+                    bracePanel.SetActive(true);
+                    braceShownLanded = false;
+                    braceText.text = "!!  BRACE  —  SPACE  !!";
+                    braceText.color = new Color(1f, 0.93f, 0.5f);
+                }
+                float k = controller.BraceTimeLeft / Mathf.Max(0.01f, controller.braceWindow);
+                bracePanel.transform.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(Time.unscaledTime * 16f));
+                if (braceImg != null) braceImg.color = Color.Lerp(new Color(0.32f, 0.06f, 0.05f, 0.95f), new Color(0.62f, 0.10f, 0.07f, 0.97f), k);
+                var kb = Keyboard.current;
+                if (kb != null && kb.spaceKey.wasPressedThisFrame)
+                {
+                    controller.SubmitBrace();
+                    GameBootstrap.Instance?.Audio?.PlaySfx("ui_click");
+                }
+            }
+            else if (controller.BraceLanded)
+            {
+                if (!braceShownLanded)
+                {
+                    braceShownLanded = true;
+                    bracePanel.SetActive(true);
+                    bracePanel.transform.localScale = Vector3.one;
+                    braceText.text = "BRACED!";
+                    braceText.color = new Color(0.5f, 1f, 0.6f);
+                    if (braceImg != null) braceImg.color = new Color(0.08f, 0.30f, 0.14f, 0.95f);
+                }
+            }
+            else if (bracePanel.activeSelf) bracePanel.SetActive(false);
+        }
+
+        // Offensive: the timed-strike bar. The needle sweeps once; lock it on gold for a PERFECT
+        // (x1.18 damage AND stagger — timing feeds basePower), teal for normal, anything else is
+        // sloppy (x0.9). No input = sloppy. The multiplier rides the ActionRequest into logic.
+        private void StartTimingBar(Entity hero, Ability ab, Entity target)
+        {
+            if (timingCo != null) StopCoroutine(timingCo);
+            timingCo = StartCoroutine(TimingBarRoutine(hero, ab, target));
+        }
+
+        private IEnumerator TimingBarRoutine(Entity hero, Ability ab, Entity target)
+        {
+            ClearChildren(actionPanel);
+            if (menuTitle != null) menuTitle.text = $"{ab.displayName.ToUpper()} — STRIKE ON GOLD!";
+
+            var trackGo = new GameObject("Track"); trackGo.transform.SetParent(actionPanel, false);
+            var track = trackGo.AddComponent<Image>(); Soft(track); track.color = new Color(0.05f, 0.07f, 0.11f, 0.97f);
+            var trt = track.rectTransform;
+            trt.anchorMin = new Vector2(0, 1); trt.anchorMax = new Vector2(1, 1); trt.pivot = new Vector2(0.5f, 1f);
+            trt.anchoredPosition = new Vector2(0, -34); trt.sizeDelta = new Vector2(-12, 66);
+
+            System.Action<float, float, Color> makeZone = (min, max, col) =>
+            {
+                var z = new GameObject("Zone"); z.transform.SetParent(trt, false);
+                var zi = z.AddComponent<Image>(); Soft(zi); zi.color = col; zi.raycastTarget = false;
+                var zrt = zi.rectTransform;
+                zrt.anchorMin = new Vector2(min, 0.12f); zrt.anchorMax = new Vector2(max, 0.88f);
+                zrt.offsetMin = zrt.offsetMax = Vector2.zero;
+            };
+            makeZone(0.28f, 0.72f, new Color(Accent.r, Accent.g, Accent.b, 0.30f));   // GOOD band
+            makeZone(0.425f, 0.575f, new Color(Gold.r, Gold.g, Gold.b, 0.85f));       // PERFECT core
+
+            var needleGo = new GameObject("Needle"); needleGo.transform.SetParent(trt, false);
+            var needle = needleGo.AddComponent<Image>(); needle.color = Color.white; needle.raycastTarget = false;
+            var nrt = needle.rectTransform;
+            nrt.anchorMin = new Vector2(0f, 0f); nrt.anchorMax = new Vector2(0f, 1f);
+            nrt.sizeDelta = new Vector2(5f, 0f); nrt.anchoredPosition = Vector2.zero;
+
+            var hint = MakeText(actionPanel, "SPACE or click to strike — gold = PERFECT (+18%)", fontBody, 13, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
+            Place(hint, new Vector2(0, -108), new Vector2(380, 20)); hint.color = TxtMuted;
+
+            bool locked = false;
+            var btn = trackGo.AddComponent<Button>(); btn.targetGraphic = track;
+            btn.onClick.AddListener(() => locked = true);
+
+            const float sweep = 0.85f;
+            float t = 0f, pos = 0f;
+            while (!locked && t < sweep)
+            {
+                t += Time.unscaledDeltaTime;
+                pos = Mathf.Clamp01(t / sweep);
+                nrt.anchorMin = new Vector2(pos, 0f); nrt.anchorMax = new Vector2(pos, 1f);
+                var kb = Keyboard.current;
+                if (kb != null && kb.spaceKey.wasPressedThisFrame) locked = true;
+                yield return null;
+            }
+
+            float off = Mathf.Abs(pos - 0.5f);
+            float mult; string call; Color cc;
+            if (locked && off < 0.075f) { mult = 1.18f; call = "PERFECT!"; cc = Gold; }
+            else if (locked && off < 0.22f) { mult = 1f; call = "GOOD"; cc = Accent; }
+            else { mult = 0.9f; call = "SLOPPY"; cc = TxtMuted; }
+            GameBootstrap.Instance?.Audio?.PlaySfx(mult > 1.1f ? "crit" : "ui_click");
+            juice?.Announce(hero.transform.position + Vector3.up * 2.5f, call, cc, mult > 1.1f ? 44f : 30f);
+
+            ClearChildren(actionPanel);
+            controller.SubmitAction(ab, target, mult);
+            timingCo = null;
+        }
+
         // --- action menu --------------------------------------------------------------
         private void BuildActionMenu(Entity hero)
         {
@@ -457,13 +576,22 @@ namespace RPGArena.UI
             Stretch(cost, 0, 22, 12, 3);
             cost.color = !affordable ? Danger : ab.mpCost > 0 ? MpBlue : TxtMuted;
 
-            // line 2: hit% · damage band · reaction tag
-            var detail = MakeText(rt, BuildPreview(hero, ab, ctx), fontBody, 12, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
+            // line 2: hit% · damage band · reaction tag · combo-ready callout
+            string preview = BuildPreview(hero, ab, ctx);
+            var detail = MakeText(rt, preview, fontBody, 12, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
             Stretch(detail, textLeft, 3, 12, 24);
             detail.color = TxtMuted;
             detail.richText = true;
+            // a combo would fire from this button RIGHT NOW — flag the whole card gold
+            if (affordable && preview.Contains(">>")) eimg.color = Gold;
 
-            if (affordable) btn.onClick.AddListener(() => { GameBootstrap.Instance?.Audio?.PlaySfx("ui_click"); controller.SubmitAction(ab, PickTarget(hero, ab)); });
+            if (affordable) btn.onClick.AddListener(() =>
+            {
+                GameBootstrap.Instance?.Audio?.PlaySfx("ui_click");
+                var tgt = PickTarget(hero, ab);
+                if (IsDamaging(ab)) StartTimingBar(hero, ab, tgt);   // action command: earn your multiplier
+                else controller.SubmitAction(ab, tgt);
+            });
         }
 
         private Button MakeSimpleButton(RectTransform parent, string label, Vector2 pos, Color accent, bool enabled)
@@ -508,7 +636,25 @@ namespace RPGArena.UI
             string dmg = pv.absorb ? "<color=#5FD17A>heals!</color>" : ab.hits > 1 ? $"{pv.min}-{pv.max}×{ab.hits}" : $"{pv.min}-{pv.max}";
             string risk = ab.rollsRiskDie ? "  <color=#F2C14E>d20!</color>" : "";
             string hitCol = hitPct >= 85 ? "#7FD08A" : hitPct >= 70 ? "#E6C84A" : "#E08A6B";
-            return $"<color={hitCol}>{hitPct}%</color>  <color=#C2C8D4>{dmg}</color>{tag}{risk}";
+            return $"<color={hitCol}>{hitPct}%</color>  <color=#C2C8D4>{dmg}</color>{tag}{ComboTag(hero, ab, el)}{risk}";
+        }
+
+        // COMBO-READY callouts: when the default target carries a setup status this ability would
+        // detonate, SAY SO on the button — the synergy web becomes a visible plan, not a secret.
+        private string ComboTag(Entity hero, Ability ab, ElementType el)
+        {
+            if (!IsDamaging(ab)) return "";
+            var tgt = PickTarget(hero, ab);
+            if (tgt == null || tgt.team == Team.Heroes) return "";
+            var st = tgt.Status;
+            bool phys = el == ElementType.Physical;
+            if (st.Has(StatusFlag.Frozen) && phys && st.Has(StatusFlag.Marked)) return "  <color=#FFD24A>>>SHATTER+BRITTLE!</color>";
+            if (st.Has(StatusFlag.Frozen) && phys) return "  <color=#FFD24A>>>SHATTER ×2.3!</color>";
+            if (st.Has(StatusFlag.Wet) && el == ElementType.Ice) return "  <color=#7FE3FF>>>FREEZE!</color>";
+            if (st.Has(StatusFlag.Wet) && phys) return "  <color=#9BD1FF>>>soaked +dmg</color>";
+            if (st.Has(StatusFlag.Oiled) && el == ElementType.Fire) return "  <color=#FFA24A>>>IGNITE!</color>";
+            if (st.Has(StatusFlag.Marked) && phys) return "  <color=#E8B9FF>>>marked</color>";
+            return "";
         }
 
         private float EstimateHit(Entity hero, Ability a, Entity boss)
@@ -693,6 +839,13 @@ namespace RPGArena.UI
                                     fontBody, 12.5f, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);
             Stretch(coachCaption, 10, 4, 10, 4); coachCaption.color = new Color(1f, 0.95f, 0.7f);
             coachPanel.SetActive(false);
+
+            // ---- BRACE prompt (above the valor bar; hidden until an enemy winds up) ----
+            bracePanel = MakePanel(root, new Vector2(0.5f, 0f), new Vector2(0, 52), new Vector2(380, 56), new Color(0.32f, 0.06f, 0.05f, 0.95f));
+            braceImg = bracePanel.GetComponent<Image>();
+            braceText = MakeText(bracePanel.GetComponent<RectTransform>(), "", fontHeader, 24, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);
+            Stretch(braceText, 8, 4, 8, 4);
+            bracePanel.SetActive(false);
 
             // ---- VALOR (bottom center) ----
             MakePanel(root, new Vector2(0.5f, 0f), new Vector2(0, 14), new Vector2(456, 28), Panel);

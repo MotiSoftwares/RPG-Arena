@@ -10,11 +10,21 @@ namespace RPGArena.Combat.Commands
         public Entity caster;
         public Entity[] targets;
 
+        // Action-command result supplied by the LIVE game's presentation layer: a timed strike
+        // lands ×1.18, a sloppy one ×0.9, a BRACED enemy blow ×0.7. Headless battles never set
+        // it — 0 (an unset struct) reads as 1 via Mult, so tests and AI paths are bit-identical.
+        public float timingMult;
+        public float Mult => timingMult <= 0f ? 1f : timingMult;
+
         public ActionRequest(Ability ability, Entity caster, params Entity[] targets)
+            : this(ability, caster, 1f, targets) { }
+
+        public ActionRequest(Ability ability, Entity caster, float timingMult, params Entity[] targets)
         {
             this.ability = ability;
             this.caster = caster;
             this.targets = targets;
+            this.timingMult = timingMult;
         }
     }
 

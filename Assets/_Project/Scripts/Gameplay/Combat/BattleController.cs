@@ -56,14 +56,31 @@ namespace RPGArena.Combat
         private void Start() => StartCoroutine(RunBattle());
 
         // The HUD calls this when the active hero chooses an ability + target.
-        public void SubmitAction(Ability ability, Entity target)
+        public void SubmitAction(Ability ability, Entity target) => SubmitAction(ability, target, 1f);
+
+        // Timed-strike variant: the HUD's action-command bar passes the multiplier it earned
+        // (PERFECT ×1.18 … sloppy ×0.9). Logic stays deterministic — the mult rides the request.
+        public void SubmitAction(Ability ability, Entity target, float timingMult)
         {
             if (ActiveHero == null || ability == null) return;
             // Re-validate cost/cooldown here too (not only in the HUD): an unaffordable or on-cooldown
             // submission must NOT silently consume the hero's whole turn — reject it, keep the menu open.
             if (!CanAfford(ActiveHero, ability)) return;
-            pendingAction = new ActionRequest(ability, ActiveHero, ResolveTargets(ActiveHero, ability, target));
+            pendingAction = new ActionRequest(ability, ActiveHero, timingMult, ResolveTargets(ActiveHero, ability, target));
         }
+
+        // --- BRACE (the defensive action command) --------------------------------------
+        // When an enemy commits to a damaging attack, a short reaction window opens; if the player
+        // hits SPACE inside it, the blow resolves at ×0.7. Live battles only — headless tests never
+        // run this coroutine.
+        [Header("Action commands")]
+        public float braceWindow = 0.85f;
+        private float braceOpenUntil;
+        private bool braceLanded;
+        public bool BraceWindowOpen => Time.time < braceOpenUntil && !braceLanded;
+        public bool BraceLanded => braceLanded && Time.time < braceOpenUntil + 0.6f;
+        public float BraceTimeLeft => Mathf.Max(0f, braceOpenUntil - Time.time);
+        public void SubmitBrace() { if (Time.time < braceOpenUntil) braceLanded = true; }
 
         // Single source of truth for affordability (MP + cooldown), used by BOTH the controller (to
         // reject) and the HUD (to grey buttons out) so the two can never drift.
@@ -149,7 +166,28 @@ namespace RPGArena.Combat
                             if (ability != null)
                             {
                                 var req = new ActionRequest(ability, actor, ResolveTargets(actor, ability, tgt));
-                                used = ability; usedTargets = req.targets; cmd = CommandFactory.Build(req);
+                                used = ability; usedTargets = req.targets;
+
+                                // BRACE window: an enemy is about to land a damaging blow on the
+                                // party — give the player a real-time beat to react (defensive
+                                // action command). A landed brace resolves the attack at ×0.7.
+                                bool damaging = ability.effectType == EffectType.Attack || ability.effectType == EffectType.MultiHit;
+                                bool hitsHeroes = false;
+                                if (damaging && req.targets != null)
+                                    foreach (var tt in req.targets) if (tt != null && tt.team == Team.Heroes) { hitsHeroes = true; break; }
+                                if (hitsHeroes && actor.team != Team.Heroes)
+                                {
+                                    braceLanded = false;
+                                    braceOpenUntil = Time.time + braceWindow;
+                                    yield return new WaitForSeconds(braceWindow);
+                                    if (braceLanded)
+                                    {
+                                        req = new ActionRequest(ability, actor, 0.7f, req.targets);
+                                        Context.Log($"    BRACED! {actor.displayName}'s blow is softened.");
+                                    }
+                                }
+
+                                cmd = CommandFactory.Build(req);
                             }
                         }
                         else

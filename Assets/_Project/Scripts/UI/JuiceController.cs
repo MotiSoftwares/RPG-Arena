@@ -319,9 +319,16 @@ namespace RPGArena.UI
 
         private void OnTelegraph(Ability a)
         {
-            // A small shake to sell the wind-up; the HUD shows the warning banner text.
+            // The boss REARS UP AND SCREAMS its wind-up (Roar state = the pack's Scream clip) —
+            // paired with the dragon_roar SFX and the HUD banner, the charged turn feels dangerous.
             shakeAmount = Mathf.Max(shakeAmount, shakeOnHit * 0.6f);
+            foreach (var e in FindObjectsByType<Characters.Entity>(FindObjectsSortMode.None))
+                if (e.isBoss && e.IsAlive) { e.GetComponentInChildren<Characters.AnimationDriver>()?.PlayRoar(); break; }
         }
+
+        // Public floater for other presentation systems (the HUD's PERFECT!/BRACED! callouts).
+        public void Announce(Vector3 worldPos, string text, Color color, float size = 36f)
+            => SpawnFloating(worldPos, text, color, size);
 
         // --- effects ------------------------------------------------------------------
         // A tiny freeze-frame on impact. Dropped (not queued) if a bigger time effect already owns

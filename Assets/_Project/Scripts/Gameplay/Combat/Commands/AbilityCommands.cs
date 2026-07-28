@@ -69,7 +69,8 @@ namespace RPGArena.Combat.Commands
                     var info = new DamageInfo
                     {
                         source = caster, target = target, ability = a, element = element,
-                        basePower = a.power, isMagic = a.isMagic, forceHit = a.autoHit,
+                        basePower = a.power * req.Mult,   // ×1 unless a live action-command adjusted it
+                        isMagic = a.isMagic, forceHit = a.autoHit,
                         isBreakSkill = a.HasTag("BreakSkill"), hitTier = a.hitTier,
                         rollsRiskDie = a.rollsRiskDie, riskFloor = a.riskFloor, backfireKind = a.backfireKind
                     };

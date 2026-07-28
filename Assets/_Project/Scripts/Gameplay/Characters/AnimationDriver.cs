@@ -19,6 +19,7 @@ namespace RPGArena.Characters
         private static readonly int VariantHash = Animator.StringToHash("AttackVariant");
         private static readonly int IdleBlendHash = Animator.StringToHash("IdleBlend");
         private static readonly int MovingHash = Animator.StringToHash("Moving");
+        private static readonly int RoarHash = Animator.StringToHash("Roar");
 
         private Animator animator;
         private readonly HashSet<int> paramHashes = new();
@@ -47,6 +48,8 @@ namespace RPGArena.Characters
 
         public void PlayCast() { if (Has(CastHash)) animator.SetTrigger(CastHash); else PlayAttack(); }
         public void PlayAreaAttack() { if (Has(AreaHash)) animator.SetTrigger(AreaHash); else PlayAttack(); }
+        // The boss's Scream — telegraphs + the intro cinematic. Falls back gracefully on rigs without it.
+        public void PlayRoar() { if (Has(RoarHash)) animator.SetTrigger(RoarHash); else PlayAreaAttack(); }
         public void PlayVictory() { if (Has(VictoryHash)) animator.SetTrigger(VictoryHash); }
         public void PlayHit() { if (Has(HitHash)) animator.SetTrigger(HitHash); }
         public void PlayDie() { if (Has(DieHash)) animator.SetTrigger(DieHash); }

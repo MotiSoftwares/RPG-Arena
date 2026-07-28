@@ -65,7 +65,7 @@ namespace RPGArena.UI
 
             // The boss announces itself: roar SFX + its area-attack flourish, title card punches in.
             GameBootstrap.Instance?.Audio?.PlaySfx("dragon_roar");
-            boss.GetComponentInChildren<Characters.AnimationDriver>()?.PlayAreaAttack();
+            boss.GetComponentInChildren<Characters.AnimationDriver>()?.PlayRoar();
             for (float t = 0f; t < holdOnBoss; t += Time.deltaTime)
             {
                 float k = Mathf.Clamp01(t / 0.35f);
