@@ -46,7 +46,8 @@ Unity 3D turn-based boss-battler (URP). Party of 3 heroes (from Warrior/Mage/Thi
 - [x] **P6 Game design (July 29)**: enemy INTENT preview (`AIBehavior.PreviewIntent`, must be side-effect free — no rng draws, no cycle-index writes, or the preview lies); OVERDRIVE as a choice (Surge/Sunder/Rally); combo web reworked into 3 lines + exclusive ladder; per-boss identities (Devour / stagger decay); rule-changing boons + run attrition (see the two sections below). 41/41 EditMode.
 - [ ] **P7 Remaining design list**: positioning is half-built (`backRow` already mitigates single-target melee in `DamagePipeline` step 4b, but nothing lets the player CHANGE row mid-fight); turn-order manipulation (speed exists but can't be played); the push-your-luck die is only a damage band (no press-your-luck escalation).
 - [ ] **P2 Animation events**: infrastructure half-done (dash arrival callback + projectile arrival ARE event-driven); remaining: AnimationEvents on FBX clips (`ModelImporterClipAnimation.events`, normalized time) to replace the 0.35s swing-connect + 0.45s cast-release constants in JuiceController.AttackBeat.
-- [ ] **P5 Premium art (ComfyUI)**: menu/loading art, boss portraits, logo. Also: Archer needs a GanzSe bow with a proper grip socket (she's currently unarmed-mime); EvilWarrior still wears the hero Warrior model (Assassin Pack mutant is the candidate); TargetRule.Summon unimplemented; HUD target picker for minion-vs-boss; ambient forest audio loop.
+- [x] **P5a Evil Warrior gets his own body (July 29)**: was the *identical* Paladin mesh + `Warrior` controller as the player's hero — mechanically distinct since the identity pass, visually a clone. Now the Assassin Pack mutant (`EvilWarriorMutant.prefab`, `EvilWarrior_Battle.controller`, modelHeight 3.9). All 13 pack FBX were **Generic/NoAvatar** — same import bug as the 13 hero clips — so nothing could ever retarget; reimported Human with `CopyFromOther` off the Vampire avatar, clips renamed off `mixamo.com`, locomotion looping and one-shots not. Clip map: swiping=Attack, jumping=AreaAttack, flexing=Roar+Victory, dying=Die, idle/run=locomotion. **No `Hit`/`Cast` parameter on purpose** — the set has no flinch clip and `AnimationDriver` capability-checks every call, so PlayHit no-ops and PlayCast falls back to PlayAttack.
+- [ ] **P5 Premium art (ComfyUI)**: menu/loading art, boss portraits, logo. Also: TargetRule.Summon unimplemented; HUD target picker for minion-vs-boss; ambient forest audio loop. (Archer bow: NOT an issue — `arissa:Weapons_Geo` is active on her prefab and disabled on the Thief's, which is correct.)
 - Gotcha: `SceneManager.LoadScene` from `execute_code` only applies if you Step a few frames IN THE SAME call right after it; PowerShell `-replace`/`Set-Content` mojibakes UTF-8 C# files (repair: read UTF8 → encode 1252 → decode UTF8) — use .NET File IO or the Edit tool.
 - [x] Final (this pass): 29/29 EditMode green after every feature; validated visually via Step+screenshot loop.
 
@@ -154,6 +155,22 @@ Helper: `scratchpad/compilecheck.ps1`. Two real errors this caught, both invisib
 - Burst screenshots inside one `execute_code` call flush the same frame — capture ONE screenshot per call (step ~5 after) for sequences.
 - Direct-play BattleArena has NO GameBootstrap/RunState (items/gold hidden). Test via an INACTIVE GameObject + AddComponent + reflection-set `Instance`/`Run` (Awake never fires on inactive).
 - Erb "projectile" prefabs: root ParticleSystem startSpeed 15, world-space, sub-emitters explode on particle death. Never spawn at identity/origin; configure BEFORE first sim frame (same call as Instantiate).
+
+## Importing a new character pack (the two bugs that always bite)
+
+1. **Mixamo FBX import as `Generic` / `NoAvatar`.** They look fine in the project view and simply never
+   play — 13 hero clips and all 13 Assassin Pack files hit this. Fix: source model →
+   `animationType = Human` + `avatarSetup = CreateFromThisModel`; every animation FBX →
+   `Human` + `CopyFromOther` + `sourceAvatar` = that model's avatar. Also rename the clips (every
+   Mixamo clip is called `mixamo.com`) and set `loopTime` per clip — **a looping death clip never ends.**
+2. **Vendor materials ship with `_EMISSION` on and `_EmissionColor` white**, so the model renders as a
+   blown-out white silhouette regardless of lighting (the dragon did this, the mutant did this).
+   Fix: `DisableKeyword("_EMISSION")` + `_EmissionColor` black + `globalIlluminationFlags =
+   EmissiveIsBlack`. Check `_BaseMap` too — packs with no textures at all (Assassin) need authored
+   flat colour, which suits the low-poly direction anyway.
+   **Material remapping caveat**: flipping `materialLocation` to `External` re-extracts under NEW
+   names (`Vampire_MAT1` → `Vampire_diffuse`), silently orphaning any `AddRemap` you set against the
+   old identifiers. Simplest reliable path: let it extract, then edit the extracted `.mat` in place.
 
 ## Guardrails
 

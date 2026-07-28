@@ -17,7 +17,7 @@ MonoBehaviour:
   portrait: {fileID: 21300000, guid: ed4b3c9252bad4c4d9e0c15334c2fdd0, type: 3}
   stageSprite: {fileID: 21300000, guid: ed4b3c9252bad4c4d9e0c15334c2fdd0, type: 3}
   arenaBackdrop: {fileID: 21300000, guid: 47f8db4d1d16fd348802bf91cc7ecb2c, type: 3}
-  modelPrefab: {fileID: 8882980196175458393, guid: d497f7587e65c084db38fd9659981985, type: 3}
+  modelPrefab: {fileID: 4799573692840028809, guid: 09c4b64a2dd42924292db02148f57e19, type: 3}
   primaryStat: 0
   baseStats:
     STR: 28
@@ -47,7 +47,7 @@ MonoBehaviour:
     hpThresholdPercent: 0.4
     enrage: 1
     attackMultiplier: 1.35
-  modelHeight: 3.6
+  modelHeight: 3.9
   staggerThreshold: 110
   staggeredTurns: 2
   staggerDecayPerTurn: 10
