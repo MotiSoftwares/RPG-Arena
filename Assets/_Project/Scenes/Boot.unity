@@ -299,6 +299,18 @@ MonoBehaviour:
     clip: {fileID: 8300000, guid: ef45fdf7fed14014b8402b8970f770d8, type: 3}
   - id: victory
     clip: {fileID: 8300000, guid: a3e44d2c37561664fbc551d3a32c3eee, type: 3}
+  - id: hit_fire
+    clip: {fileID: 8300000, guid: c630227daa9ece44a9ac23aacc2029b0, type: 3}
+  - id: hit_ice
+    clip: {fileID: 8300000, guid: f74e4512da5f7c048b8f6bb24f4c77f7, type: 3}
+  - id: hit_lightning
+    clip: {fileID: 8300000, guid: ca51747656576804aa41ea1d0be3cec0, type: 3}
+  - id: hit_holy
+    clip: {fileID: 8300000, guid: c49b5e14519f19b4e9ece576e427308b, type: 3}
+  - id: hit_dark
+    clip: {fileID: 8300000, guid: 7ab2644b1dc4ae447bc646b1d149f09d, type: 3}
+  - id: dragon_roar
+    clip: {fileID: 8300000, guid: f6eebd5b08025cc4489b57473886ecdb, type: 3}
   music:
   - id: battle
     clip: {fileID: 8300000, guid: 01f7d791c63b829429bd030a74fdfa31, type: 3}

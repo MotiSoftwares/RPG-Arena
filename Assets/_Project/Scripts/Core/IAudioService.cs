@@ -15,6 +15,9 @@ namespace RPGArena.Core
     public interface IAudioService
     {
         void PlaySfx(string id);
+        // Does the SFX bank contain this id? Callers use it to pick a specific variant
+        // (e.g. "hit_fire") and gracefully fall back to the generic clip when absent.
+        bool HasSfx(string id);
         void PlayMusic(string id, bool loop = true);
         void StopMusic();
 
@@ -26,5 +29,9 @@ namespace RPGArena.Core
         // bus is one of the AudioBus constants. GetVolume returns the persisted value.
         void SetVolume(string bus, float linear01);
         float GetVolume(string bus);
+
+        // Pause soundscape: transitions the mixer to the "Paused" snapshot (lowpass muffle on the
+        // Master bus) and freezes pooled SFX via AudioListener.pause; music keeps playing, muffled.
+        void SetPaused(bool paused);
     }
 }

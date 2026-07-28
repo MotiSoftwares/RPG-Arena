@@ -53,13 +53,25 @@ namespace RPGArena.UI
         private void OnDamage(DamageResult r)
         {
             if (Audio == null) return;
-            string id = !r.hit ? "miss" : (r.isHeal || r.absorbed) ? "heal" : r.crit ? "crit" : "hit";
-            // Replicate JuiceController's per-hit schedule: a shared 0.24s beat (so a 3-hit combo's
-            // sounds space out with its visuals) plus the melee/magic wind-up before contact.
+            // Elemental hit variants (hit_fire / hit_ice / …) when the bank has them; the generic
+            // clip otherwise. Crits LAYER the crit sting on top of the elemental impact.
+            string id;
+            bool critLayer = false;
+            if (!r.hit) id = "miss";
+            else if (r.isHeal || r.absorbed) id = Audio.HasSfx("hit_holy") ? "hit_holy" : "heal";
+            else
+            {
+                string el = "hit_" + r.element.ToString().ToLowerInvariant();
+                id = Audio.HasSfx(el) ? el : (r.crit ? "crit" : "hit");
+                critLayer = r.crit && id != "crit";
+            }
+            // Replicate JuiceController's per-hit schedule: a shared beat (so a multi-hit's sounds
+            // space out with its visuals) plus the melee/magic wind-up before contact.
             float start = Mathf.Max(Time.time, nextAudioBeat);
-            nextAudioBeat = start + 0.24f;
-            float windup = (r.hit && r.ability != null && !r.ability.isMagic && r.ability.targetRule != TargetRule.AllEnemies) ? 0.38f : 0.42f;
+            nextAudioBeat = start + 0.30f;
+            float windup = (r.hit && r.ability != null && !r.ability.isMagic && r.ability.targetRule != TargetRule.AllEnemies && !r.ability.vfxIsProjectile) ? 0.63f : 0.60f;
             StartCoroutine(DelayedSfx(id, (start - Time.time) + windup));
+            if (critLayer) StartCoroutine(DelayedSfx("crit", (start - Time.time) + windup + 0.03f));
         }
 
         private System.Collections.IEnumerator DelayedSfx(string id, float delay)
@@ -74,6 +86,11 @@ namespace RPGArena.UI
             a.PlaySfx("break");
             a.DuckMusic(0.4f, 0.55f, 0.7f);   // dip the loop under the BREAK stinger, then swell back (~covers the slow-mo)
         }
-        private void OnTelegraph(Ability _) => Audio?.PlaySfx("telegraph");
+        // The boss winding up is scarier as a ROAR (generated dragon_roar) than a UI blip.
+        private void OnTelegraph(Ability _)
+        {
+            var a = Audio; if (a == null) return;
+            a.PlaySfx(a.HasSfx("dragon_roar") ? "dragon_roar" : "telegraph");
+        }
     }
 }

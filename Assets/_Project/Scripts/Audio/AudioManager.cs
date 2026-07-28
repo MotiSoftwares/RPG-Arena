@@ -58,6 +58,7 @@ namespace RPGArena.Audio
             mgo.transform.SetParent(transform, false);
             musicSource = mgo.AddComponent<AudioSource>();
             musicSource.playOnAwake = false; musicSource.loop = true; musicSource.outputAudioMixerGroup = musicGroup;
+            musicSource.ignoreListenerPause = true;   // music plays on through the pause muffle
 
             // Apply persisted volumes so the mixer matches the saved settings on boot.
             ApplySaved(AudioBus.Master);
@@ -66,6 +67,8 @@ namespace RPGArena.Audio
         }
 
         // --- IAudioService ------------------------------------------------------------
+        public bool HasSfx(string id) => !string.IsNullOrEmpty(id) && sfxMap.ContainsKey(id);
+
         public void PlaySfx(string id)
         {
             if (string.IsNullOrEmpty(id) || !sfxMap.TryGetValue(id, out var clip) || clip == null) return;
@@ -112,6 +115,19 @@ namespace RPGArena.Audio
 
         // Set the music bus dB directly WITHOUT persisting (unlike SetVolume) — for the transient duck.
         private void SetMusicDb(float linear) { if (mixer != null) mixer.SetFloat(AudioBus.Music, LinearToDb(linear)); }
+
+        // Mixer-snapshot pause: "Paused" carries a ~620Hz lowpass on Master, so the whole mix
+        // muffles like it's behind glass; SFX freeze with the game clock (listener pause) while
+        // the music source opts out and keeps playing under the filter.
+        public void SetPaused(bool paused)
+        {
+            if (mixer != null)
+            {
+                var snap = mixer.FindSnapshot(paused ? "Paused" : "Snapshot");
+                if (snap != null) snap.TransitionTo(0.25f);
+            }
+            AudioListener.pause = paused;
+        }
 
         public void SetVolume(string bus, float linear01)
         {

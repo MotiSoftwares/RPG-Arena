@@ -34,19 +34,22 @@ namespace RPGArena.UI
             paused = !paused;
             panel.SetActive(paused);
             Time.timeScale = paused ? 0f : 1f;
+            GameBootstrap.Instance?.Audio?.SetPaused(paused);   // mixer "Paused" snapshot: muffled music, frozen SFX
         }
 
-        private void Resume() { paused = false; panel.SetActive(false); Time.timeScale = 1f; }
+        private void Resume() { paused = false; panel.SetActive(false); Time.timeScale = 1f; GameBootstrap.Instance?.Audio?.SetPaused(false); }
 
         private void Restart()
         {
             Time.timeScale = 1f;
+            GameBootstrap.Instance?.Audio?.SetPaused(false);
             UnityEngine.SceneManagement.SceneManager.LoadScene("BattleArena");
         }
 
         private void ToMenu()
         {
             Time.timeScale = 1f;
+            GameBootstrap.Instance?.Audio?.SetPaused(false);
             var boot = GameBootstrap.Instance;
             if (boot != null) boot.Scenes.LoadScene("MainMenu");
             else UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
