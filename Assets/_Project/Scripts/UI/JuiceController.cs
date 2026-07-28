@@ -73,6 +73,12 @@ namespace RPGArena.UI
 
         private void Awake()
         {
+            // Time.timeScale is GLOBAL and survives scene loads. If the previous battle was reloaded
+            // mid-hit-stop, its TimeEffect coroutine died before its finally ran and left the clock
+            // parked at 0 — and the watchdog below won't rescue it, because this fresh instance owns
+            // no time effect. Reclaim the clock on entry (unless the player is legitimately paused).
+            if (!PauseMenu.IsPaused && Time.timeScale < 0.999f) Time.timeScale = 1f;
+
             font = uiFont != null ? uiFont : TMP_Settings.defaultFontAsset;
             popupMat = BuildOutlineMaterial(font);
             cam = Camera.main;

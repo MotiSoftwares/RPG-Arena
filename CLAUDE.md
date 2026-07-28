@@ -48,21 +48,24 @@ Unity 3D turn-based boss-battler (URP). Party of 3 heroes (from Warrior/Mage/Thi
 - Gotcha: `SceneManager.LoadScene` from `execute_code` only applies if you Step a few frames IN THE SAME call right after it; PowerShell `-replace`/`Set-Content` mojibakes UTF-8 C# files (repair: read UTF8 → encode 1252 → decode UTF8) — use .NET File IO or the Edit tool.
 - [x] Final (this pass): 29/29 EditMode green after every feature; validated visually via Step+screenshot loop.
 
-## Simulation-driven findings (July 28 pass 3) — measure, don't guess
+## Simulation-driven findings (July 28 pass 3/4) — measure, don't guess
 
-Run N headless fights and aggregate the log (see the `execute_code` recipe pattern: build a
-`BattleContext` like `PartyTrioTests`, `RunToCompletion`, then parse `ctx.log`). What it exposed:
+Run N headless fights and aggregate the log (build a `BattleContext` like `PartyTrioTests`,
+`RunToCompletion`, then parse `ctx.log`). This found what code-reading missed — and all of it is FIXED:
 
-- **Combos NEVER fire** — 12 full fights, zero `synergy:` lines. `SimpleHeroAI` scores by raw power so
-  setup skills (Water Bomb / Shadow Mark) are never chosen. The combo web is the game's identity and
-  is currently decorative. **Still open.**
-- **23.6% of all attacks MISS**; in 1 of 10 fights every single round-1 attack whiffed. Dead turns are
-  the biggest "boring" contributor. Candidate fix: glancing blows (~30% damage) instead of 0. **Open.**
-- Damage is Mage-dominated (Frost Touch + Blizzard = 51% of all damage); physical heroes eat "resist"
-  103 times per 10 fights.
+- ~~Combos never fire~~ **FIXED.** `SimpleHeroAI` scored by raw power, so setup skills scored 0 and the
+  combo web was decorative in every balance test. It now plays the intended loop (lay a setup →
+  detonate with the paying element). Synergies per 8 fights: 0 → 89/109/64 by trio.
+- ~~23.6% of attacks whiff~~ **FIXED** via glancing blows (`BalanceConfig.glanceDamageMult 0.35`,
+  `cleanMissOvershoot 0.55`): a failed roll grazes instead of evaporating. Dead turns 23.6% → 10.4%.
+- Because combos now actually fire, the party melted the old 1700 HP dragon in 4 rounds → **HP 2600**
+  (swept 4 trios × 9 seeds; fights now run 6–10 rounds).
 - **The gate test is a single seed (99).** Changing the AI's RNG consumption reshuffles that fight
   entirely — a trio can win 8/8 on other seeds and still fail the gate. **Sweep trios × seeds before
-  tuning**, and prefer a lever with a real design reason over one that only fixes seed 99.
+  tuning**, and prefer a lever with a real design reason over one that only fixes seed 99
+  (`staggerBuildBreakSkill 30→36` was chosen precisely because Break skills counter the new charge).
+- Still uneven: damage is Mage-dominated and the W+M+A trio has no Wet applier, so it can never
+  Freeze/Shatter — a content gap, not a bug.
 
 ## Hard-won gotchas (verify before re-deriving)
 
