@@ -790,9 +790,21 @@ namespace RPGArena.UI
             return sb.ToString();
         }
 
+        private readonly HashSet<Image> barInitialised = new();
+
         private void SetFill(Image img, float cur, float max)
         {
-            if (img) targetFill[img] = max > 0 ? Mathf.Clamp01(cur / max) : 0f;
+            if (!img) return;
+            float v = max > 0 ? Mathf.Clamp01(cur / max) : 0f;
+            targetFill[img] = v;
+            // Bars are built at fillAmount 1. A meter that STARTS empty (Break, Valor) would other-
+            // wise spend its first seconds visibly draining from full, complete with the white
+            // chip-away ghost — which reads as a glitch. Snap both to the true value the first time.
+            if (barInitialised.Add(img))
+            {
+                img.fillAmount = v;
+                if (ghostOf.TryGetValue(img, out var g) && g != null) g.fillAmount = v;
+            }
         }
 
         private void AnimateBars()

@@ -23,10 +23,42 @@ namespace RPGArena.UI
         {
             var root = new GameObject("ArenaDressing").transform;
             root.position = Vector3.zero;
+            OpenTheVista();      // before the rest: it decides what the player can actually see
             BuildScorchRing(root);
             BuildBraziers(root);
             BuildEmbers(root);
             CullVegetation();
+        }
+
+        [Header("Vista")]
+        [Tooltip("Trees inside this wedge behind the fight are hidden so the battlefield opens onto the valley instead of being walled in by trunks.")]
+        public float vistaHalfWidth = 13f;
+        public float vistaDepth = 34f;
+
+        // The meadow's trees stood in a dense wall directly behind the combat line, so the arena
+        // felt like a clearing the size of a room. Clearing the CENTRAL wedge (the camera's view
+        // cone past the fighters) opens the fight onto the distant valley and sky, while every tree
+        // outside the wedge is kept — those are what frame the shot and give it depth.
+        private void OpenTheVista()
+        {
+            int hidden = 0;
+            foreach (var r in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+            {
+                var go = r.gameObject;
+                string n = go.name;
+                bool foliage = n.IndexOf("Tree", System.StringComparison.OrdinalIgnoreCase) >= 0
+                            || n.IndexOf("Bush", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                if (!foliage) continue;
+                var p = go.transform.position;
+                // the wedge widens with distance, matching the camera's frustum
+                float t = Mathf.InverseLerp(-6f, vistaDepth, p.z);
+                if (t <= 0f || t >= 1f) continue;
+                float halfW = Mathf.Lerp(vistaHalfWidth * 0.55f, vistaHalfWidth, t);
+                if (Mathf.Abs(p.x - ringCenter.x) > halfW) continue;
+                r.enabled = false;
+                hidden++;
+            }
+            if (hidden > 0) Debug.Log($"[ArenaDressing] opened the vista — hid {hidden} trees/bushes behind the arena.");
         }
 
         // A soft dark patch: the ground this fight has already trampled and burned.

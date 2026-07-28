@@ -354,13 +354,15 @@ namespace RPGArena.Combat
             new Color(0.6f, 0.35f, 0.8f), new Color(0.35f, 0.75f, 0.4f)
         };
 
-        // Battle-line formation: a receding DIAGONAL from the camera's lower-left into the scene —
-        // melee closest to the lens, casters stepping back and away. Each hero lands in their own
-        // slice of the frame instead of the overlapping clump an even x-spacing produced, and the
-        // diagonal points the eye straight at the boss (composition, not just spacing).
+        // Battle-line formation. The fight axis is deliberately LATERAL (left-to-right across the
+        // lens) rather than running away into the screen: heroes face the boss, so if the boss sits
+        // much deeper in Z than they do, "face the boss" becomes "turn your back to the player".
+        // Keeping every combatant within ~1.5u of the same depth means facing the enemy reads as a
+        // clean profile, which the camera-blend then rotates into a flattering 3/4 front view.
+        // The gentle stagger still separates the three heroes in frame and adds depth.
         private static Vector3 HeroSlot(bool backRow, int indexInRow)
-            => backRow ? new Vector3(-3.35f - indexInRow * 1.40f, 0f, -0.75f + indexInRow * 1.60f)
-                       : new Vector3(-1.55f - indexInRow * 1.30f, 0f, -2.35f + indexInRow * 1.10f);
+            => backRow ? new Vector3(-2.95f - indexInRow * 1.45f, 0f, 0.15f + indexInRow * 0.95f)
+                       : new Vector3(-1.25f - indexInRow * 1.25f, 0f, -1.25f + indexInRow * 0.85f);
 
         // Re-place every hero into tidy row slots (party order preserved). Used at battle start and
         // again after a mid-battle row swap so the wedge never ends up with holes.
@@ -380,7 +382,9 @@ namespace RPGArena.Combat
 
         private void PlaceCombatants()
         {
-            var bossPos = new Vector3(3.45f, 0f, 1.55f);   // upper-right of frame: dominant, a real gap to charge across, clear of the skill panel
+            // Right of frame at roughly the party's depth, so the heroes turn to PROFILE (not away)
+            // to face it, and there's still a real gap to charge across.
+            var bossPos = new Vector3(3.85f, 0f, -0.25f);
             int frontIdx = 0, backIdx = 0;
             for (int i = 0; i < Context.heroes.Count; i++)
             {
@@ -390,9 +394,10 @@ namespace RPGArena.Combat
                 h.transform.rotation = Quaternion.Euler(0, 90, 0);
                 Vector3 faceBoss = bossPos - h.transform.position; faceBoss.y = 0f;
                 float scale = h.modelPrefab != null ? 1.2f : 1f;     // make the 3D heroes read larger
-                // camBlend 0.18: mostly facing the enemy (a heavier blend parked heroes ~30° off
-                // their own target, so every swing visibly missed), with just enough yaw for a 3/4 read.
-                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss, scale, 0f, 0.18f);
+                // camBlend 0.34: now that the fight axis is lateral, facing the enemy is already a
+                // profile, so this yaws them into a 3/4 view that shows the character's FRONT to the
+                // player without pointing them away from their own target.
+                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss, scale, 0f, 0.34f);
                 var motion = h.gameObject.AddComponent<CombatantMotion>();    // lunge/recoil (+ procedural bob if no model)
                 if (h.modelPrefab != null) motion.bobAmplitude = 0f;          // the Animator's Idle replaces the bob
             }
@@ -418,7 +423,7 @@ namespace RPGArena.Combat
                 minionDefs.TryGetValue(m, out var md);
                 // adds push FORWARD of their master toward the party — they read as the threat you
                 // must clear first, and they never eclipse the boss's silhouette
-                var mp = new Vector3(1.65f + i * 1.40f, 0f, -1.35f - i * 1.35f);
+                var mp = new Vector3(1.55f + i * 1.30f, 0f, -1.85f - i * 0.95f);
                 m.transform.position = mp;
                 Vector3 faceParty = new Vector3(-4.4f, 0f, 0f) - mp; faceParty.y = 0f;
                 float mh = md != null ? md.modelHeight : 2.2f;

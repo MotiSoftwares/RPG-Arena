@@ -24,13 +24,15 @@ MonoBehaviour:
   mpCost: 36
   cooldown: 5
   mpRegenOnUse: 0
+  flatPower: 0
   hitTier: 2
   autoHit: 0
   rollsRiskDie: 1
   riskFloor: 0
   backfireKind: 2
   backfireStatus: {fileID: 0}
-  statusesToApply: []
+  statusesToApply:
+  - {fileID: 11400000, guid: af1513dd3500c974680d97183717bae8, type: 2}
   telegraphsAbility: {fileID: 0}
   stanceAction: 0
   attunementOptions: 
@@ -49,6 +51,7 @@ MonoBehaviour:
   executeBelowHpPct: 0
   executeMult: 1.6
   vfxPrefab: {fileID: 1377279482138388, guid: 653866134638b354ca265558d783dd1d, type: 3}
+  vfxIsProjectile: 0
   sfxId: 
   animationTrigger: Attack
   tags:

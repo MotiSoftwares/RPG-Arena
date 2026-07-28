@@ -51,7 +51,20 @@ namespace RPGArena.Characters
         // The boss's Scream — telegraphs + the intro cinematic. Falls back gracefully on rigs without it.
         public void PlayRoar() { if (Has(RoarHash)) animator.SetTrigger(RoarHash); else PlayAreaAttack(); }
         public void PlayVictory() { if (Has(VictoryHash)) animator.SetTrigger(VictoryHash); }
-        public void PlayHit() { if (Has(HitHash)) animator.SetTrigger(HitHash); }
+        // A flinch must never chop the character's OWN swing in half — that reads as a stutter and
+        // was one of the "animations look broken" cases (multi-hit trades interrupt constantly).
+        // If we're mid-attack, skip the flinch; the recoil motion still sells the impact.
+        public void PlayHit()
+        {
+            if (!Has(HitHash)) return;
+            if (animator != null)
+            {
+                var st = animator.GetCurrentAnimatorStateInfo(0);
+                bool midAttack = (st.IsName("Attack") || st.IsName("Cast") || st.IsName("AreaAttack")) && st.normalizedTime % 1f < 0.85f;
+                if (midAttack) return;
+            }
+            animator.SetTrigger(HitHash);
+        }
 
         public void PlayDie()
         {

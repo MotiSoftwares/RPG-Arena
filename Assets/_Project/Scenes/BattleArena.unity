@@ -15,9 +15,9 @@ RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
   m_Fog: 1
-  m_FogColor: {r: 0.6, g: 0.55, b: 0.53, a: 1}
+  m_FogColor: {r: 0.66, g: 0.62, b: 0.6, a: 1}
   m_FogMode: 3
-  m_FogDensity: 0.018
+  m_FogDensity: 0.011
   m_LinearFogStart: 14
   m_LinearFogEnd: 60
   m_AmbientSkyColor: {r: 0.46, g: 0.5, b: 0.62, a: 1}
@@ -184904,7 +184904,7 @@ Camera:
     height: 1
   near clip plane: 0.1
   far clip plane: 1000
-  field of view: 47
+  field of view: 44
   orthographic: 0
   orthographic size: 3.5
   m_Depth: 0
@@ -184930,8 +184930,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1208433520}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.082808204, y: 0, z: 0, w: 0.9965655}
-  m_LocalPosition: {x: 0.15, y: 3.05, z: -9.9}
+  m_LocalRotation: {x: 0.07410849, y: 0, z: 0, w: 0.9972502}
+  m_LocalPosition: {x: 0.1, y: 3.55, z: -11.4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -194396,6 +194396,8 @@ MonoBehaviour:
   ringCenter: {x: 0.4, y: 0.02, z: 0}
   ringRadius: 8.5
   brazierIntensity: 7
+  vistaHalfWidth: 13
+  vistaDepth: 34
 --- !u!4 &1268187919
 Transform:
   m_ObjectHideFlags: 0
