@@ -465,6 +465,66 @@ namespace RPGArena.UI
             timingCo = null;
         }
 
+        // --- target picker ------------------------------------------------------------
+        // Only single-enemy skills need a choice, and only while the boss actually has living adds.
+        private bool NeedsTargetChoice(Ability ab)
+        {
+            if (ab == null || controller == null || controller.Context == null) return false;
+            if (ab.targetRule != TargetRule.SingleEnemy) return false;
+            int alive = 0;
+            foreach (var m in controller.Context.minions) if (m != null && m.IsAlive) alive++;
+            return alive > 0 && controller.Context.boss != null && controller.Context.boss.IsAlive;
+        }
+
+        // One row per living enemy with its HP and (for the boss) its Break progress, so choosing
+        // "finish the whelp" vs "keep breaking the dragon" is an informed decision.
+        private void BuildTargetPicker(Entity hero, Ability ab)
+        {
+            ClearChildren(actionPanel);
+            if (menuTitle != null) menuTitle.text = $"{ab.displayName.ToUpper()} — PICK A TARGET";
+            var ctx = controller.Context;
+            float y = 0f;
+            var options = new List<Entity>();
+            foreach (var m in ctx.minions) if (m != null && m.IsAlive) options.Add(m);
+            if (ctx.boss != null && ctx.boss.IsAlive) options.Add(ctx.boss);
+
+            foreach (var opt in options)
+            {
+                var captured = opt;
+                var go = new GameObject("Target"); go.transform.SetParent(actionPanel, false);
+                var img = go.AddComponent<Image>(); Soft(img);
+                img.color = captured.isBoss ? new Color(0.30f, 0.12f, 0.13f, 0.95f) : new Color(0.17f, 0.20f, 0.28f, 0.95f);
+                var rt = img.rectTransform;
+                rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(0, 1);
+                rt.anchoredPosition = new Vector2(0, -y); rt.sizeDelta = new Vector2(0, 46);
+                rt.offsetMin = new Vector2(6, rt.offsetMin.y); rt.offsetMax = new Vector2(-6, rt.offsetMax.y);
+                var b = go.AddComponent<Button>(); b.targetGraphic = img;
+                var cb2 = b.colors; cb2.highlightedColor = new Color(1.3f, 1.3f, 1.3f); cb2.fadeDuration = 0.07f; b.colors = cb2;
+
+                var nameT = MakeText(rt, captured.displayName, fontHeader, 16, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
+                Stretch(nameT, 14, 22, 12, 3); nameT.enableWordWrapping = false; nameT.overflowMode = TextOverflowModes.Overflow;
+                nameT.color = captured.isBoss ? new Color(1f, 0.62f, 0.52f) : TxtMain;
+
+                string detail = $"HP {captured.currentHP}/{captured.stats.maxHP}";
+                if (captured.isBoss)
+                    detail += captured.isStaggered ? "   <color=#FFD24A>BROKEN — burst now!</color>"
+                            : $"   break {Mathf.RoundToInt(captured.staggerMeter)}/{Mathf.RoundToInt(captured.staggerThreshold)}";
+                detail += ComboTag(hero, ab, ab.followsAttunement ? hero.currentAttunement : ab.element, captured);
+                var dT = MakeText(rt, detail, fontBody, 12, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
+                Stretch(dT, 14, 3, 12, 24); dT.color = TxtMuted; dT.richText = true;
+
+                b.onClick.AddListener(() =>
+                {
+                    GameBootstrap.Instance?.Audio?.PlaySfx("ui_click");
+                    if (IsDamaging(ab)) StartTimingBar(hero, ab, captured);
+                    else controller.SubmitAction(ab, captured);
+                });
+                y += 50f;
+            }
+            var back = MakeSimpleButton(actionPanel, "←  Back to skills", new Vector2(0, -y), Accent, true);
+            back.onClick.AddListener(() => BuildActionMenu(hero));
+        }
+
         // --- action menu --------------------------------------------------------------
         private void BuildActionMenu(Entity hero)
         {
@@ -605,6 +665,13 @@ namespace RPGArena.UI
             if (affordable) btn.onClick.AddListener(() =>
             {
                 GameBootstrap.Instance?.Audio?.PlaySfx("ui_click");
+                // More than one legal enemy (the boss plus living adds)? Let the player CHOOSE —
+                // otherwise the whole minion layer is decided for you and adds-first is a straitjacket.
+                if (NeedsTargetChoice(ab))
+                {
+                    BuildTargetPicker(hero, ab);
+                    return;
+                }
                 var tgt = PickTarget(hero, ab);
                 if (IsDamaging(ab)) StartTimingBar(hero, ab, tgt);   // action command: earn your multiplier
                 else controller.SubmitAction(ab, tgt);
@@ -658,10 +725,12 @@ namespace RPGArena.UI
 
         // COMBO-READY callouts: when the default target carries a setup status this ability would
         // detonate, SAY SO on the button — the synergy web becomes a visible plan, not a secret.
-        private string ComboTag(Entity hero, Ability ab, ElementType el)
+        private string ComboTag(Entity hero, Ability ab, ElementType el) => ComboTag(hero, ab, el, null);
+
+        private string ComboTag(Entity hero, Ability ab, ElementType el, Entity explicitTarget)
         {
             if (!IsDamaging(ab)) return "";
-            var tgt = PickTarget(hero, ab);
+            var tgt = explicitTarget != null ? explicitTarget : PickTarget(hero, ab);
             if (tgt == null || tgt.team == Team.Heroes) return "";
             var st = tgt.Status;
             bool phys = el == ElementType.Physical;
