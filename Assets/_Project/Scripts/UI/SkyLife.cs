@@ -21,12 +21,38 @@ namespace RPGArena.UI
         private readonly System.Collections.Generic.List<SpriteRenderer> fogBanks = new();
         private readonly System.Collections.Generic.List<float> fogSpeeds = new();
         private readonly System.Collections.Generic.List<SpriteRenderer> rays = new();
+        private readonly System.Collections.Generic.List<Transform> clouds = new();
+        private readonly System.Collections.Generic.List<float> cloudSpeeds = new();
+
+        // One flock = one leader path + members holding loose offsets, flapping out of phase.
+        private class Flock
+        {
+            public Transform root;
+            public Transform[] birds;
+            public float[] flapPhase;
+            public Vector3 velocity;
+        }
+        private readonly System.Collections.Generic.List<Flock> flocks = new();
+
+        // Every Texture2D/Sprite this script generates. Runtime-created assets are NOT destroyed by
+        // a scene unload, so without explicit cleanup each Retry reload leaked another set.
+        private readonly System.Collections.Generic.List<Object> generated = new();
+
+        private Sprite Track(Sprite s, Texture2D t) { generated.Add(t); generated.Add(s); return s; }
+
+        private void OnDestroy()
+        {
+            foreach (var o in generated) if (o != null) Destroy(o);
+            generated.Clear();
+        }
 
         private void Start()
         {
             BuildSkyDragon();
             BuildGodRays();
             BuildFog();
+            BuildClouds();
+            BuildBirds();
         }
 
         private void BuildSkyDragon()
@@ -68,7 +94,7 @@ namespace RPGArena.UI
                 for (int x = 0; x < 4; x++) tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
             }
             tex.Apply();
-            var sprite = Sprite.Create(tex, new Rect(0, 0, 4, 128), new Vector2(0.5f, 0.5f), 16f);
+            var sprite = Track(Sprite.Create(tex, new Rect(0, 0, 4, 128), new Vector2(0.5f, 0.5f), 16f), tex);
 
             for (int i = 0; i < 4; i++)
             {
@@ -96,7 +122,7 @@ namespace RPGArena.UI
                     tex.SetPixel(x, y, new Color(1f, 1f, 1f, Mathf.Clamp01(1f - d) * 0.8f));
                 }
             tex.Apply();
-            var sprite = Sprite.Create(tex, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f), 8f);
+            var sprite = Track(Sprite.Create(tex, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f), 8f), tex);
 
             for (int i = 0; i < 3; i++)
             {
@@ -109,6 +135,100 @@ namespace RPGArena.UI
                 go.transform.localScale = new Vector3(26f, 7f, 1f);
                 fogBanks.Add(sr);
                 fogSpeeds.Add(0.25f + i * 0.12f);
+            }
+        }
+
+        // A slow band of clouds between the treeline and the peaks. Same soft-blob sprite trick as
+        // the fog banks, but bigger, higher and further — they parallax against the mountains and
+        // keep the upper third of the frame alive during long turns.
+        private void BuildClouds()
+        {
+            var tex = new Texture2D(128, 64, TextureFormat.RGBA32, false);
+            for (int y = 0; y < 64; y++)
+                for (int x = 0; x < 128; x++)
+                {
+                    // Two overlapping soft lobes make a believable cumulus profile.
+                    float d1 = Vector2.Distance(new Vector2(x, y), new Vector2(44f, 26f)) / 40f;
+                    float d2 = Vector2.Distance(new Vector2(x, y), new Vector2(84f, 34f)) / 34f;
+                    float a = Mathf.Max(Mathf.Clamp01(1f - d1), Mathf.Clamp01(1f - d2));
+                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, a * a * 0.9f));
+                }
+            tex.Apply();
+            var sprite = Track(Sprite.Create(tex, new Rect(0, 0, 128, 64), new Vector2(0.5f, 0.5f), 8f), tex);
+
+            var rng = new System.Random(23);
+            for (int i = 0; i < 6; i++)
+            {
+                var go = new GameObject($"Cloud_{i}");
+                go.transform.SetParent(transform, false);
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = sprite;
+                // Warm-lit undersides, matching the nebula light.
+                sr.color = new Color(1f, 0.94f, 0.88f, 0.10f + (float)rng.NextDouble() * 0.07f);
+                go.transform.position = new Vector3(-320f + i * 115f + (float)rng.NextDouble() * 40f,
+                                                    46f + (float)rng.NextDouble() * 26f,
+                                                    215f + (float)rng.NextDouble() * 110f);
+                float s = 5.5f + (float)rng.NextDouble() * 4.5f;
+                go.transform.localScale = new Vector3(s, s * 0.55f, 1f);
+                clouds.Add(go.transform);
+                cloudSpeeds.Add(0.5f + (float)rng.NextDouble() * 0.5f);
+            }
+        }
+
+        // Distant birds. Three flocks in loose Vs crossing the valley — the cheapest "this world is
+        // alive" signal there is. Each bird is a dark chevron that flaps by squashing its Y scale;
+        // at 130u+ that silhouette IS a bird, and nothing closer would survive scrutiny.
+        private void BuildBirds()
+        {
+            var tex = new Texture2D(32, 32, TextureFormat.RGBA32, false);
+            for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++) tex.SetPixel(x, y, Color.clear);
+            // Two wing strokes meeting at the body: rows follow |x-16| so it reads as a chevron.
+            for (int x = 0; x < 32; x++)
+            {
+                int y = 20 - Mathf.RoundToInt(Mathf.Abs(x - 16f) * 0.55f);
+                for (int t = 0; t < 3; t++)
+                {
+                    int yy = Mathf.Clamp(y + t, 0, 31);
+                    float a = t == 1 ? 1f : 0.55f;                     // soft edge above and below
+                    tex.SetPixel(x, yy, new Color(1f, 1f, 1f, a));
+                }
+            }
+            tex.Apply();
+            var sprite = Track(Sprite.Create(tex, new Rect(0, 0, 32, 32), new Vector2(0.5f, 0.5f), 24f), tex);
+
+            var rng = new System.Random(41);
+            for (int f = 0; f < 3; f++)
+            {
+                var flock = new Flock();
+                var rootGo = new GameObject($"Flock_{f}");
+                rootGo.transform.SetParent(transform, false);
+                flock.root = rootGo.transform;
+                bool leftward = f % 2 == 1;
+                rootGo.transform.position = new Vector3(leftward ? 200f : -200f - f * 90f,
+                                                        30f + f * 7f, 135f + f * 45f);
+                flock.velocity = new Vector3(leftward ? -1f : 1f, 0f, 0f) * (4.5f + f * 1.2f);
+
+                int n = 5 + f * 2;
+                flock.birds = new Transform[n];
+                flock.flapPhase = new float[n];
+                for (int i = 0; i < n; i++)
+                {
+                    var b = new GameObject($"Bird_{i}");
+                    b.transform.SetParent(rootGo.transform, false);
+                    var sr = b.AddComponent<SpriteRenderer>();
+                    sr.sprite = sprite;
+                    sr.color = new Color(0.10f, 0.09f, 0.13f, 0.85f);   // near-black against the sky
+                    // Loose V behind the leader: alternate sides, drift the ranks slightly.
+                    int rank = (i + 1) / 2;
+                    float side = i == 0 ? 0f : (i % 2 == 0 ? 1f : -1f);
+                    b.transform.localPosition = new Vector3(side * rank * 2.6f + (float)rng.NextDouble() * 0.8f,
+                                                            -rank * 0.55f + (float)rng.NextDouble() * 0.7f,
+                                                            rank * 1.9f);
+                    b.transform.localScale = Vector3.one * (0.85f + (float)rng.NextDouble() * 0.4f);
+                    flock.birds[i] = b.transform;
+                    flock.flapPhase[i] = (float)rng.NextDouble() * Mathf.PI * 2f;
+                }
+                flocks.Add(flock);
             }
         }
 
@@ -141,6 +261,34 @@ namespace RPGArena.UI
                 var col = rays[i].color;
                 col.a = 0.085f + 0.035f * Mathf.Sin(Time.time * 0.35f + i * 1.7f);
                 rays[i].color = col;
+            }
+
+            // Clouds crawl and wrap — slow enough to be subliminal, present enough that a screenshot
+            // taken a minute apart is a different sky.
+            for (int i = 0; i < clouds.Count; i++)
+            {
+                var t = clouds[i];
+                t.position += Vector3.right * (cloudSpeeds[i] * Time.deltaTime);
+                if (t.position.x > 420f) t.position = new Vector3(-420f, t.position.y, t.position.z);
+            }
+
+            // Flocks cross the valley, bob on a soft sine, and each bird flaps out of phase.
+            for (int f = 0; f < flocks.Count; f++)
+            {
+                var fl = flocks[f];
+                fl.root.position += fl.velocity * Time.deltaTime
+                                  + Vector3.up * (Mathf.Sin(Time.time * 0.5f + f * 2.1f) * 0.35f * Time.deltaTime);
+                if (Mathf.Abs(fl.root.position.x) > 320f)
+                    fl.root.position = new Vector3(-Mathf.Sign(fl.velocity.x) * 320f,
+                                                   28f + f * 8f + Random.Range(0f, 6f),
+                                                   130f + f * 45f);
+                for (int i = 0; i < fl.birds.Length; i++)
+                {
+                    // Flap = squash Y. Distant birds are a two-state silhouette, and that is enough.
+                    float flap = Mathf.Abs(Mathf.Sin(Time.time * 7f + fl.flapPhase[i]));
+                    var s = fl.birds[i].localScale;
+                    fl.birds[i].localScale = new Vector3(s.x, s.x * (0.35f + flap * 0.75f), 1f);
+                }
             }
         }
     }

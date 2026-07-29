@@ -46,6 +46,11 @@ namespace RPGArena.UI
         public float floatLife = 0.9f;
         public float floatRise = 90f;
 
+        [Header("Melee slash arcs (Hovl 'Slash effects' — the only URP-clean part of that pack)")]
+        public GameObject slashNormal;    // Stone slash — plain physical connect
+        public GameObject slashCrit;      // Charge slash red — crits
+        public GameObject slashShatter;   // Snow slash — the SHATTER detonation
+
         // Colour language (§9.8): white normal, orange crit, cyan weak, grey resist/miss, green heal.
         private static readonly Color CNormal = Color.white;
         private static readonly Color CCrit = new Color(1f, 0.55f, 0.1f);
@@ -66,7 +71,22 @@ namespace RPGArena.UI
         private static readonly Vector3 BreakDolly = new Vector3(0.8f, -0.25f, 1.6f);  // local push: right/down/forward
         private float shakeAmount;
         private float flashAmount;
+        private Vector3 kickOffset;    // directional camera kick along the blow — decays in LateUpdate
         private bool timeEffectActive;
+
+        // One in-flight body flash: the victim's renderers tinted white-hot at contact, easing back
+        // to their exact original colours. MaterialPropertyBlocks so the shared materials are never
+        // touched, and the block is CLEARED at the end so the renderer returns to its authored state.
+        private class BodyFlash
+        {
+            public Renderer[] rends;
+            public Color[] baseCols;
+            public float t, dur;
+            public Color tint;
+        }
+        private readonly List<BodyFlash> bodyFlashes = new();
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static MaterialPropertyBlock sharedMpb;
 
         private Canvas canvas;
         private RectTransform canvasRect;
@@ -384,6 +404,48 @@ namespace RPGArena.UI
                 shakeAmount = Mathf.Max(shakeAmount, r.glanced ? shakeOnHit * 0.35f : r.crit ? shakeOnCrit : (r.reaction == ElementReaction.Weak ? shakeOnCrit * 0.8f : shakeOnHit));
                 if (r.crit) { flashAmount = Mathf.Max(flashAmount, flashOnCrit); fovPunch = Mathf.Max(fovPunch, 9f); }   // crit snaps the camera in
                 else if (r.reaction == ElementReaction.Weak) fovPunch = Mathf.Max(fovPunch, 4.5f);
+
+                // THE IMPACT FRAME: the victim's body lights up on the contact frame. White-hot for a
+                // clean hit, warmer for a crit, ice-blue for the SHATTER detonation, faint for a graze.
+                bool shatter = r.synergyNote != null && r.synergyNote.Contains("SHATTER");
+                Color flashTint = shatter ? new Color(1.6f, 2.2f, 2.6f)
+                                : r.crit ? new Color(2.6f, 1.9f, 1.2f)
+                                : new Color(2.1f, 2.1f, 2.1f);
+                FlashBody(r.target, flashTint, r.glanced ? 0.05f : r.crit || shatter ? 0.13f : 0.09f);
+
+                // DIRECTIONAL KICK: the camera jolts a touch ALONG the blow, not just randomly.
+                // Random shake is energy; a directional kick is causality — together they read AAA.
+                if (!r.glanced && cam != null)
+                {
+                    Vector3 local = cam.transform.InverseTransformDirection(dir.normalized);
+                    local.z *= 0.3f;                       // mostly a screen-space shove, not a zoom
+                    kickOffset += local * (r.crit || shatter ? 0.30f : 0.14f);
+                }
+
+                // SLASH ARC: melee connects draw a blade arc through the target — the Hovl slash
+                // prefabs are self-playing; aim them along the blow with a random roll so no two
+                // swings stamp the same arc.
+                if (melee && !r.glanced)
+                {
+                    var slashPf = shatter && slashShatter != null ? slashShatter
+                                : r.crit && slashCrit != null ? slashCrit
+                                : slashNormal;
+                    if (slashPf != null)
+                    {
+                        var rot = Quaternion.LookRotation(dir.normalized)
+                                * Quaternion.Euler(0f, 0f, Random.Range(-55f, 55f));
+                        var arc = Instantiate(slashPf, bodyCenter, rot);
+                        arc.transform.localScale *= (r.target.isBoss ? 1.9f : 1.15f) * (r.crit ? 1.2f : 1f);
+                        // The Hovl slash prefabs ship LOOPING — one arc, not a strobe. Configure
+                        // before the first sim frame (same rule as the Erb projectiles).
+                        foreach (var p in arc.GetComponentsInChildren<ParticleSystem>(true))
+                        {
+                            var main = p.main;
+                            main.loop = false;
+                        }
+                        Destroy(arc, 2.2f);
+                    }
+                }
             }
         }
 
@@ -425,11 +487,64 @@ namespace RPGArena.UI
             textPos = e.transform.position + Vector3.up * textFallbackUp;
         }
 
+        // THE IMPACT FRAME. Fighting games sell a hit in the 3 frames around contact: the victim's
+        // body lights up, then cools. We tint every renderer toward the flash colour and ease back
+        // to the exact authored colour over ~90ms of UNSCALED time — unscaled because the hit-stop
+        // parks timeScale at 0 on that very frame, and a flash frozen at full white reads as a bug.
+        private void FlashBody(Entity e, Color tint, float duration)
+        {
+            if (e == null) return;
+            var rends = e.GetComponentsInChildren<Renderer>();
+            if (rends.Length == 0) return;
+            var usable = new List<Renderer>();
+            var cols = new List<Color>();
+            foreach (var r in rends)
+            {
+                if (r is ParticleSystemRenderer || r is TrailRenderer) continue;   // never tint VFX
+                var m = r.sharedMaterial;
+                if (m == null || !m.HasProperty(BaseColorId)) continue;
+                usable.Add(r);
+                cols.Add(m.GetColor(BaseColorId));
+            }
+            if (usable.Count == 0) return;
+            bodyFlashes.Add(new BodyFlash { rends = usable.ToArray(), baseCols = cols.ToArray(), t = 0f, dur = duration, tint = tint });
+        }
+
+        private void UpdateBodyFlashes()
+        {
+            if (bodyFlashes.Count == 0) return;
+            if (sharedMpb == null) sharedMpb = new MaterialPropertyBlock();
+            for (int i = bodyFlashes.Count - 1; i >= 0; i--)
+            {
+                var f = bodyFlashes[i];
+                f.t += Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(f.t / f.dur);
+                bool done = k >= 1f;
+                for (int j = 0; j < f.rends.Length; j++)
+                {
+                    if (f.rends[j] == null) continue;
+                    if (done)
+                    {
+                        // Return the renderer to its authored state EXACTLY: clear the override.
+                        f.rends[j].SetPropertyBlock(null);
+                        continue;
+                    }
+                    // Hot at contact, cooling on a squared ease so the peak reads for ~2 frames.
+                    Color c = Color.Lerp(f.tint, f.baseCols[j], k * k);
+                    sharedMpb.Clear();
+                    sharedMpb.SetColor(BaseColorId, c);
+                    f.rends[j].SetPropertyBlock(sharedMpb);
+                }
+                if (done) bodyFlashes.RemoveAt(i);
+            }
+        }
+
         private void OnBreak(Entity boss)
         {
             shakeAmount = Mathf.Max(shakeAmount, shakeOnBreak);
             flashAmount = Mathf.Max(flashAmount, flashOnBreak);
             fovPunch = Mathf.Max(fovPunch, 14f); breakPunch = 1f;   // big FOV snap + a slow dolly toward the action
+            FlashBody(boss, new Color(2.6f, 2.1f, 0.9f), 0.35f);    // the armour cracks GOLD — the reward colour
             // The break slow-mo QUEUES behind any in-flight hit-stop (never dropped, never races it).
             StartCoroutine(TimeEffect(breakSlowMoScale, breakSlowMoDuration, true));
         }
@@ -540,7 +655,9 @@ namespace RPGArena.UI
                     shakeOff = new Vector3(o.x, o.y, 0f);
                     shakeAmount = Mathf.MoveTowards(shakeAmount, 0f, shakeDecay * Time.unscaledDeltaTime);
                 }
-                cam.transform.localPosition = camBasePos + BreakDolly * breakPunch + focusOffset + shakeOff;
+                // The directional kick decays fast (spring-back), unscaled like every camera motion here.
+                kickOffset = Vector3.MoveTowards(kickOffset, Vector3.zero, 2.6f * Time.unscaledDeltaTime);
+                cam.transform.localPosition = camBasePos + BreakDolly * breakPunch + focusOffset + shakeOff + kickOffset;
             }
 
             if (flashImage != null)
@@ -548,6 +665,8 @@ namespace RPGArena.UI
                 flashAmount = Mathf.MoveTowards(flashAmount, 0f, flashDecay * Time.unscaledDeltaTime);
                 flashImage.color = new Color(1f, 1f, 1f, flashAmount);
             }
+
+            UpdateBodyFlashes();   // unscaled fade — a flash must cool THROUGH the hit-stop freeze
         }
 
         // --- elemental VFX ------------------------------------------------------------

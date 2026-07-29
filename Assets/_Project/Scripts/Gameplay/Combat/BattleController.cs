@@ -140,7 +140,9 @@ namespace RPGArena.Combat
 
             // A random tell delay — the prompt cannot be pressed on rhythm, only on reaction.
             yield return new WaitForSeconds(Random.Range(0.25f, 0.6f));
-            if (!target.IsAlive || Result != BattleManager.Outcome.InProgress) yield break;
+            // The ACTOR must still be standing too: a self-recoil backfire can kill the striker on
+            // their own action, and a corpse does not get an encore.
+            if (!actor.IsAlive || !target.IsAlive || Result != BattleManager.Outcome.InProgress) yield break;
 
             followUpPressed = false;
             followUpOpen = true;
