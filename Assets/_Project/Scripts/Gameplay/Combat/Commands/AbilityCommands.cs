@@ -39,6 +39,29 @@ namespace RPGArena.Combat.Commands
                 if (s == null) continue;
                 bool isControl = s.skipsTurn || s.flag == StatusFlag.Frozen;
                 if (isControl && !synergyForced) continue;
+
+                // CONTROL DIMINISHING RETURNS. Frozen skips the victim's turn and lasts 2 of ITS
+                // turns, but Frost Touch has no cooldown and costs 8 MP against 4 MP/turn regen plus
+                // an 8 MP refund on the free basic — so re-applying it every round was MP-positive
+                // and the boss could be locked out of the ENTIRE fight from round one. With the phase
+                // rewrite handing the player free ordering, Wet->Freeze inside one phase is
+                // guaranteed, which turned the marquee combo into a win button: no boss counterplay
+                // survives (Devour needs a turn, Fury never lands, stagger decay is out-paced).
+                //
+                // A freeze now puts the target on a thaw cooldown, so control is a burst window you
+                // spend and re-earn instead of a state you hold. Player-facing and readable: the log
+                // says why it failed.
+                if (isControl)
+                {
+                    if (target.controlLockTurns > 0)
+                    {
+                        ctx.Log($"      {Name(target)} shrugs off the cold — still thawing ({target.controlLockTurns})");
+                        continue;
+                    }
+                    int lockTurns = ctx.balance != null ? ctx.balance.controlLockTurns : 4;
+                    target.controlLockTurns = Mathf.Max(s.durationTurns, lockTurns);
+                }
+
                 target.Status.Apply(s);
                 ctx.Log($"      {Name(target)} gains {s.displayName}");
 

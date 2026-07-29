@@ -136,6 +136,53 @@ who fell carries 0 and is clamped up to the floor. Grade seeds the next fight's 
 **Retry rewinds to `SnapshotForRetry()`** (taken at fight setup, after the carry is applied) — without
 that, attrition + retry is a death spiral where each attempt starts weaker than the failed one before.
 
+## Control needs diminishing returns (July 30) — the perma-freeze lockout
+
+An adversarial audit found the FROST line was a **win button**, not a combo: Frost Touch has **no
+cooldown**, costs 8 MP against 4 MP/turn regen plus an 8 MP refund on the free basic (MP-positive),
+and Frozen lasts 2 of the victim's turns — so re-freezing every round locked a boss out of the
+**entire fight**. The phase rewrite made it worse by guaranteeing Wet→Freeze inside one player phase.
+No boss counterplay survives it: Devour needs a turn, Fury never lands a hit, stagger decay is
+out-paced by SHATTER, and the two later bosses have no adds, so those fights became zero-damage
+autowins.
+
+Fix: `Entity.controlLockTurns` + `BalanceConfig.controlLockTurns` (4). Landing a turn-skipping status
+starts a thaw cooldown that ticks on the **victim's own** turns and outlasts the freeze, so Freeze is
+a 2-turn stun on a 4-turn cycle (~50% uptime) that costs 2 hero actions per cycle. Gated in
+`AbilityCommands.ApplyStatuses`, so both loops share one implementation. Measured: the maximal lock
+loop took the boss from **0% to ~40% of turns taken**; gate stayed green (Dragon 48/48 @6.0r,
+BlackMage 48/48 @4.8r, EvilWarrior 46/48 @5.5r, 12 seeds × 4 trios).
+
+## Difficulty must scale DAMAGE, not baseAttack (July 30)
+
+`ApplyDifficulty` scaled `stats.baseAttack`, which was nearly a no-op: derived `Attack = baseAttack +
+primary*k1` with k1=2, and the primary term dominates every enemy block — Hard's advertised **×1.15
+landed as +3.3%** (Dragon) / +4.7% (Evil Warrior). Worse, the **Black Mage deals MAGIC damage from
+`baseMagicAttack` with `baseAttack: 0`**, so he was *completely immune to the difficulty setting on
+both settings*. Now `Entity.difficultyDamageMult` is multiplied in `DamagePipeline` step 2, hitting
+physical and magic uniformly. It is a **separate field from `damageOutMultiplier` on purpose** —
+`CheckPhaseTransition` overwrites that one on enrage, which would erase the difficulty.
+
+## Other audit fixes worth not re-breaking
+
+- **Defending was a no-op.** `durationTurns: 1` on a status applied during the caster's own turn is
+  stripped by that same turn's end-of-turn tick, strictly before the enemy phase it exists to
+  survive — the ×0.5 mitigation could never apply. Now 2.
+- **The follow-up echo built FULL stagger.** Stagger build is independent of `basePower`, so a
+  35%-power echo banked a whole hit's Break progress (and being `forceHit` it dodged the graze
+  reduction too). Now scaled by `followUpPowerFraction`.
+- **`>>FREEZE!` lied.** The tag fired on Wet+Ice regardless of whether the ability *carries* a Frozen
+  status — Magic Bolt (free, Ice by default attunement, no statuses) and Blizzard (applies Wet)
+  both advertised the marquee combo and delivered nothing. Gate on `CarriesControl(ability)`.
+- **Hit% showed 100% for the whole Reliable tier.** Reliable is just a high base (0.85) clamped to a
+  0.90 ceiling, not a guarantee. `EstimateHit` now mirrors the pipeline; only `autoHit` returns 1.
+- **AggressiveAI ignored Taunting** despite its own comment claiming it rewards Guardian Taunt — so
+  the tank's aggro tool did nothing in the one fight built around executing your weakest hero. It now
+  restricts to taunters like the other two brains, and implements `PreviewIntent` so its
+  *deterministic* Execute branch stops previewing as "??? unpredictable".
+- **Stagger decay was invisible** — `Entity.DecayStagger` only wrote to `ctx.Log` (the headless
+  trace). The Evil Warrior's whole identity read as a buggy meter. Now announced on screen.
+
 ## Staging rule (learned the hard way)
 
 **Keep the fight axis LATERAL.** Heroes rotate to face their target, so if the boss sits much deeper

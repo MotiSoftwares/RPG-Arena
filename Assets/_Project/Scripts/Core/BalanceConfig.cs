@@ -89,6 +89,10 @@ namespace RPGArena.Core
         [Tooltip("SelfRecoil backfire: caster takes this fraction of the would-be damage as self-damage.")]
         public float riskSelfRecoilPct = 0.12f;
 
+        [Header("Control diminishing returns")]
+        [Tooltip("After a turn-skipping control status (Frozen) lands, the target cannot be controlled again for this many of ITS OWN turns. Frozen lasts 2, so 4 means the boss acts 2 turns out of every 4 — a burst window you spend and re-earn. Without this, Frost Touch (no cooldown, MP-positive) locks a boss out of the entire fight.")]
+        public int controlLockTurns = 4;
+
         // THE STAKE (push-your-luck). A SPECIAL used to be a slot-machine pull: press the button,
         // watch the d20, accept whatever came out. The stake turns it into a read on the board —
         // finish a nearly-dead boss with ALL IN, or take the sure thing when a backfire would wipe

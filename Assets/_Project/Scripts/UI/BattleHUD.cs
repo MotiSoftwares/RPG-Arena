@@ -1168,7 +1168,17 @@ namespace RPGArena.UI
             if (st.Has(StatusFlag.Frozen) && phys && st.Has(StatusFlag.Marked)) return "  <color=#FFD24A>>>SHATTER+BRITTLE!</color>";
             if (st.Has(StatusFlag.Frozen) && phys) return "  <color=#FFD24A>>>SHATTER ×2.3!</color>";
             if (st.Has(StatusFlag.Marked) && st.Has(StatusFlag.Oiled) && phys) return "  <color=#FFB347>>>QUARRY ×1.9!</color>";
-            if (st.Has(StatusFlag.Wet) && el == ElementType.Ice) return "  <color=#7FE3FF>>>FREEZE!</color>";
+            // FREEZE is only real if THIS ability carries a turn-skipping status. Wet+Ice merely sets
+            // forceStatusApply — it lets a Frozen ride along, it does not create one. Magic Bolt
+            // (Ice by default attunement, statusesToApply empty) and Blizzard (Ice, applies WET) both
+            // used to advertise the game's marquee combo and deliver nothing, on the cheapest button
+            // on the menu. And a target already on its thaw cooldown cannot be frozen at all.
+            if (st.Has(StatusFlag.Wet) && el == ElementType.Ice)
+            {
+                if (tgt.controlLockTurns > 0) return $"  <color=#8FA3B8>>>still thawing ({tgt.controlLockTurns})</color>";
+                if (CarriesControl(ab)) return "  <color=#7FE3FF>>>FREEZE!</color>";
+                return "  <color=#9BD1FF>>>wet+ice</color>";
+            }
             if (st.Has(StatusFlag.Oiled) && el == ElementType.Fire) return "  <color=#FFA24A>>>IGNITE!</color>";
             if (st.Has(StatusFlag.Wet) && phys) return "  <color=#9BD1FF>>>soaked +dmg</color>";
             if (st.Has(StatusFlag.Oiled) && phys) return "  <color=#FFCF9B>>>slick +dmg</color>";
@@ -1176,11 +1186,26 @@ namespace RPGArena.UI
             return "";
         }
 
+        // Does this ability actually carry a turn-skipping control status (i.e. can it Freeze)?
+        private static bool CarriesControl(Ability a)
+        {
+            if (a == null || a.statusesToApply == null) return false;
+            foreach (var s in a.statusesToApply)
+                if (s != null && (s.skipsTurn || s.flag == StatusFlag.Frozen)) return true;
+            return false;
+        }
+
+        // MIRRORS DamagePipeline step 1 exactly. Only an explicit autoHit skips the roll — "Reliable"
+        // is just a HIGH base (0.85), not a guarantee, and the pipeline clamps everything to a 0.90
+        // ceiling. Returning 1f for the whole Reliable tier printed "100%" on Soul Arrow, Double Shot
+        // and Arrow Rain while they grazed for x0.35 roughly one time in ten.
         private float EstimateHit(Entity hero, Ability a, Entity boss)
         {
-            if (a.autoHit || a.hitTier == HitTier.Reliable) return 1f;
+            if (a.autoHit) return 1f;
             var cfg = controller.balance;
-            float tier = a.hitTier == HitTier.Risky ? cfg.riskyHitBase : cfg.standardHitBase;
+            float tier = a.hitTier == HitTier.Risky ? cfg.riskyHitBase
+                       : a.hitTier == HitTier.Reliable ? cfg.reliableHitBase
+                       : cfg.standardHitBase;
             float eva = boss != null && !boss.isStaggered ? boss.Evasion : 0f;
             return Mathf.Clamp(tier + (hero.Accuracy - eva) * cfg.accuracyToPercent, cfg.hitFloor, cfg.hitCeiling);
         }

@@ -164,6 +164,13 @@ namespace RPGArena.Combat
                 forceHit = true, hitTier = HitTier.Reliable
             };
             var res = Context.damage.Compute(info);
+            // Stagger build is computed from flat config values and is INDEPENDENT of basePower, so
+            // a 35%-power echo would bank a full hit's Break progress (8, or 20 on a weakness, x1.5
+            // while the boss telegraphs) — and being forceHit it can never be reduced as a graze
+            // either. At a 45% proc on ~3 attacks a round that is over a full extra hit of Break per
+            // round, none of which the headless balance gate can see. Pay Break at the same rate the
+            // echo pays damage.
+            res.staggerBuilt *= followUpPowerFraction;
             Context.damage.Apply(res, Context);
             Context.Log($"    FOLLOW-UP! {actor.displayName} strikes again for {res.amount}.");
             yield return WaitForPresentation();
@@ -469,7 +476,15 @@ namespace RPGArena.Combat
                         Context.Log($"    {actor.displayName}'s Searing Fury rises to {actor.rageStacks} (+{actor.rageStacks * balance.rageDamagePerStack * 100f:0}% damage — BREAK it to vent!)");
                         // MIRRORED INVARIANT — the same call exists in BattleManager's headless loop.
                         // Change both or the live game and the balance gate drift apart.
+                        float breakBefore = actor.staggerMeter;
                         actor.DecayStagger(Context);
+                        // DecayStagger only writes to ctx.Log, which is the headless trace — it never
+                        // reached the screen. The player watched the gold Break number shrink between
+                        // rounds with no explanation, in the one fight whose entire lesson is "you
+                        // cannot chip-and-turtle a Break". A rule you cannot see is a rule you can
+                        // only lose to.
+                        if (actor.staggerMeter < breakBefore - 0.01f)
+                            Announce($"{actor.displayName} shakes off your pressure — BREAK −{Mathf.RoundToInt(breakBefore - actor.staggerMeter)}");
                     }
                     onTurnEnded?.Raise(actor);
                     CheckDeaths();
@@ -609,11 +624,17 @@ namespace RPGArena.Combat
             var enemies = new List<Entity>(Context.minions);
             if (Context.boss != null) enemies.Add(Context.boss);
 
+            // DAMAGE goes through Entity.difficultyDamageMult, NOT stats.baseAttack. Scaling the base
+            // stat looked right and did almost nothing: derived Attack is baseAttack + primary*k1
+            // (k1=2) and the primary term dominates every enemy block, so "x1.15 ATK" landed as
+            // +3.3% on the Dragon and +4.7% on the Evil Warrior — and the Black Mage, whose baseAttack
+            // is 0 because he deals MAGIC damage, was completely immune to the setting on both
+            // difficulties. One multiplier at the damage step fixes physical and magic uniformly.
             if (diff == Difficulty.Hard)
             {
                 foreach (var e in enemies)
                 {
-                    e.stats.baseAttack = Mathf.RoundToInt(e.stats.baseAttack * 1.15f);
+                    e.difficultyDamageMult = 1.15f;
                     e.stats.maxHP = Mathf.RoundToInt(e.stats.maxHP * 1.10f);
                     e.currentHP = e.stats.maxHP;
                 }
@@ -623,7 +644,7 @@ namespace RPGArena.Combat
             {
                 foreach (var e in enemies)
                 {
-                    e.stats.baseAttack = Mathf.RoundToInt(e.stats.baseAttack * 0.70f);
+                    e.difficultyDamageMult = 0.70f;
                     e.stats.maxHP = Mathf.RoundToInt(e.stats.maxHP * 0.85f);
                     e.currentHP = e.stats.maxHP;
                 }

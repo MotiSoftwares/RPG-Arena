@@ -40,6 +40,19 @@ namespace RPGArena.Characters
         // Mage: which elemental school the attunement-following basic (Magic Bolt) uses.
         public ElementType currentAttunement = ElementType.Ice;
 
+        // Thaw cooldown: while >0 this combatant cannot be hit with a turn-skipping control status
+        // (Frozen). Counts down on its OWN turn ends, so it is measured in the victim's turns rather
+        // than rounds. See AbilityCommands.ApplyStatuses for why control needs diminishing returns.
+        public int controlLockTurns;
+
+        // Difficulty's damage knob. Multiplied into outgoing damage in DamagePipeline step 2, so it
+        // scales PHYSICAL and MAGIC alike — scaling stats.baseAttack instead did neither properly:
+        // derived Attack is baseAttack + primary*k1 and the primary term dominates (Hard's advertised
+        // x1.15 landed as ~x1.04), while a caster like the Black Mage (baseAttack 0, damage via
+        // MagicAttack) was untouched entirely. Kept separate from damageOutMultiplier because a boss
+        // enrage phase OVERWRITES that field (CheckPhaseTransition), which would erase the setting.
+        public float difficultyDamageMult = 1f;
+
         [Header("Phases")]
         public float damageOutMultiplier = 1f;   // raised by a boss enrage phase (§7.1)
         public System.Collections.Generic.List<RPGArena.Combat.BossPhase> phases;   // boss only
@@ -197,6 +210,7 @@ namespace RPGArena.Characters
         {
             Status.TickEndOfTurn(this);
             DecrementCooldowns();
+            if (controlLockTurns > 0) controlLockTurns--;   // thaw ticks on the victim's OWN turns
             if (isStaggered)
             {
                 staggeredTurnsRemaining--;

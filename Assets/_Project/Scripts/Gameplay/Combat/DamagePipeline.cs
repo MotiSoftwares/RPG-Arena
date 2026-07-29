@@ -95,7 +95,9 @@ namespace RPGArena.Combat
             float offense = src != null ? (info.isMagic ? src.MagicAttack : src.Attack) : 0f;
             float furyMult = (src != null && src.rageStacks > 0) ? (1f + src.rageStacks * cfg.rageDamagePerStack) : 1f;
             float dmg = offense * Mathf.Max(0f, info.basePower) * damageRoll
-                      * (src != null ? src.damageOutMultiplier : 1f) * furyMult * glanceMult;
+                      * (src != null ? src.damageOutMultiplier : 1f)
+                      * (src != null ? src.difficultyDamageMult : 1f)   // Easy/Hard, physical AND magic
+                      * furyMult * glanceMult;
 
             // 3) ELEMENT modifier. Absorb (negative sentinel) flips the hit into a heal.
             var reaction = (tgt != null && tgt.elementProfile != null)
