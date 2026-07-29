@@ -40,6 +40,11 @@ namespace RPGArena.UI
 
         private void Awake()
         {
+            // Pressing Play on this scene skips Boot, which is where the services normally come
+            // from — without this the menu has no audio and Confirm has no RunState to write the
+            // party into, so it silently drops the player's whole selection.
+            GameBootstrap.EnsureRuntime();
+
             font = uiFont != null ? uiFont : TMP_Settings.defaultFontAsset;
             EnsureEventSystem();
             BuildUI();

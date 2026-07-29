@@ -26,12 +26,30 @@ Unity 3D turn-based boss-battler (URP). Party of 3 heroes (from Warrior/Mage/Thi
 - VFX: **ErbGameArt "Effects normal/" prefabs are URP-safe** (Fireball, Ice arrow, Magic arrow, Spears rain, Healing buff…). **Hovl Magic effects pack materials are broken** (missing shader GUID `0406db5a…` + built-in Standard mats) — fix shaders before using. Avoid Erb "Effects with projectors/" (built-in-RP Projector).
 - Unused-but-good: `URP GanzSe Free Weapons Pack` (URP weapon meshes), Hovl `MoonSword` slash arcs.
 - Audio: `_Project/Audio/{SFX,Music}`, GameMixer. UI: TMP everywhere (essentials imported); if TMP renders blank, TMP essentials are missing.
+- **The AudioListener lives on `GameBootstrap`, not on a camera** (fixed July 30). NONE of the three
+  scenes had one, so the mixer, both clip banks and every `PlaySfx`/`PlayMusic` call had been playing
+  into a void for the entire project — audio looked wired and was inaudible. It belongs on the
+  persistent bootstrap: that object survives every scene load, so there is always exactly one and
+  never a "2 audio listeners" fight. Position is irrelevant (SFX pool + music source are 2D).
+  `menu.mp3` / `battle.mp3` are still 5.1-SECOND stubs — they play, but they loop far too fast.
 - **HUD glyphs are Latin-only.** The SlimUI SDF atlases carry almost nothing decorative: `Poppins-Bold`
   has only `—`, `RUBIK-MEDIUM` adds `↕ ← » • × –`. Everything else (`★ ◆ ◇ ⚔ ✖ ⚠ ⏳ ✓ ▲`) renders as a
   **tofu box** — the boss-telegraph warning and the BROKEN banner shipped that way for a while before
   anyone looked closely. Use `»` for menu markers and `!!` for warnings. Check with
   `fontAsset.HasCharacter(ch)` before adding any symbol, and sweep for regressions by walking live
   `TextMeshProUGUI` objects asserting `txt.font.HasCharacter(ch)` for every non-ASCII char.
+- **`Ellipsis`/`Truncate` DELETE a line that is too tall for its rect — they do not clip it.** You get
+  `textInfo.characterCount == 0`, no warning, no tofu, just nothing. **Every ability name in the game
+  was invisible this way** (July 30): the band was 21px while Poppins-Bold at 16pt needs 23, because
+  its face is `lineHeight/pointSize = 96/64 = 1.5×` the point size — so the skill menu showed five
+  icons and five damage bands and not one move name. Rubik is ~1.25×. Budget `fontSize × ratio + 3px`
+  for any single-line Ellipsis label, and remember **`Overflow` is immune** (it spills instead), which
+  is why the neighbouring cost/detail labels rendered fine and hid the bug.
+- **Sweep for BOTH text failures together** — same walk, and it is how the above was proven fixed:
+  for every active `TextMeshProUGUI` with non-empty `text`, call `ForceMeshUpdate()` then assert
+  `textInfo.characterCount > 0` (dropped line), assert `rect.height - fontSize×faceRatio >= 1.5`
+  when overflow kills (fragile band), and assert `font.HasCharacter(ch)` per non-ASCII char (tofu).
+  Run it once per distinct menu state — the skill menu and the item menu build different rows.
 
 ## Known root causes (fixed/being fixed in overhaul — verify before re-diagnosing)
 
@@ -221,7 +239,7 @@ Helper: `scratchpad/compilecheck.ps1`. Two real errors this caught, both invisib
 - ComfyUI and Unity must NOT run at once on this 32GB machine — ComfyUI keeps ~13-20GB of model weights pinned in RAM after a render, which pages Unity to death (looks like a 5-FPS editor). Batch-generate, quit ComfyUI fully, then return to Unity.
 - The MCP `execute_code` frame-stepping loop spams "PlayerLoop called recursively" errors in the console — that's the automation, not a game bug.
 - Burst screenshots inside one `execute_code` call flush the same frame — capture ONE screenshot per call (step ~5 after) for sequences.
-- Direct-play BattleArena has NO GameBootstrap/RunState (items/gold hidden). Test via an INACTIVE GameObject + AddComponent + reflection-set `Instance`/`Run` (Awake never fires on inactive).
+- Direct-play now **self-bootstraps** (July 30): `GameBootstrap.EnsureRuntime()` — called from `MainMenuUI.Awake` and `BattleController.Awake` — spawns `Resources/GameBootstrap.prefab` when `Instance` is null, so pressing Play on MainMenu or BattleArena gets audio, `RunState`, gold and items. The prefab IS the Boot scene's object (`SaveAsPrefabAssetAndConnect`), so the AudioManager wiring can't drift. A fallback spawn sets the static `spawningFallback` flag, which is how `Awake` knows to SKIP `Scenes.LoadScene(firstSceneName)` — without that it would bounce you straight back to the menu. The fallback run is seeded with 250 gold + 2 extra items; `Reset()` at character select wipes that, so a real run is never affected. (Old note, now obsolete: direct-play had no bootstrap and items/gold were hidden.)
 - Erb "projectile" prefabs: root ParticleSystem startSpeed 15, world-space, sub-emitters explode on particle death. Never spawn at identity/origin; configure BEFORE first sim frame (same call as Instantiate).
 
 ## Importing a new character pack (the two bugs that always bite)

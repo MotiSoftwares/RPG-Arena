@@ -431,7 +431,9 @@ namespace RPGArena.UI
 
             var t = MakeText(rt, name, fontBody, 14, TextAlignmentOptions.TopLeft, new Vector2(0, 1), new Vector2(0, 1));
             var trt = t.rectTransform; trt.anchorMin = new Vector2(0, 1); trt.anchorMax = new Vector2(1, 1);
-            trt.pivot = new Vector2(0, 1); trt.anchoredPosition = new Vector2(24, -3); trt.sizeDelta = new Vector2(-28, 18);
+            // 20, not 18: Rubik at 14pt needs 17.5, and Ellipsis DELETES a line it cannot fit rather
+            // than clipping it (see the ability-name band). Half a pixel of headroom is not headroom.
+            trt.pivot = new Vector2(0, 1); trt.anchoredPosition = new Vector2(24, -3); trt.sizeDelta = new Vector2(-28, 20);
             t.color = nameColor;
             t.enableWordWrapping = false; t.overflowMode = TextOverflowModes.Ellipsis;
 
@@ -441,7 +443,7 @@ namespace RPGArena.UI
             {
                 var it = MakeText(rt, intent, fontBody, 11.5f, TextAlignmentOptions.TopLeft, new Vector2(0, 1), new Vector2(0, 1));
                 var irt = it.rectTransform; irt.anchorMin = new Vector2(0, 1); irt.anchorMax = new Vector2(1, 1);
-                irt.pivot = new Vector2(0, 1); irt.anchoredPosition = new Vector2(24, -21); irt.sizeDelta = new Vector2(-28, 16);
+                irt.pivot = new Vector2(0, 1); irt.anchoredPosition = new Vector2(24, -23); irt.sizeDelta = new Vector2(-28, 16);
                 it.richText = true; it.enableWordWrapping = false; it.overflowMode = TextOverflowModes.Ellipsis;
             }
         }
@@ -1020,10 +1022,13 @@ namespace RPGArena.UI
                     var btn = go.AddComponent<Button>(); btn.targetGraphic = img;
                     var cb = btn.colors; cb.highlightedColor = new Color(1.25f, 1.25f, 1.25f); cb.fadeDuration = 0.07f; btn.colors = cb;
 
+                    // Same two-line band as an ability row, and the same 16pt Poppins — keep the
+                    // offsets in step with MakeAbilityButton so the two menus line up and so this
+                    // card never inherits the vanishing-name bug if its overflow mode ever changes.
                     var nameT = MakeText(rt, $"{def.displayName}  <color=#B9A3E8>×{count}</color>", fontHeader, 16, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
-                    Stretch(nameT, 14, 22, 12, 3); nameT.enableWordWrapping = false; nameT.overflowMode = TextOverflowModes.Overflow;
+                    Stretch(nameT, 14, 20, 12, 0); nameT.enableWordWrapping = false; nameT.overflowMode = TextOverflowModes.Overflow;
                     var descT = MakeText(rt, def.description, fontBody, 12, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
-                    Stretch(descT, 14, 3, 12, 24); descT.color = TxtMuted;
+                    Stretch(descT, 14, 2, 12, 26); descT.color = TxtMuted;
 
                     var captured = def;
                     btn.onClick.AddListener(() =>
@@ -1077,21 +1082,28 @@ namespace RPGArena.UI
             }
 
             // line 1: name (left) + cost/cooldown (right)
+            //
+            // MIND THE BAND HEIGHT. Ellipsis/Truncate do not merely clip a line that is too tall for
+            // its rect — they drop it ENTIRELY, silently, with characterCount 0 and no warning. This
+            // band was 21px while Poppins-Bold at 16pt needs 23 (its face is 96/64 = 1.5x line
+            // height, half again the point size), so EVERY ability name in the game rendered as
+            // nothing at all: five icons and a damage band, no move names. Any change to font, point
+            // size or these offsets has to keep ~3px of headroom over the measured threshold.
             var name = MakeText(rt, ab.displayName, fontHeader, 16, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
-            Stretch(name, textLeft, 22, 86, 3);
+            Stretch(name, textLeft, 20, 86, 0);
             name.color = affordable ? TxtMain : TxtMuted;
             name.enableWordWrapping = false; name.overflowMode = TextOverflowModes.Ellipsis;
 
             string costStr = ab.cooldown > 0 && hero.IsOnCooldown(ab) ? $"CD {hero.CooldownRemaining(ab)}"
                            : ab.mpCost > 0 ? $"{ab.mpCost} MP" : "free";
             var cost = MakeText(rt, costStr, fontBody, 13, TextAlignmentOptions.MidlineRight, Vector2.zero, Vector2.zero);
-            Stretch(cost, 0, 22, 12, 3);
+            Stretch(cost, 0, 20, 12, 0);
             cost.color = !affordable ? Danger : ab.mpCost > 0 ? MpBlue : TxtMuted;
 
             // line 2: hit% · damage band · reaction tag · combo-ready callout
             string preview = BuildPreview(hero, ab, ctx);
             var detail = MakeText(rt, preview, fontBody, 12, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
-            Stretch(detail, textLeft, 3, 12, 24);
+            Stretch(detail, textLeft, 2, 12, 26);
             detail.color = TxtMuted;
             detail.richText = true;
             // a combo would fire from this button RIGHT NOW — flag the whole card gold
@@ -1409,10 +1421,9 @@ namespace RPGArena.UI
             }
 
             // ---- ACTION MENU (bottom right) ----
-            // Worst case is 5 skill rows (54 each) + Overdrive + Move + Switch hero + Items (40
-            // each) = 430px of content. The old 370px inner box silently clipped the bottom rows,
-            // which is why the menu read as "out of bounds". 470px inner leaves real margin, and
-            // the panel is wider so 18pt skill names no longer collide with the MP column.
+            // Worst case is 5 skill rows (50 each) + Overdrive + Move + Switch hero + Items (38
+            // each) = 402px of content, inside a 410px inner box. The old 370px box silently
+            // clipped the bottom rows, which is why the menu read as "out of bounds".
             menuPanelGo = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 16), new Vector2(424, 450), Panel);
             var menuPanel = menuPanelGo.GetComponent<RectTransform>();
             menuPanelGo.SetActive(false);   // shown only while a hero is choosing
@@ -1423,8 +1434,10 @@ namespace RPGArena.UI
             menuInner.pivot = new Vector2(0.5f, 1f);
             actionPanel = menuInner;
 
-            // coach hint (above the menu, first input only)
-            coachPanel = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 434), new Vector2(424, 40), new Color(0.10f, 0.13f, 0.05f, 0.9f));
+            // coach hint (above the menu, first input only). It must clear the menu panel's own top
+            // edge (16 + 450 = 466) — at 434 it sat right on top of the menu's title row, so the
+            // very first turn showed "WARRIOR — CHOOSE A SKILL" and the hint printed over each other.
+            coachPanel = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 474), new Vector2(424, 40), new Color(0.10f, 0.13f, 0.05f, 0.9f));
             coachCaption = MakeText(coachPanel.GetComponent<RectTransform>(),
                                     "Pick a skill:  <color=#7FD08A>%</color> = hit chance · the band = damage · <color=#46C8E6>WEAK</color> is good · <color=#F2C14E>d20!</color> = a risky gamble",
                                     fontBody, 12.5f, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);

@@ -71,6 +71,11 @@ namespace RPGArena.Combat
         // finishes; the battle loop waits on it so the next turn never starts mid-animation.
         public static float PresentationBusyUntil;
 
+        // Play-testing this scene directly is the normal workflow here, and it skips Boot entirely.
+        // Bringing the services up in Awake — before any Start reads them — is what gives a direct
+        // fight its music, its gold and its item button instead of a silent, empty-satchel battle.
+        private void Awake() => GameBootstrap.EnsureRuntime();
+
         private void Start() => StartCoroutine(RunBattle());
 
         // The HUD calls this when the active hero chooses an ability + target.

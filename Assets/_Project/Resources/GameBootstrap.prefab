@@ -1,0 +1,100 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2485647557282146973
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4524320074800970506}
+  - component: {fileID: 5214771842447378056}
+  - component: {fileID: 7465756071718596613}
+  m_Layer: 0
+  m_Name: GameBootstrap
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4524320074800970506
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2485647557282146973}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5214771842447378056
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2485647557282146973}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4dfdb959b07466f49a0bcbfc47284609, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RPGArena.Core::RPGArena.Core.GameBootstrap
+  firstSceneName: MainMenu
+--- !u!114 &7465756071718596613
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2485647557282146973}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e67b823919954464dbc4291144c0f30e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RPGArena.Audio::RPGArena.Audio.AudioManager
+  mixer: {fileID: 24100000, guid: caff71dec47b8c246bc53de868748d45, type: 2}
+  musicGroup: {fileID: -5436502526550244462, guid: caff71dec47b8c246bc53de868748d45, type: 2}
+  sfxGroup: {fileID: 7202770171117454170, guid: caff71dec47b8c246bc53de868748d45, type: 2}
+  sfx:
+  - id: break
+    clip: {fileID: 8300000, guid: 4e14418d562e0bd44a58472fd2f91b25, type: 3}
+  - id: crit
+    clip: {fileID: 8300000, guid: ad69b2b0a267d8a4cbfbd96e533ae74d, type: 3}
+  - id: defeat
+    clip: {fileID: 8300000, guid: 2ecc977af2c73e444a4f425f74eaaa29, type: 3}
+  - id: heal
+    clip: {fileID: 8300000, guid: 21f26708e363729428588e4aa4f84c3c, type: 3}
+  - id: hit
+    clip: {fileID: 8300000, guid: 7e87d8f967c9d894891fa7187b3fd984, type: 3}
+  - id: miss
+    clip: {fileID: 8300000, guid: 1ac31be10ca13014c964f3fe9baabae1, type: 3}
+  - id: telegraph
+    clip: {fileID: 8300000, guid: 9242310998177a4449bfe6b77111f65f, type: 3}
+  - id: ui_click
+    clip: {fileID: 8300000, guid: ef45fdf7fed14014b8402b8970f770d8, type: 3}
+  - id: victory
+    clip: {fileID: 8300000, guid: a3e44d2c37561664fbc551d3a32c3eee, type: 3}
+  - id: hit_fire
+    clip: {fileID: 8300000, guid: c630227daa9ece44a9ac23aacc2029b0, type: 3}
+  - id: hit_ice
+    clip: {fileID: 8300000, guid: f74e4512da5f7c048b8f6bb24f4c77f7, type: 3}
+  - id: hit_lightning
+    clip: {fileID: 8300000, guid: ca51747656576804aa41ea1d0be3cec0, type: 3}
+  - id: hit_holy
+    clip: {fileID: 8300000, guid: c49b5e14519f19b4e9ece576e427308b, type: 3}
+  - id: hit_dark
+    clip: {fileID: 8300000, guid: 7ab2644b1dc4ae447bc646b1d149f09d, type: 3}
+  - id: dragon_roar
+    clip: {fileID: 8300000, guid: f6eebd5b08025cc4489b57473886ecdb, type: 3}
+  music:
+  - id: battle
+    clip: {fileID: 8300000, guid: 01f7d791c63b829429bd030a74fdfa31, type: 3}
+  - id: menu
+    clip: {fileID: 8300000, guid: f420a212ad715ad4bbdcc4db21bd85ef, type: 3}
+  sfxVoices: 8
