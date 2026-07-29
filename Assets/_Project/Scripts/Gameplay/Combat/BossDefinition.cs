@@ -43,6 +43,10 @@ namespace RPGArena.Combat
         [Tooltip("Auto-scale the model to this world height. A dragon looms at ~5; a humanoid boss reads right at ~3.2-3.6 (a 5u human is a parade balloon, not a threat).")]
         public float modelHeight = 5f;
 
+        [Header("Control")]
+        [Tooltip("This boss can still BE Frozen — the flag lands, so Shatter (Frozen + Physical x2.3) and Brittle pay out exactly as before — but it never sits a turn out for it. Use on a boss whose identity is relentless pressure; a boss standing frozen drains the tension out of its own fight. Does NOT affect Break: sitting out a Break is the payoff the player earned.")]
+        public bool neverLosesTurnToControl;
+
         [Header("Stagger")]
         public float staggerThreshold = 100f;
         public int staggeredTurns = 1;          // how many of the boss's turns a Break costs it

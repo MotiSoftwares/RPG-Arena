@@ -105,10 +105,22 @@ namespace RPGArena.Characters
         private BalanceConfig balance;
         private readonly Dictionary<Ability, int> cooldowns = new();
 
+        // Set from BossDefinition.neverLosesTurnToControl. A boss with this on can still BE Frozen —
+        // the flag lands, so Shatter (Frozen + Physical x2.3) and Brittle still pay out exactly as
+        // before — it just never sits a turn out for it. The Dragon carries it on playtest feedback:
+        // a boss that stands there frozen drains the tension out of its own fight, and the whole
+        // point of the Dragon is that it attacks every single turn.
+        //
+        // This deliberately does NOT cover Break. A Broken boss skipping turns is the payoff the
+        // entire stagger system is built to earn, and it is the player's doing, not a status landing.
+        [System.NonSerialized] public bool neverLosesTurnToControl;
+
         // --- Queries ------------------------------------------------------------------
         public bool IsAlive => currentHP > 0;
         // Can act this turn unless dead, stunned/frozen, or sitting out a Break.
-        public bool CanAct => IsAlive && !Status.HasControlEffect && !(isStaggered && staggeredTurnsRemaining > 0);
+        public bool CanAct => IsAlive
+            && (neverLosesTurnToControl || !Status.HasControlEffect)
+            && !(isStaggered && staggeredTurnsRemaining > 0);
 
         // --- Derived stats (base + primary scaling + active status modifiers) ----------
         // These read the global k-constants so balancing stays in one ScriptableObject.

@@ -53,6 +53,7 @@ namespace RPGArena.Combat
             e.primaryStat = def.primaryStat;
             e.staggerThreshold = def.staggerThreshold;
             e.staggerDecayPerTurn = def.staggerDecayPerTurn;   // set BEFORE Initialize
+            e.neverLosesTurnToControl = def.neverLosesTurnToControl;
             e.stageSprite = def.stageSprite;
             e.modelPrefab = def.modelPrefab;
             e.phases = def.phases;

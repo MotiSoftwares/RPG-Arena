@@ -563,8 +563,10 @@ namespace RPGArena.UI
                 zrt.anchorMin = new Vector2(min, 0.15f); zrt.anchorMax = new Vector2(max, 0.85f);
                 zrt.offsetMin = zrt.offsetMax = Vector2.zero;
             };
-            zone(0.34f, 0.66f, new Color(Accent.r, Accent.g, Accent.b, 0.30f));
-            zone(0.46f, 0.54f, new Color(Gold.r, Gold.g, Gold.b, 0.85f));
+            // Bands are drawn from the SAME constants the verdict is scored against, so the gold you
+            // see is exactly the gold that pays. Never hand-tune one without the other.
+            zone(0.5f - BlockGood, 0.5f + BlockGood, new Color(Accent.r, Accent.g, Accent.b, 0.30f));
+            zone(0.5f - BlockPerfect, 0.5f + BlockPerfect, new Color(Gold.r, Gold.g, Gold.b, 0.85f));
             var needleGo = new GameObject("Needle"); needleGo.transform.SetParent(trt, false);
             var needle = needleGo.AddComponent<Image>(); needle.color = Color.white; needle.raycastTarget = false;
             var nrt = needle.rectTransform;
@@ -576,7 +578,7 @@ namespace RPGArena.UI
             if (braceImg != null) braceImg.color = new Color(0.32f, 0.06f, 0.05f, 0.95f);
 
             // Random sweep speed per attack — a metronome press cannot cheese it.
-            float speed = Random.Range(1.35f, 1.95f);   // full track lengths per second
+            float speed = Random.Range(1.35f * ActionCommandHarder, 1.95f * ActionCommandHarder);
             float t = Random.Range(0f, 0.6f);           // random start phase too
             bool pressed = false; float pressPos = 0f;
 
@@ -593,7 +595,7 @@ namespace RPGArena.UI
             if (pressed)
             {
                 float off = Mathf.Abs(pressPos - 0.5f);
-                if (off < 0.06f)
+                if (off < BlockPerfect)
                 {
                     controller.SubmitBrace(0.55f);
                     braceText.text = "PERFECT BLOCK!";
@@ -601,7 +603,7 @@ namespace RPGArena.UI
                     if (braceImg != null) braceImg.color = new Color(0.30f, 0.24f, 0.05f, 0.95f);
                     GameBootstrap.Instance?.Audio?.PlaySfx("crit");
                 }
-                else if (off < 0.18f)
+                else if (off < BlockGood)
                 {
                     controller.SubmitBrace(0.78f);
                     braceText.text = "BLOCKED!";
@@ -630,6 +632,22 @@ namespace RPGArena.UI
             bracePanel.SetActive(false);
             braceCo = null;
         }
+
+        // --- action-command difficulty (one place) ------------------------------------
+        // Playtest verdict: PERFECT on both the strike and the block was landing EVERY time, which
+        // makes an action command decoration rather than a skill check. These are the old windows
+        // divided by ActionCommandHarder, and the needles move by the same factor faster — so the
+        // reaction budget shrinks twice over (a narrower target AND less time to reach it).
+        //
+        // The zone graphics are drawn from these same constants, so what you see is always what is
+        // scored. Raising this number is the single knob for "make the mini-games harder".
+        private const float ActionCommandHarder = 1.20f;
+
+        private const float StrikePerfect = 0.05f / ActionCommandHarder;   // 0.042
+        private const float StrikeGood = 0.18f / ActionCommandHarder;      // 0.150
+        private const float StrikeSweep = 0.80f / ActionCommandHarder;     // 0.67s per direction
+        private const float BlockPerfect = 0.06f / ActionCommandHarder;    // 0.050
+        private const float BlockGood = 0.18f / ActionCommandHarder;       // 0.150
 
         // The action-command "hit it NOW" input: SPACE, left mouse, or any touch, read anywhere on
         // screen. Every timed prompt (strike bar, block needle, follow-up) shares this so they can
@@ -676,18 +694,87 @@ namespace RPGArena.UI
         // (x1.18 damage AND stagger — timing feeds basePower), teal for normal, anything else is
         // sloppy (x0.9). No input = sloppy. The multiplier rides the ActionRequest into logic.
         private void StartTimingBar(Entity hero, Ability ab, Entity target)
-            => StartTimingBar(hero, ab, target, RiskStake.Press);
-
-        private void StartTimingBar(Entity hero, Ability ab, Entity target, RiskStake stake)
         {
             if (timingCo != null) StopCoroutine(timingCo);
-            timingCo = StartCoroutine(TimingBarRoutine(hero, ab, target, stake));
+            timingCo = StartCoroutine(TimingSequenceRoutine(hero, ab, target));
         }
 
-        private IEnumerator TimingBarRoutine(Entity hero, Ability ab, Entity target, RiskStake stake)
+        // Where a bar parks its verdict. A coroutine cannot return a value, and threading a holder
+        // object through would be noise for a strictly sequential sequence on a single HUD.
+        private float barResult = 1f;
+
+        // ONE bar for a normal skill, TWO for an ultimate.
+        //
+        // The old STAKE menu (STEADY / PRESS / ALL IN) is gone: it was a second decision stacked on
+        // top of an already-busy turn and it read as "something about going all in?" rather than as a
+        // gamble anyone could price. The die still rolls at its WRITTEN odds — RiskStake.Press is the
+        // logic default, so headless and the balance tests stay bit-identical — and what an ultimate
+        // costs you now is EXECUTION instead of arithmetic.
+        //
+        // The two multipliers multiply, so a double PERFECT is 1.18^2 = x1.39 and a double whiff is
+        // x0.81. That spread is deliberately wider than any single bar can produce: the ultimate is
+        // the hardest button in the game to execute well, which is what should make it feel ultimate.
+        private IEnumerator TimingSequenceRoutine(Entity hero, Ability ab, Entity target)
+        {
+            bool ultimate = ab.rollsRiskDie;
+            int bars = ultimate ? 2 : 1;
+
+            if (ultimate) yield return StartCoroutine(ChargeUpRoutine(hero, ab));
+
+            float mult = 1f;
+            for (int i = 0; i < bars; i++)
+            {
+                barResult = 1f;
+                yield return StartCoroutine(TimingBarRoutine(hero, ab, i, bars));
+                mult *= barResult;
+            }
+
+            ClearChildren(actionPanel);
+            controller.SubmitAction(ab, target, mult, RiskStake.Press);
+            timingCo = null;
+        }
+
+        // The wind-up before an ultimate: the camera pushes in on the caster and a gathering VFX
+        // builds at their feet. It buys the ultimate a moment of its own — without it the biggest
+        // move in the kit opened exactly like a basic attack.
+        private IEnumerator ChargeUpRoutine(Entity hero, Ability ab)
         {
             ClearChildren(actionPanel);
-            if (menuTitle != null) menuTitle.text = $"{ab.displayName.ToUpper()} — STRIKE ON GOLD!";
+            if (menuTitle != null) menuTitle.text = $"{ab.displayName.ToUpper()} — CHARGING";
+
+            juice?.FocusOnActor(hero);
+            juice?.PlayChargeUp(hero);
+            GameBootstrap.Instance?.Audio?.PlaySfx("telegraph");
+
+            var big = MakeText(actionPanel, "CHARGING…", fontHeader, 30, TextAlignmentOptions.Center,
+                               new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
+            Place(big, new Vector2(0, -60), new Vector2(390, 48));
+            big.color = Gold;
+
+            // Unscaled and pause-aware, like every other timed prompt (never WaitForSecondsRealtime —
+            // it never resumes under an unfocused editor's Step loop).
+            float t = 0f;
+            while (t < 0.85f)
+            {
+                if (!PauseMenu.IsPaused)
+                {
+                    t += Time.unscaledDeltaTime;
+                    float k = Mathf.Clamp01(t / 0.85f);
+                    big.transform.localScale = Vector3.one * (1f + 0.18f * Mathf.Sin(k * Mathf.PI));
+                    big.alpha = 0.55f + 0.45f * Mathf.Abs(Mathf.Sin(t * 9f));
+                }
+                yield return null;
+            }
+            ClearChildren(actionPanel);
+        }
+
+        private IEnumerator TimingBarRoutine(Entity hero, Ability ab, int barIndex, int barCount)
+        {
+            ClearChildren(actionPanel);
+            if (menuTitle != null)
+                menuTitle.text = barCount > 1
+                    ? $"{ab.displayName.ToUpper()} — BAR {barIndex + 1} OF {barCount}"
+                    : $"{ab.displayName.ToUpper()} — STRIKE ON GOLD!";
 
             var trackGo = new GameObject("Track"); trackGo.transform.SetParent(actionPanel, false);
             var track = trackGo.AddComponent<Image>(); Soft(track); track.color = new Color(0.05f, 0.07f, 0.11f, 0.97f);
@@ -703,8 +790,10 @@ namespace RPGArena.UI
                 zrt.anchorMin = new Vector2(min, 0.12f); zrt.anchorMax = new Vector2(max, 0.88f);
                 zrt.offsetMin = zrt.offsetMax = Vector2.zero;
             };
-            makeZone(0.32f, 0.68f, new Color(Accent.r, Accent.g, Accent.b, 0.30f));   // GOOD band
-            makeZone(0.45f, 0.55f, new Color(Gold.r, Gold.g, Gold.b, 0.85f));         // PERFECT core
+            // Drawn from the scoring constants, never hand-tuned separately — the gold you see is
+            // exactly the gold that pays.
+            makeZone(0.5f - StrikeGood, 0.5f + StrikeGood, new Color(Accent.r, Accent.g, Accent.b, 0.30f));
+            makeZone(0.5f - StrikePerfect, 0.5f + StrikePerfect, new Color(Gold.r, Gold.g, Gold.b, 0.85f));
 
             var needleGo = new GameObject("Needle"); needleGo.transform.SetParent(trt, false);
             var needle = needleGo.AddComponent<Image>(); needle.color = Color.white; needle.raycastTarget = false;
@@ -712,13 +801,17 @@ namespace RPGArena.UI
             nrt.anchorMin = new Vector2(0f, 0f); nrt.anchorMax = new Vector2(0f, 1f);
             nrt.sizeDelta = new Vector2(5f, 0f); nrt.anchoredPosition = Vector2.zero;
 
-            var hint = MakeText(actionPanel, "the needle passes gold TWICE — out, then back. Strike on gold (+18%)", fontBody, 13, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
-            Place(hint, new Vector2(0, -108), new Vector2(400, 20)); hint.color = TxtMuted;
+            string hintText = barCount > 1
+                ? "PRESS THE YELLOW BAR TWICE!  —  both bars multiply into one ultimate"
+                : "the needle passes gold TWICE — out, then back. Strike on gold (+18%)";
+            var hint = MakeText(actionPanel, hintText, fontBody, 13, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
+            Place(hint, new Vector2(0, -108), new Vector2(400, 20));
+            hint.color = barCount > 1 ? Gold : TxtMuted;
 
             // ONE pass out, ONE pass back, then it resolves. Two chances at a SMALLER gold makes the
             // rhythm readable on a first playthrough (you watch the out-pass, you strike the return)
             // while the tighter core keeps PERFECT an earned hit rather than a default.
-            const float sweep = 0.8f;        // seconds per direction
+            const float sweep = StrikeSweep;   // seconds per direction
             const float total = sweep * 2f;
             const float armAfter = 0.15f;    // grace: the click/keypress that OPENED the bar must not lock it
             float t = 0f, pos = 0f;
@@ -748,43 +841,24 @@ namespace RPGArena.UI
 
             float off = Mathf.Abs(pos - 0.5f);
             float mult; string call; Color cc;
-            if (locked && off < 0.05f) { mult = 1.18f; call = "PERFECT!"; cc = Gold; }
-            else if (locked && off < 0.18f) { mult = 1f; call = "GOOD"; cc = Accent; }
+            if (locked && off < StrikePerfect) { mult = 1.18f; call = "PERFECT!"; cc = Gold; }
+            else if (locked && off < StrikeGood) { mult = 1f; call = "GOOD"; cc = Accent; }
             else { mult = 0.9f; call = "SLOPPY"; cc = TxtMuted; }
             GameBootstrap.Instance?.Audio?.PlaySfx(mult > 1.1f ? "crit" : "ui_click");
             juice?.Announce(hero.transform.position + Vector3.up * 2.5f, call, cc, mult > 1.1f ? 44f : 30f);
 
+            // Park the verdict for the sequence to fold in; SubmitAction happens once, after the
+            // LAST bar, so a two-bar ultimate still spends exactly one turn.
+            barResult = mult;
             ClearChildren(actionPanel);
-            controller.SubmitAction(ab, target, mult, stake);
-            timingCo = null;
         }
 
-        // --- the stake: how hard do you push the d20? ---------------------------------
-        // The SPECIAL used to be a slot machine — press, watch, accept. The stake makes it a read on
-        // the board: is the boss one hit from dead, or would a backfire right now lose the run?
-        // Each option is annotated with what it costs as well as what it buys, because a stake whose
-        // downside is hidden is not a decision.
-        private void BuildStakeMenu(Entity hero, Ability ab, Entity target)
-        {
-            ClearChildren(actionPanel);
-            if (menuTitle != null) menuTitle.text = $"{ab.displayName.ToUpper()} — HOW HARD DO YOU PUSH?";
-            float y = 0f;
-
-            var steady = MakeSimpleButton(actionPanel, "»  STEADY  —  can't backfire, smaller payoff", new Vector2(0, -y), Accent, true);
-            steady.onClick.AddListener(() => StartTimingBar(hero, ab, target, RiskStake.Steady));
-            y += 40f;
-
-            var press = MakeSimpleButton(actionPanel, "»  PRESS  —  the die as written", new Vector2(0, -y), Accent, true);
-            press.onClick.AddListener(() => StartTimingBar(hero, ab, target, RiskStake.Press));
-            y += 40f;
-
-            var allIn = MakeSimpleButton(actionPanel, "»  ALL IN  —  bigger jackpot, bigger backfire", new Vector2(0, -y), Gold, true);
-            allIn.onClick.AddListener(() => StartTimingBar(hero, ab, target, RiskStake.AllIn));
-            y += 40f;
-
-            var back = MakeSimpleButton(actionPanel, "←  Back", new Vector2(0, -y), TxtMuted, true);
-            back.onClick.AddListener(() => BuildActionMenu(hero));
-        }
+        // The STAKE menu (STEADY / PRESS / ALL IN) used to live here. It was removed on playtest
+        // feedback — "the ultimate skills are a bit unclear, something about going all in?" — because
+        // it asked for a second decision on a turn that already has a target and a timing bar, and
+        // priced a gamble the player had no way to read mid-fight. RiskStake itself STAYS in the
+        // logic layer (default Press, exercised by RiskDiceTests / No_Stake_Dominates_Another); the
+        // UI simply no longer asks. Ultimates are now gated on execution: two bars, not three menus.
 
         // --- overdrive: three answers to three different board states -----------------
         private void BuildOverdriveMenu(Entity hero)
@@ -868,8 +942,9 @@ namespace RPGArena.UI
         // never knew it existed.
         private void BeginAction(Entity hero, Ability ab, Entity target)
         {
-            // A risk-die SPECIAL asks how hard to push BEFORE the strike is timed.
-            if (ab.rollsRiskDie && IsDamaging(ab)) { BuildStakeMenu(hero, ab, target); return; }
+            // One funnel. StartTimingBar itself decides how many bars the skill earns (two for a
+            // risk-die ultimate, one otherwise), so no caller can accidentally skip the sequence —
+            // which is exactly the bug the STAKE menu used to have from the target picker.
             if (IsDamaging(ab)) { StartTimingBar(hero, ab, target); return; }
             controller.SubmitAction(ab, target);
         }

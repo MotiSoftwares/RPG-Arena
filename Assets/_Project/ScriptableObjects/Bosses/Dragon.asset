@@ -52,6 +52,7 @@ MonoBehaviour:
     enrage: 1
     attackMultiplier: 1.5
   modelHeight: 9.75
+  neverLosesTurnToControl: 1
   staggerThreshold: 115
   staggeredTurns: 2
   staggerDecayPerTurn: 0

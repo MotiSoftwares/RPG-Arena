@@ -51,6 +51,11 @@ namespace RPGArena.UI
         public GameObject slashCrit;      // Charge slash red — crits
         public GameObject slashShatter;   // Snow slash — the SHATTER detonation
 
+        [Header("Ultimate wind-up")]
+        // Gathering VFX played at the caster's feet while an ultimate charges. Assigned in the scene
+        // (an Erb 'Effects normal/' buff prefab); the charge-up degrades to camera-only if unset.
+        public GameObject chargeUpFx;
+
         // Colour language (§9.8): white normal, orange crit, cyan weak, grey resist/miss, green heal.
         private static readonly Color CNormal = Color.white;
         private static readonly Color CCrit = new Color(1f, 0.55f, 0.1f);
@@ -167,6 +172,21 @@ namespace RPGArena.UI
             if (actor == null || cam == null) return;
             FocusOn(actor.transform.position + Vector3.up * 1.4f,
                     actor.team == Characters.Team.Enemies ? 1.25f : 1f);
+        }
+
+        // The ultimate wind-up: a hard push-in on the caster plus a gathering effect at their feet.
+        // Deliberately stronger and longer-held than a normal FocusOnActor — this is the beat that
+        // tells the player something big is coming, and it is the only camera move the HUD asks for
+        // before an action resolves. Camera work goes through FocusOn so it composes inside the
+        // LateUpdate stomp instead of fighting it.
+        public void PlayChargeUp(Entity caster)
+        {
+            if (caster == null) return;
+            FocusOn(caster.transform.position + Vector3.up * 1.2f, 1.6f, 1.2f);
+            shakeAmount = Mathf.Max(shakeAmount, shakeOnCrit * 0.6f);   // a low rumble, not an impact
+            if (chargeUpFx == null) return;
+            var fx = Instantiate(chargeUpFx, caster.transform.position, Quaternion.identity);
+            Destroy(fx, 2.5f);
         }
 
         public void FocusOn(Vector3 worldPoint, float strength = 1f, float hold = 1.5f)
