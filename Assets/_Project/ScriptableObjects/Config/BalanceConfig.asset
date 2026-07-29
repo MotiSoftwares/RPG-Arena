@@ -36,6 +36,9 @@ MonoBehaviour:
   hitFloor: 0.45
   hitCeiling: 0.9
   missStreakCap: 2
+  overdriveRallyHealPercent: 45
+  glanceDamageMult: 0.35
+  cleanMissOvershoot: 1
   accuracyToPercent: 0.005
   defendDamageMult: 0.5
   backRowMeleeMult: 0.55
@@ -49,6 +52,10 @@ MonoBehaviour:
   riskBigDamageMult: 1.5
   riskJackpotDamageMult: 2
   riskSelfRecoilPct: 0.12
+  stakeSteadyFloor: 0.3
+  stakeSteadyScale: 0.5
+  stakeSteadyDamageMult: 0.85
+  stakeAllInScale: 1.5
   rageDamagePerStack: 0.06
   rageMaxStacks: 12
   valorMax: 100

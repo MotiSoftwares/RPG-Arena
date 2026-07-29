@@ -19,6 +19,7 @@ namespace RPGArena.UI
         public DamageResultChannel onDamageDealt;
         public EntityChannel onStaggerBroken;
         public EntityChannel onEntityDied;
+        public EntityChannel onTurnStarted;      // drives the actor-focus punch-in
         public AbilityChannel onBossTelegraph;
         public Core.Events.VoidChannel onBattleWon;
 
@@ -57,6 +58,11 @@ namespace RPGArena.UI
         private float camBaseFov;
         private float fovPunch;        // degrees subtracted from base FOV on crit/break (eases back, unscaled)
         private float breakPunch;      // 0..1 dolly push toward the action on a Break
+        private Vector3 focusOffset;   // the actor-focus lean, eased toward focusDesired then home
+        private Vector3 focusDesired;
+        private float focusFovBias;    // current focus FOV tighten (degrees)
+        private float focusFovDesired;
+        private float focusHold;       // seconds left before the lean eases back home
         private static readonly Vector3 BreakDolly = new Vector3(0.8f, -0.25f, 1.6f);  // local push: right/down/forward
         private float shakeAmount;
         private float flashAmount;
@@ -116,6 +122,26 @@ namespace RPGArena.UI
             onBossTelegraph?.Subscribe(OnTelegraph);
             onEntityDied?.Subscribe(OnDied);
             onBattleWon?.Subscribe(OnWon);
+            onTurnStarted?.Subscribe(OnTurnFocus);
+        }
+
+        // The tiny action cinematic: when someone's turn starts, the camera leans toward them and
+        // the FOV tightens a touch, then eases home. Composed INSIDE the LateUpdate stomp (this
+        // class owns the camera), so it stacks safely with shake, hit-stop and the Break dolly.
+        private void OnTurnFocus(Entity actor)
+        {
+            if (actor == null || cam == null) return;
+            FocusOn(actor.transform.position + Vector3.up * 1.4f,
+                    actor.team == Characters.Team.Enemies ? 1.25f : 1f);
+        }
+
+        public void FocusOn(Vector3 worldPoint, float strength = 1f, float hold = 1.5f)
+        {
+            Vector3 v = worldPoint - camBasePos;
+            v.y *= 0.25f;                                    // lean, don't dive
+            focusDesired = Vector3.ClampMagnitude(v * 0.14f, 2.4f) * strength;
+            focusFovDesired = 5.5f * strength;
+            focusHold = hold;
         }
 
         private void OnDisable()
@@ -125,6 +151,7 @@ namespace RPGArena.UI
             onBossTelegraph?.Unsubscribe(OnTelegraph);
             onEntityDied?.Unsubscribe(OnDied);
             onBattleWon?.Unsubscribe(OnWon);
+            onTurnStarted?.Unsubscribe(OnTurnFocus);
         }
 
         // Play the death animation on a fallen combatant's rigged model (no-op for billboards),
@@ -495,7 +522,16 @@ namespace RPGArena.UI
             {
                 fovPunch = Mathf.MoveTowards(fovPunch, 0f, 26f * Time.unscaledDeltaTime);
                 breakPunch = Mathf.MoveTowards(breakPunch, 0f, 1.45f * Time.unscaledDeltaTime);
-                cam.fieldOfView = camBaseFov - fovPunch;
+
+                // Actor focus: ease toward the lean while the hold lasts, then ease home. Unscaled,
+                // like everything else here, so hit-stop can't freeze the camera mid-lean.
+                if (focusHold > 0f) focusHold -= Time.unscaledDeltaTime;
+                Vector3 wantOff = focusHold > 0f ? focusDesired : Vector3.zero;
+                float wantFov = focusHold > 0f ? focusFovDesired : 0f;
+                focusOffset = Vector3.MoveTowards(focusOffset, wantOff, 6.5f * Time.unscaledDeltaTime);
+                focusFovBias = Mathf.MoveTowards(focusFovBias, wantFov, 24f * Time.unscaledDeltaTime);
+
+                cam.fieldOfView = camBaseFov - fovPunch - focusFovBias;
 
                 Vector3 shakeOff = Vector3.zero;
                 if (shakeAmount > 0.0001f)
@@ -504,7 +540,7 @@ namespace RPGArena.UI
                     shakeOff = new Vector3(o.x, o.y, 0f);
                     shakeAmount = Mathf.MoveTowards(shakeAmount, 0f, shakeDecay * Time.unscaledDeltaTime);
                 }
-                cam.transform.localPosition = camBasePos + BreakDolly * breakPunch + shakeOff;
+                cam.transform.localPosition = camBasePos + BreakDolly * breakPunch + focusOffset + shakeOff;
             }
 
             if (flashImage != null)

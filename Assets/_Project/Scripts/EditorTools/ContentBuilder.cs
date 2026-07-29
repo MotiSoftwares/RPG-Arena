@@ -108,7 +108,7 @@ namespace RPGArena.EditorTools
 
             var dragonAI = ScriptableObject.CreateInstance<DragonCycleAI>();
             dragonAI.clawSwipe = dClaw; dragonAI.tailSweep = dSweep; dragonAI.tailGuard = dGuard;
-            dragonAI.chargingBreath = dCharge; dragonAI.flameBreath = dFlame; dragonAI.tailSweepChance = 0.2f;
+            dragonAI.chargingBreath = dCharge; dragonAI.flameBreath = dFlame;
             Save(dragonAI, $"{Root}/AI/DragonCycleAI.asset");
 
             var dragon = ScriptableObject.CreateInstance<BossDefinition>();

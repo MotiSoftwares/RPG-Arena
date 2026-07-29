@@ -30,28 +30,42 @@ namespace RPGArena.Combat
         public EntityChannel onTurnStarted, onTurnEnded, onEntityDied, onStaggerBroken;
         public DamageResultChannel onDamageDealt;
         public AbilityChannel onBossTelegraph;
+        // Plain-English beats for the centre-screen announcer: "Warrior used Power Strike on The
+        // Dragon", "ENEMY PHASE", "The Dragon is FROZEN SOLID". Null-safe like every channel.
+        public StringChannel onAnnouncement;
 
         [Header("Pacing")]
         public float actionDelay = 0.55f;
 
         public BattleContext Context { get; private set; }
         public int RoundsTaken { get; private set; }                  // for the victory grade (§9.6)
-        private List<Entity> currentOrder;          // this round's order; a bonus turn inserts mid-list
-        private int orderIndex;                      // index of the actor currently taking their turn
-        public IReadOnlyCollection<Entity> UpcomingOrder =>
-            currentOrder != null && orderIndex < currentOrder.Count
-                ? currentOrder.GetRange(orderIndex, currentOrder.Count - orderIndex)
-                : System.Array.Empty<Entity>();      // next actors, for the HUD tracker
+
+        // THE ROUND IS TWO PHASES, not one initiative queue.
+        //
+        // PLAYER PHASE: the player picks WHICH hero acts next — three turns, any order, each hero
+        // once. The old speed-roll queue meant the round where your Warrior came up before the
+        // Mage's freeze simply could not SHATTER, and the HOLD patch that fixed it was a workaround
+        // for an ordering the player never wanted. Free ordering subsumes HOLD entirely.
+        // ENEMY PHASE: minions strike first, the boss lands the climax blow, every enemy acts
+        // VISIBLY every round — no silent skips, ever. A boss that cannot act (Frozen / Broken)
+        // says so on screen instead of vanishing from the queue.
+        //
+        // The headless BattleManager keeps the speed-based order: the balance gate measures the
+        // fight without the player's ordering advantage, which Hard difficulty then prices in.
+        public bool AwaitingHeroPick { get; private set; }            // the HUD shows "choose a hero"
+        private readonly List<Entity> heroesToAct = new();            // living heroes yet to act this round
+        public IReadOnlyList<Entity> HeroesYetToAct => heroesToAct;
+        private Entity pickedHero;
+        private readonly List<Entity> enemyPhaseOrder = new();        // minions first, boss last
+        public IReadOnlyList<Entity> EnemyPhaseOrder => enemyPhaseOrder;   // the HUD's intent tracker
+
         public Entity ActiveHero { get; private set; }                // whose input we await (null otherwise)
         public bool AwaitingInput => ActiveHero != null && pendingAction == null;
         public BattleManager.Outcome Result { get; private set; } = BattleManager.Outcome.InProgress;
 
         private ActionRequest? pendingAction;
         private bool pendingReposition;          // HUD requested a row swap (front<->back) this turn
-        private bool pendingHold;                // HUD requested to HOLD (act later this round)
-        // Who has already held this round. Caps it at once per hero, which is what stops two heroes
-        // holding for each other forever, and also marks whose start-of-turn tick already ran.
-        private readonly HashSet<Entity> heldThisRound = new();
+        private bool cancelPick;                 // HUD backed out of the action menu to re-pick a hero
 
         // Set by the presentation layer (JuiceController) to the time the current strike's juice
         // finishes; the battle loop waits on it so the next turn never starts mid-animation.
@@ -78,19 +92,98 @@ namespace RPGArena.Combat
         }
 
         // --- BRACE (the defensive action command) --------------------------------------
-        // When an enemy commits to a damaging attack, a short reaction window opens; if the player
-        // hits SPACE inside it, the blow resolves at ×0.7. Live battles only — headless tests never
-        // run this coroutine.
+        // When an enemy commits to a damaging blow, a short reaction beat opens and the HUD runs a
+        // timed-block needle inside it. Blocking is EARNED, not granted: the HUD converts press
+        // timing into a multiplier (perfect block ×0.55, block ×0.78, bad/no press = full damage)
+        // and submits it here. Live battles only — headless tests never run this coroutine.
         [Header("Action commands")]
-        public float braceWindow = 0.85f;
+        public float braceWindow = 1.0f;
         private float braceOpenUntil;
         private bool braceLanded;
+        private float braceMult = 1f;
         public bool BraceWindowOpen => Time.time < braceOpenUntil && !braceLanded;
-        public bool BraceLanded => braceLanded && Time.time < braceOpenUntil + 0.6f;
+        public bool BraceLanded => braceLanded && braceMult < 1f && Time.time < braceOpenUntil + 0.6f;
         public float BraceTimeLeft => Mathf.Max(0f, braceOpenUntil - Time.time);
         // Pause freezes Time.time, so the window would otherwise stay "open" forever behind the
         // pause menu — reject braces submitted while the game is paused (no free reads).
-        public void SubmitBrace() { if (Time.time < braceOpenUntil && !GamePause.IsPaused) braceLanded = true; }
+        public void SubmitBrace(float mult)
+        {
+            if (Time.time >= braceOpenUntil || GamePause.IsPaused || braceLanded) return;
+            braceLanded = true;
+            braceMult = Mathf.Clamp(mult, 0.4f, 1f);
+        }
+
+        // --- FOLLOW-UP STRIKE (the third action command) ---------------------------------
+        // Sometimes a landed blow leaves an opening: after a random beat, a short PRESS! prompt
+        // flashes, and hitting it lands a bonus echo strike at a fraction of the skill's power.
+        // Randomness (does the opening appear, and WHEN) plus reaction skill (the window is short) —
+        // the same recipe as the timing bar, on the other side of the impact.
+        [Header("Follow-up strike")]
+        [Range(0f, 1f)] public float followUpChance = 0.45f;
+        public float followUpWindow = 0.30f;
+        [Range(0f, 1f)] public float followUpPowerFraction = 0.35f;
+        private bool followUpOpen;
+        private float followUpCloseAt;
+        private bool followUpPressed;
+        public bool FollowUpPromptOpen => followUpOpen && Time.time < followUpCloseAt;
+        public void SubmitFollowUp() { if (FollowUpPromptOpen && !GamePause.IsPaused) followUpPressed = true; }
+
+        private IEnumerator FollowUpOpportunity(Entity actor, Ability used, Entity target)
+        {
+            if (actor == null || used == null || target == null || !target.IsAlive || target.team == actor.team) yield break;
+            bool anyHit = false;
+            foreach (var r in Context.lastActionResults) if (r.hit && !r.isHeal) { anyHit = true; break; }
+            if (!anyHit) yield break;
+            // Presentation-layer rng on purpose: the logic stream (ctx.rng) stays untouched, so AI
+            // decision parity with the headless loop is unaffected.
+            if (Random.value > followUpChance) yield break;
+
+            // A random tell delay — the prompt cannot be pressed on rhythm, only on reaction.
+            yield return new WaitForSeconds(Random.Range(0.25f, 0.6f));
+            if (!target.IsAlive || Result != BattleManager.Outcome.InProgress) yield break;
+
+            followUpPressed = false;
+            followUpOpen = true;
+            followUpCloseAt = Time.time + followUpWindow;
+            while (Time.time < followUpCloseAt && !followUpPressed) yield return null;
+            followUpOpen = false;
+            if (!followUpPressed || !target.IsAlive) yield break;
+
+            // The echo strike: a real hit through the real pipeline — no statuses, no risk die,
+            // guaranteed to land (it is a reward, not a second gamble).
+            Announce($"{actor.displayName} — FOLLOW-UP STRIKE!");
+            actor.GetComponentInChildren<Characters.AnimationDriver>()?.PlayAttack();
+            var element = used.followsAttunement ? actor.currentAttunement : used.element;
+            Context.lastActionResults.Clear();
+            var info = new DamageInfo
+            {
+                source = actor, target = target, ability = used, element = element,
+                basePower = used.power * followUpPowerFraction, isMagic = used.isMagic,
+                forceHit = true, hitTier = HitTier.Reliable
+            };
+            var res = Context.damage.Compute(info);
+            Context.damage.Apply(res, Context);
+            Context.Log($"    FOLLOW-UP! {actor.displayName} strikes again for {res.amount}.");
+            yield return WaitForPresentation();
+        }
+
+        // --- announcements ---------------------------------------------------------------
+        private void Announce(string line) => onAnnouncement?.Raise(line);
+
+        // "Warrior used Power Strike on The Dragon" — the centre-screen play-by-play, so there is
+        // never a "what just happened?" turn.
+        private void AnnounceAction(Entity actor, Ability used, Entity[] targets)
+        {
+            if (actor == null || used == null) return;
+            string tgt = "";
+            if (used.targetRule == TargetRule.AllEnemies)
+                tgt = actor.team == Team.Heroes ? " on all enemies" : " on the party";
+            else if (used.targetRule == TargetRule.AllAllies)
+                tgt = actor.team == Team.Heroes ? " on the party" : "";
+            else if (targets != null && targets.Length > 0 && targets[0] != null && targets[0] != actor)
+                tgt = $" on {targets[0].displayName}";
+            Announce($"{actor.displayName} used {used.displayName}{tgt}");
+        }
 
         // Single source of truth for affordability (MP + cooldown), used by BOTH the controller (to
         // reject) and the HUD (to grey buttons out) so the two can never drift.
@@ -114,25 +207,19 @@ namespace RPGArena.Combat
         // The HUD calls this when the active hero chooses to reposition (swap front/back row).
         public void SubmitReposition() { if (ActiveHero != null) pendingReposition = true; }
 
-        // HOLD: give up your slot and act at the END of this round instead.
-        //
-        // The whole game is setup-then-detonate, but who acts first was pure initiative roll — so
-        // the round where your Warrior moved before the Mage's Blizzard, you simply could not
-        // SHATTER, and the combo you had built was decided by dice rather than by you. Holding turns
-        // turn order from something that happens TO the party into something the party plays.
-        //
-        // Deliberately not free: you surrender your place in the order, so every enemy still to act
-        // hits you first, and the boss's telegraph may land before you ever swing.
-        public bool CanHold => ActiveHero != null && !heldThisRound.Contains(ActiveHero) && HasLaterActor();
-        public void SubmitHold() { if (CanHold) pendingHold = true; }
-
-        // Holding only means anything if somebody is still scheduled behind you.
-        private bool HasLaterActor()
+        // --- the player phase: pick who acts -------------------------------------------
+        // The HUD calls this from the "choose your hero" panel (or by clicking a hero bar).
+        public void SelectHero(Entity hero)
         {
-            if (currentOrder == null) return false;
-            for (int i = orderIndex + 1; i < currentOrder.Count; i++)
-                if (currentOrder[i] != null && currentOrder[i].IsAlive) return true;
-            return false;
+            if (!AwaitingHeroPick || hero == null || !hero.IsAlive || !heroesToAct.Contains(hero)) return;
+            pickedHero = hero;
+        }
+
+        // Back out of a hero's action menu WITHOUT spending their turn, returning to the pick.
+        // Only legal while nothing has been committed — a submitted action is final.
+        public void CancelHeroSelection()
+        {
+            if (ActiveHero != null && pendingAction == null && !pendingReposition) cancelPick = true;
         }
 
         // The HUD's gold OVERDRIVE button: spend a FULL Valor meter on the party-wide damage surge.
@@ -180,100 +267,174 @@ namespace RPGArena.Combat
             for (int round = 1; round <= 60 && Result == BattleManager.Outcome.InProgress; round++)
             {
                 RoundsTaken = round;
-                var order = new List<Entity>(Context.turns.BuildRoundOrder(All(), Context.rng, balance.maxExtraTurnsPerEntityPerRound));
-                currentOrder = order;   // exposed to the HUD's turn-order tracker
-                heldThisRound.Clear();  // one hold per hero per round
-                for (orderIndex = 0; orderIndex < order.Count && Result == BattleManager.Outcome.InProgress; orderIndex++)
+
+                // ============ PLAYER PHASE — the player picks who acts, three turns, any order.
+                Announce(round == 1 ? "YOUR PHASE — choose a hero" : $"ROUND {round} — YOUR PHASE");
+
+                // Hero damage-over-time resolves once, up front. Ticking at pick-time would let a
+                // pick-then-cancel double-tick a burn; resolving it as a phase event makes that
+                // impossible by construction (the bug HOLD needed a guard for cannot exist here).
+                foreach (var h in Context.heroes)
                 {
-                    var actor = order[orderIndex];
+                    if (h == null || !h.IsAlive) continue;
+                    int hdot = h.TickStartOfTurn();
+                    if (hdot > 0) Context.Log($"{h.displayName} takes {hdot} damage over time.");
+                }
+                CheckDeaths();
+                Result = Evaluate();
+                if (Result != BattleManager.Outcome.InProgress) break;
+
+                heroesToAct.Clear();
+                foreach (var h in Context.heroes) if (h != null && h.IsAlive) heroesToAct.Add(h);
+
+                while (heroesToAct.Count > 0 && Result == BattleManager.Outcome.InProgress)
+                {
+                    heroesToAct.RemoveAll(h => h == null || !h.IsAlive);
+                    if (heroesToAct.Count == 0) break;
+
+                    // The pick. When only one hero remains it auto-selects — no pointless click.
+                    pickedHero = heroesToAct.Count == 1 ? heroesToAct[0] : null;
+                    AwaitingHeroPick = pickedHero == null;
+                    while (pickedHero == null && Result == BattleManager.Outcome.InProgress) yield return null;
+                    AwaitingHeroPick = false;
+                    var actor = pickedHero;
+                    pickedHero = null;
                     if (actor == null || !actor.IsAlive) continue;
 
-                    // A hero who HELD already began their turn earlier this round, so ticking again
-                    // would burn a second stack of every damage-over-time they are carrying.
-                    if (!heldThisRound.Contains(actor))
+                    onTurnStarted?.Raise(actor);
+
+                    // Heroes can't currently be control-locked, but if one ever is, it must be a
+                    // loud on-screen beat, never a mystery skip.
+                    if (!actor.CanAct)
                     {
-                        int dot = actor.TickStartOfTurn();
-                        if (dot > 0) Context.Log($"{actor.displayName} takes {dot} damage over time.");
+                        Announce($"{actor.displayName} cannot act!");
+                        heroesToAct.Remove(actor);
+                        actor.TickEndOfTurn();
+                        Context.charge?.ConsumeHeroTurn(Context);
+                        onTurnEnded?.Raise(actor);
+                        yield return Wait();
+                        continue;
                     }
+
+                    // Await the HUD: an ability, an item, a reposition — or backing out to re-pick.
+                    ActiveHero = actor;
+                    pendingAction = null;
+                    pendingReposition = false;
+                    cancelPick = false;
+                    while (pendingAction == null && !pendingReposition && !cancelPick) yield return null;
+
+                    if (cancelPick)
+                    {
+                        cancelPick = false;
+                        ActiveHero = null;
+                        continue;               // nothing spent — back to "choose a hero"
+                    }
+
+                    ICommand cmd = null;
+                    Ability used = null; Entity[] usedTargets = null;
+                    if (pendingReposition)
+                    {
+                        pendingReposition = false;
+                        Reposition(actor);     // spends the turn; cmd stays null so no attack resolves
+                        Announce($"{actor.displayName} moves to the {(actor.backRow ? "BACK" : "FRONT")} row");
+                        ActiveHero = null;
+                        yield return Wait();   // let the move READ before the next turn snaps in
+                    }
+                    else
+                    {
+                        var req = pendingAction.Value;
+                        used = req.ability; usedTargets = req.targets; cmd = CommandFactory.Build(req);
+                        ActiveHero = null;
+                        pendingAction = null;
+                    }
+
+                    if (cmd != null)
+                    {
+                        AnnounceAction(actor, used, usedTargets);
+                        Context.lastActionResults.Clear();
+                        Context.Log(cmd.DescribeForLog());
+                        cmd.Resolve(Context);
+
+                        // Non-damaging skills (buffs / heals / stances / defend) don't pass through
+                        // OnDamageDealt, so play their cast animation + spawn their VFX here, so
+                        // EVERY skill has presentation.
+                        if (used != null && used.effectType != EffectType.Attack && used.effectType != EffectType.MultiHit && used.effectType != EffectType.BossMove)
+                            PlayNonDamagingFx(actor, used, usedTargets);
+
+                        // Party Valor accrues from this action — coordination (weakness/combo/
+                        // setup/buff) charges it hard, a plain spam-hit barely (null-safe).
+                        ChargeSystem.AwardFor(used, Context.lastActionResults, Context);
+
+                        yield return WaitForPresentation();
+
+                        // A landed single-target blow may open a FOLLOW-UP window (third action command).
+                        if (used != null && usedTargets != null && usedTargets.Length == 1
+                            && (used.effectType == EffectType.Attack || used.effectType == EffectType.MultiHit))
+                            yield return FollowUpOpportunity(actor, used, usedTargets[0]);
+                    }
+
+                    heroesToAct.Remove(actor);
+                    actor.TickEndOfTurn();
+                    Context.charge?.ConsumeHeroTurn(Context);   // count down an active Overdrive surge
+                    onTurnEnded?.Raise(actor);
+                    CheckDeaths();
+                    Context.boss?.CheckPhaseTransition(Context);
+                    Result = Evaluate();
+                }
+                if (Result != BattleManager.Outcome.InProgress) break;
+
+                // ============ ENEMY PHASE — minions strike first, the boss lands the climax.
+                enemyPhaseOrder.Clear();
+                foreach (var m in Context.minions) if (m != null && m.IsAlive) enemyPhaseOrder.Add(m);
+                if (Context.boss != null && Context.boss.IsAlive) enemyPhaseOrder.Add(Context.boss);
+                if (enemyPhaseOrder.Count > 0)
+                {
+                    Announce("ENEMY PHASE");
+                    yield return new WaitForSeconds(0.7f);
+                }
+
+                for (int ei = 0; ei < enemyPhaseOrder.Count && Result == BattleManager.Outcome.InProgress; ei++)
+                {
+                    var actor = enemyPhaseOrder[ei];
+                    if (actor == null || !actor.IsAlive) continue;   // fell to a DoT before its turn
+
+                    int dot = actor.TickStartOfTurn();
+                    if (dot > 0) Context.Log($"{actor.displayName} takes {dot} damage over time.");
                     onTurnStarted?.Raise(actor);
 
                     if (actor.CanAct)
                     {
                         ICommand cmd = null;
                         Ability used = null; Entity[] usedTargets = null;
-
+                        Ability ability = null; Entity chosen = null;
                         if (actor.Brain != null)
+                            ability = actor.Brain.DecideAction(Context, actor, Context.heroes, out chosen);
+                        if (ability != null)
                         {
-                            // AI-controlled (the boss or a minion).
-                            var opponents = actor.team == Team.Heroes ? Context.Enemies : Context.heroes;
-                            var ability = actor.Brain.DecideAction(Context, actor, opponents, out var tgt);
-                            if (ability != null)
-                            {
-                                var req = new ActionRequest(ability, actor, ResolveTargets(actor, ability, tgt));
-                                used = ability; usedTargets = req.targets;
+                            var req = new ActionRequest(ability, actor, ResolveTargets(actor, ability, chosen));
+                            used = ability; usedTargets = req.targets;
+                            AnnounceAction(actor, used, usedTargets);
 
-                                // BRACE window: an enemy is about to land a damaging blow on the
-                                // party — give the player a real-time beat to react (defensive
-                                // action command). A landed brace resolves the attack at ×0.7.
-                                bool damaging = ability.effectType == EffectType.Attack || ability.effectType == EffectType.MultiHit;
-                                bool hitsHeroes = false;
-                                if (damaging && req.targets != null)
-                                    foreach (var tt in req.targets) if (tt != null && tt.team == Team.Heroes) { hitsHeroes = true; break; }
-                                if (hitsHeroes && actor.team != Team.Heroes)
+                            // BRACE: an enemy is about to land a damaging blow — the timed defensive
+                            // action command. The HUD converts a well-timed press into a multiplier.
+                            bool damaging = ability.effectType == EffectType.Attack || ability.effectType == EffectType.MultiHit;
+                            bool hitsHeroes = false;
+                            if (damaging && req.targets != null)
+                                foreach (var tt in req.targets) if (tt != null && tt.team == Team.Heroes) { hitsHeroes = true; break; }
+                            if (hitsHeroes)
+                            {
+                                braceLanded = false;
+                                braceMult = 1f;
+                                braceOpenUntil = Time.time + braceWindow;
+                                yield return new WaitForSeconds(braceWindow);
+                                if (braceLanded && braceMult < 1f)
                                 {
-                                    braceLanded = false;
-                                    braceOpenUntil = Time.time + braceWindow;
-                                    yield return new WaitForSeconds(braceWindow);
-                                    if (braceLanded)
-                                    {
-                                        req = new ActionRequest(ability, actor, 0.7f, req.targets);
-                                        Context.Log($"    BRACED! {actor.displayName}'s blow is softened.");
-                                    }
+                                    req = new ActionRequest(ability, actor, braceMult, req.targets);
+                                    Context.Log($"    BLOCKED! {actor.displayName}'s blow is softened (x{braceMult:0.00}).");
                                 }
-
-                                cmd = CommandFactory.Build(req);
-                            }
-                        }
-                        else
-                        {
-                            // Player hero: open the action menu and wait for the HUD to submit an
-                            // ability OR a reposition (swap row).
-                            ActiveHero = actor;
-                            pendingAction = null;
-                            pendingReposition = false;
-                            pendingHold = false;
-                            while (pendingAction == null && !pendingReposition && !pendingHold) yield return null;
-
-                            if (pendingHold)
-                            {
-                                // Move to the back of the round and re-run this slot. `continue` still
-                                // runs the for-loop's increment, so stepping the index back by one
-                                // lands on whoever slid up into the vacated position.
-                                pendingHold = false;
-                                ActiveHero = null;
-                                heldThisRound.Add(actor);
-                                order.RemoveAt(orderIndex);
-                                order.Add(actor);
-                                orderIndex--;
-                                Context.Log($"{actor.displayName} holds, waiting for a better moment.");
-                                yield return Wait();
-                                continue;   // no action spent, no end-of-turn tick — the turn is deferred, not used
                             }
 
-                            if (pendingReposition)
-                            {
-                                pendingReposition = false;
-                                Reposition(actor);     // spends the turn; cmd stays null so no attack resolves
-                                ActiveHero = null;
-                                yield return Wait();   // let the move READ before the next turn snaps in
-                            }
-                            else
-                            {
-                                var req = pendingAction.Value;
-                                used = req.ability; usedTargets = req.targets; cmd = CommandFactory.Build(req);
-                                ActiveHero = null;
-                                pendingAction = null;
-                            }
+                            cmd = CommandFactory.Build(req);
                         }
 
                         if (cmd != null)
@@ -281,34 +442,25 @@ namespace RPGArena.Combat
                             Context.lastActionResults.Clear();
                             Context.Log(cmd.DescribeForLog());
                             cmd.Resolve(Context);
-
-                            // Non-damaging skills (buffs / heals / stances / defend) don't pass through
-                            // OnDamageDealt, so play their cast animation + spawn their VFX here, so
-                            // EVERY skill has presentation.
                             if (used != null && used.effectType != EffectType.Attack && used.effectType != EffectType.MultiHit && used.effectType != EffectType.BossMove)
                                 PlayNonDamagingFx(actor, used, usedTargets);
-
-                            // Action economy: each hero acts ONCE per round — no "+1 More" bonus turn
-                            // (it made a 3-hero party take 4 actions every round). Exploiting a weakness
-                            // or landing a combo now pays off through PARTY VALOR + the damage itself,
-                            // not an extra turn, so the round stays a clean one-action-per-hero.
-
-                            // Party Valor accrues from this action — coordination (weakness/combo/
-                            // setup/buff) charges it hard, a plain spam-hit barely (null-safe).
-                            if (actor.team == Team.Heroes)
-                                ChargeSystem.AwardFor(used, Context.lastActionResults, Context);
-
                             yield return WaitForPresentation();
                         }
                     }
                     else
                     {
-                        Context.Log($"{actor.displayName} is frozen/staggered — turn skipped.");
-                        yield return Wait();
+                        // NO SILENT SKIPS: the reason the enemy loses its turn is a full-screen beat
+                        // with a visible reel — this is the player's own reward being celebrated.
+                        bool frozenSolid = actor.Status != null && actor.Status.HasControlEffect;
+                        Announce(frozenSolid
+                            ? $"{actor.displayName} is FROZEN SOLID — it cannot act!"
+                            : $"{actor.displayName} is BROKEN — it reels helplessly!");
+                        Context.Log($"{actor.displayName} is {(frozenSolid ? "frozen" : "staggered")} — it cannot act.");
+                        actor.GetComponentInChildren<Characters.AnimationDriver>()?.PlayHit();
+                        yield return new WaitForSeconds(1.1f);
                     }
 
                     actor.TickEndOfTurn();
-                    if (actor.team == Team.Heroes) Context.charge?.ConsumeHeroTurn(Context);   // count down an active Overdrive surge
                     if (actor.isBoss)   // Searing Fury escalates each boss turn; a Break vents it (StaggerSystem)
                     {
                         actor.rageStacks = Mathf.Min(actor.rageStacks + 1, balance.rageMaxStacks);
@@ -321,6 +473,7 @@ namespace RPGArena.Combat
                     CheckDeaths();
                     Context.boss?.CheckPhaseTransition(Context);
                     Result = Evaluate();
+                    yield return new WaitForSeconds(0.45f);   // breathe between enemy turns
                 }
             }
 
@@ -440,7 +593,46 @@ namespace RPGArena.Combat
                     Context.minions.Add(m);
                 }
 
+            ApplyDifficulty(run);
             PlaceCombatants();
+        }
+
+        // DIFFICULTY — live battles only, applied to the spawned runtime stats (never the assets).
+        // HARD is the baseline the game is balanced around; it also prices in the tools the live
+        // player has that the balance-gate AI does not (free hero ordering, no-miss grazes, the
+        // timing bar, blocks, follow-ups). EASY softens the enemy side and pads the party.
+        private void ApplyDifficulty(RunState run)
+        {
+            var diff = run != null ? run.difficulty : Difficulty.Hard;
+            var enemies = new List<Entity>(Context.minions);
+            if (Context.boss != null) enemies.Add(Context.boss);
+
+            if (diff == Difficulty.Hard)
+            {
+                foreach (var e in enemies)
+                {
+                    e.stats.baseAttack = Mathf.RoundToInt(e.stats.baseAttack * 1.15f);
+                    e.stats.maxHP = Mathf.RoundToInt(e.stats.maxHP * 1.10f);
+                    e.currentHP = e.stats.maxHP;
+                }
+                Context.Log("HARD MODE — the enemy hits harder and endures longer. Combo or die.");
+            }
+            else
+            {
+                foreach (var e in enemies)
+                {
+                    e.stats.baseAttack = Mathf.RoundToInt(e.stats.baseAttack * 0.70f);
+                    e.stats.maxHP = Mathf.RoundToInt(e.stats.maxHP * 0.85f);
+                    e.currentHP = e.stats.maxHP;
+                }
+                foreach (var h in Context.heroes)
+                {
+                    int extra = Mathf.RoundToInt(h.stats.maxHP * 0.25f);
+                    h.stats.maxHP += extra;
+                    h.currentHP = Mathf.Min(h.stats.maxHP, h.currentHP + extra);
+                }
+                Context.Log("EASY MODE — a gentler arena.");
+            }
         }
 
         // Which definition spawned each minion — read at death time for the item-drop roll.
@@ -462,8 +654,8 @@ namespace RPGArena.Combat
         // clean profile, which the camera-blend then rotates into a flattering 3/4 front view.
         // The gentle stagger still separates the three heroes in frame and adds depth.
         private static Vector3 HeroSlot(bool backRow, int indexInRow)
-            => backRow ? new Vector3(-2.95f - indexInRow * 1.45f, 0f, 0.15f + indexInRow * 0.95f)
-                       : new Vector3(-1.25f - indexInRow * 1.25f, 0f, -1.25f + indexInRow * 0.85f);
+            => backRow ? new Vector3(-3.85f - indexInRow * 1.45f, 0f, 0.15f + indexInRow * 0.95f)
+                       : new Vector3(-2.05f - indexInRow * 1.25f, 0f, -1.25f + indexInRow * 0.85f);
 
         // Re-place every hero into tidy row slots (party order preserved). Used at battle start and
         // again after a mid-battle row swap so the wedge never ends up with holes.
@@ -484,8 +676,9 @@ namespace RPGArena.Combat
         private void PlaceCombatants()
         {
             // Right of frame at roughly the party's depth, so the heroes turn to PROFILE (not away)
-            // to face it, and there's still a real gap to charge across.
-            var bossPos = new Vector3(3.85f, 0f, -0.25f);
+            // to face it. Pushed further right (3.85 -> 5.1) so the two sides read as opposing
+            // battle lines with real charge distance between them, not a bar brawl.
+            var bossPos = new Vector3(5.1f, 0f, -0.25f);
             int frontIdx = 0, backIdx = 0;
             for (int i = 0; i < Context.heroes.Count; i++)
             {
@@ -495,10 +688,10 @@ namespace RPGArena.Combat
                 h.transform.rotation = Quaternion.Euler(0, 90, 0);
                 Vector3 faceBoss = bossPos - h.transform.position; faceBoss.y = 0f;
                 float scale = h.modelPrefab != null ? 1.2f : 1f;     // make the 3D heroes read larger
-                // camBlend 0.34: now that the fight axis is lateral, facing the enemy is already a
-                // profile, so this yaws them into a 3/4 view that shows the character's FRONT to the
-                // player without pointing them away from their own target.
-                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss, scale, 0f, 0.34f);
+                // camBlend 0.48: yaw the heroes further toward the lens than the old 0.34 — the
+                // player asked to see FACES, not shoulder blades. Still under 0.5 so "facing the
+                // boss" reads truthfully when they attack.
+                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss, scale, 0f, 0.48f);
                 var motion = h.gameObject.AddComponent<CombatantMotion>();    // lunge/recoil (+ procedural bob if no model)
                 if (h.modelPrefab != null) motion.bobAmplitude = 0f;          // the Animator's Idle replaces the bob
             }
@@ -522,9 +715,10 @@ namespace RPGArena.Combat
             {
                 var m = Context.minions[i];
                 minionDefs.TryGetValue(m, out var md);
-                // adds push FORWARD of their master toward the party — they read as the threat you
-                // must clear first, and they never eclipse the boss's silhouette
-                var mp = new Vector3(1.55f + i * 1.30f, 0f, -1.85f - i * 0.95f);
+                // adds form a staggered skirmish LINE between the armies (two alternating depths) —
+                // they read as the threat you must clear first, and with four of them the arc stays
+                // between party and boss instead of marching off into the foreground.
+                var mp = new Vector3(1.15f + i * 1.05f, 0f, -1.65f - (i % 2) * 0.95f);
                 m.transform.position = mp;
                 Vector3 faceParty = new Vector3(-4.4f, 0f, 0f) - mp; faceParty.y = 0f;
                 float mh = md != null ? md.modelHeight : 2.2f;

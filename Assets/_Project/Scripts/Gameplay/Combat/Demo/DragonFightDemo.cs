@@ -59,7 +59,7 @@ namespace RPGArena.Combat.Demo
 
             var ai = ScriptableObject.CreateInstance<DragonCycleAI>();
             ai.clawSwipe = claw; ai.tailSweep = tailSweep; ai.tailGuard = tailGuard;
-            ai.chargingBreath = chargingBreath; ai.flameBreath = flameBreath; ai.tailSweepChance = 0.2f;
+            ai.chargingBreath = chargingBreath; ai.flameBreath = flameBreath;
 
             var dragonDef = ScriptableObject.CreateInstance<BossDefinition>();
             dragonDef.bossName = "The Dragon";

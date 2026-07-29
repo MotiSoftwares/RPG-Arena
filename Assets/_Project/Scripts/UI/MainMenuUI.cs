@@ -28,10 +28,12 @@ namespace RPGArena.UI
         [SerializeField] private TMP_FontAsset uiFont;     // SlimUI Poppins-Bold SDF (wired in scene); falls back to TMP default
         private TMP_FontAsset font;
         private GameObject mainPanel, selectPanel, infoPanel, settingsPanel;
-        private TMP_Text infoText, selectHint;
+        private TMP_Text infoText, selectHint, difficultyLabel;
         private Button confirmBtn;
         private readonly List<string> picked = new();
         private readonly Dictionary<string, Image> cardImages = new();
+        // HARD by default — the game is designed to kill players who don't engage with its systems.
+        private Difficulty pendingDifficulty = Difficulty.Hard;
 
         // Audio service (persistent bootstrap); null-safe so the menu also works when entered directly.
         private static IAudioService Audio => GameBootstrap.Instance != null ? GameBootstrap.Instance.Audio : null;
@@ -80,6 +82,7 @@ namespace RPGArena.UI
                 // Start a brand-new run: reset boss progress + boons, then set the chosen party.
                 boot.Run.Reset();
                 boot.Run.partyClassNames.AddRange(picked);
+                boot.Run.difficulty = pendingDifficulty;
                 boot.Scenes.LoadScene("BattleArena");
             }
             else
@@ -87,6 +90,17 @@ namespace RPGArena.UI
                 // No bootstrap (entered Play directly here) — load the scene; battle uses its default party.
                 UnityEngine.SceneManagement.SceneManager.LoadScene("BattleArena");
             }
+        }
+
+        private void RefreshDifficultyLabel()
+        {
+            if (difficultyLabel == null) return;
+            difficultyLabel.text = pendingDifficulty == Difficulty.Hard
+                ? "Difficulty:  HARD  —  combo or die"
+                : "Difficulty:  EASY  —  a gentler arena";
+            difficultyLabel.color = pendingDifficulty == Difficulty.Hard
+                ? new Color(1f, 0.45f, 0.35f)
+                : new Color(0.55f, 0.9f, 0.6f);
         }
 
         private void Quit()
@@ -142,6 +156,15 @@ namespace RPGArena.UI
                 var card = Card(sp, c.name, c.blurb, portrait, y, () => TogglePick(c.name));
                 cardImages[c.name] = card;
             }
+            // Difficulty toggle — HARD is the default and says so. One click flips it.
+            var diffBtn = MenuButton(sp, "", 0.17f, () =>
+            {
+                pendingDifficulty = pendingDifficulty == Difficulty.Hard ? Difficulty.Easy : Difficulty.Hard;
+                RefreshDifficultyLabel();
+            });
+            difficultyLabel = diffBtn.GetComponentInChildren<TMP_Text>();
+            RefreshDifficultyLabel();
+
             confirmBtn = MenuButton(sp, "Confirm & Fight", 0.10f, Confirm); confirmBtn.interactable = false;
             MenuButton(sp, "Back", 0.03f, ShowMain);
 

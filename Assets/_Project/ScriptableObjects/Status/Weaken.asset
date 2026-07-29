@@ -23,7 +23,7 @@ MonoBehaviour:
   perTurnPercentMaxHP: 0
   perTurnFlatDamage: 0
   dotElement: 0
-  attackMod: 0
+  attackMod: -8
   defenseMod: -12
   speedMod: 0
   accuracyMod: 0

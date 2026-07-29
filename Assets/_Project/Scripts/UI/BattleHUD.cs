@@ -32,6 +32,7 @@ namespace RPGArena.UI
         public DamageResultChannel onDamageDealt;
         public AbilityChannel onBossTelegraph;
         public Core.Events.VoidChannel onBattleWon, onBattleLost;
+        public Core.Events.StringChannel onAnnouncement;   // centre-screen play-by-play from the controller
 
         // ---- Theme -------------------------------------------------------------------
         static readonly Color Panel    = new Color(0.055f, 0.07f, 0.105f, 0.90f);   // dark slate
@@ -86,6 +87,7 @@ namespace RPGArena.UI
             onStaggerBroken?.Subscribe(OnBreak);
             onBossTelegraph?.Subscribe(OnTelegraph);
             onEntityDied?.Subscribe(OnDied);
+            onAnnouncement?.Subscribe(OnAnnounce);
         }
 
         private void OnDisable()
@@ -94,6 +96,60 @@ namespace RPGArena.UI
             onStaggerBroken?.Unsubscribe(OnBreak);
             onBossTelegraph?.Unsubscribe(OnTelegraph);
             onEntityDied?.Unsubscribe(OnDied);
+            onAnnouncement?.Unsubscribe(OnAnnounce);
+        }
+
+        // --- the announcer: centre-screen play-by-play ----------------------------------
+        // Every action and every phase change is spelled out where the player is already looking,
+        // so no turn is ever a mystery. Latest line replaces the previous (no queue backlog).
+        private TMP_Text announceText;
+        private Image announceBg;
+        private Coroutine announceCo;
+
+        private void OnAnnounce(string line)
+        {
+            if (announceText == null || string.IsNullOrEmpty(line)) return;
+            if (announceCo != null) StopCoroutine(announceCo);
+            announceCo = StartCoroutine(AnnounceRoutine(line));
+        }
+
+        private IEnumerator AnnounceRoutine(string line)
+        {
+            bool enemyBeat = line.Contains("ENEMY PHASE") || line.Contains("BROKEN") || line.Contains("FROZEN");
+            bool yourBeat = line.Contains("YOUR PHASE");
+            announceText.text = line;
+            announceText.color = yourBeat ? Accent : enemyBeat ? new Color(1f, 0.62f, 0.5f) : new Color(1f, 0.96f, 0.86f);
+            announceBg.gameObject.SetActive(true);
+
+            // Pop in, hold, fade — all on unscaled time so hit-stop can't freeze the caption.
+            float t = 0f;
+            while (t < 0.14f)
+            {
+                t += Time.unscaledDeltaTime;
+                float k = Mathf.SmoothStep(0f, 1f, t / 0.14f);
+                announceBg.transform.localScale = new Vector3(1f, k, 1f);
+                SetAlpha(1f);
+                yield return null;
+            }
+            announceBg.transform.localScale = Vector3.one;
+            t = 0f;
+            while (t < 1.35f) { t += Time.unscaledDeltaTime; yield return null; }
+            t = 0f;
+            while (t < 0.35f)
+            {
+                t += Time.unscaledDeltaTime;
+                SetAlpha(1f - t / 0.35f);
+                yield return null;
+            }
+            announceBg.gameObject.SetActive(false);
+            SetAlpha(1f);
+            announceCo = null;
+
+            void SetAlpha(float a)
+            {
+                var c = announceText.color; c.a = a; announceText.color = c;
+                var b = announceBg.color; b.a = 0.72f * a; announceBg.color = b;
+            }
         }
 
         private Entity lastMenuHero;
@@ -127,9 +183,25 @@ namespace RPGArena.UI
             if (canvasRoot != null && !canvasRoot.activeSelf) canvasRoot.SetActive(true);
 
             UpdateBracePrompt();
+            UpdateFollowUpPrompt();
             RefreshBars();
             AnimateBars();
+            RefreshAdvisor();
 
+            // PLAYER PHASE, step 1: the controller wants to know WHICH hero acts next.
+            if (controller.AwaitingHeroPick)
+            {
+                if (!pickShowing)
+                {
+                    pickShowing = true;
+                    lastMenuHero = null;
+                    if (menuPanelGo != null) menuPanelGo.SetActive(true);
+                    BuildHeroPickMenu();
+                }
+            }
+            else pickShowing = false;
+
+            // PLAYER PHASE, step 2: a hero is selected — show their action menu.
             if (controller.AwaitingInput && controller.ActiveHero != lastMenuHero)
             {
                 lastMenuHero = controller.ActiveHero;
@@ -137,13 +209,40 @@ namespace RPGArena.UI
                 BuildActionMenu(controller.ActiveHero);
                 if (!coachDone && coachPanel != null) coachPanel.SetActive(true);
             }
-            else if (!controller.AwaitingInput && lastMenuHero != null)
+            else if (!controller.AwaitingInput && !controller.AwaitingHeroPick && lastMenuHero != null)
             {
                 lastMenuHero = null;
                 ClearChildren(actionPanel);
                 if (menuTitle != null) menuTitle.text = "";
                 if (menuPanelGo != null) menuPanelGo.SetActive(false);   // no empty box during enemy turns
                 if (!coachDone && coachPanel != null) { coachPanel.SetActive(false); coachDone = true; }
+            }
+        }
+
+        private bool pickShowing;
+
+        // "CHOOSE YOUR HERO" — the player decides who acts next, in any order, each hero once.
+        // This is the round's first decision: detonators want to move AFTER the setup lands.
+        private void BuildHeroPickMenu()
+        {
+            ClearChildren(actionPanel);
+            if (menuTitle != null) menuTitle.text = "YOUR PHASE — WHO ACTS NEXT?";
+            float y = 0f;
+            foreach (var h in controller.HeroesYetToAct)
+            {
+                if (h == null || !h.IsAlive) continue;
+                var captured = h;
+                var btn = MakeSimpleButton(actionPanel,
+                    $"»  {h.displayName}    <size=75%><color=#8FE38F>{h.currentHP}/{h.stats.maxHP} HP</color>   <color=#7FA8F0>{h.currentMP}/{h.stats.maxMP} MP</color></size>",
+                    new Vector2(0, -y), Accent, true);
+                var label = btn.GetComponentInChildren<TMP_Text>();
+                if (label != null) label.richText = true;
+                btn.onClick.AddListener(() =>
+                {
+                    GameBootstrap.Instance?.Audio?.PlaySfx("ui_click");
+                    controller.SelectHero(captured);
+                });
+                y += 40f;
             }
         }
 
@@ -258,65 +357,91 @@ namespace RPGArena.UI
             }
         }
 
-        // --- turn-order tracker -------------------------------------------------------
+        // --- phase tracker --------------------------------------------------------------
+        // The old initiative queue is gone; the panel now mirrors the two-phase round exactly:
+        // your heroes still to act (gold = acting now), then every enemy with its INTENT. Nothing
+        // on this list ever silently disappears — heroes leave it by acting, enemies by dying.
         private void RefreshTurnOrder()
         {
-            if (turnOrderRow == null || controller.UpcomingOrder == null) return;
+            if (turnOrderRow == null || controller.Context == null) return;
+
+            var heroes = controller.HeroesYetToAct;
+            var enemies = new List<Entity>();
+            foreach (var m in controller.Context.minions) if (m != null && m.IsAlive) enemies.Add(m);
+            if (controller.Context.boss != null && controller.Context.boss.IsAlive) enemies.Add(controller.Context.boss);
+
             var sb = new System.Text.StringBuilder();
-            int seen = 0;
-            foreach (var e in controller.UpcomingOrder)
-            {
-                if (e == null || !e.IsAlive) continue;
-                sb.Append(e.displayName).Append(':').Append(IntentOf(e)).Append('|');
-                if (++seen >= 6) break;
-            }
+            foreach (var h in heroes) if (h != null && h.IsAlive) sb.Append(h.displayName).Append(controller.ActiveHero == h ? "*" : "").Append('|');
+            sb.Append("::");
+            foreach (var e in enemies) sb.Append(e.displayName).Append(':').Append(IntentOf(e)).Append('|');
             string sig = sb.ToString();
             if (sig == turnOrderSig) return;
             turnOrderSig = sig;
 
             ClearChildren(turnOrderRow);
             turnOrderCursor = 0;
-            int i = 0;
-            foreach (var e in controller.UpcomingOrder)
-            {
-                if (e == null || !e.IsAlive) continue;
-                bool enemy = e.team == Team.Enemies;
-                string intent = enemy ? IntentOf(e) : "";
-                bool tall = intent.Length > 0;
-                var chip = new GameObject("Chip"); chip.transform.SetParent(turnOrderRow, false);
-                var img = chip.AddComponent<Image>(); Soft(img);
-                img.color = i == 0 ? new Color(Gold.r, Gold.g, Gold.b, 0.22f)
-                          : e.isBoss ? new Color(0.5f, 0.16f, 0.16f, 0.55f) : new Color(0.15f, 0.2f, 0.32f, 0.55f);
-                var rt = img.rectTransform;
-                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f); rt.pivot = new Vector2(0.5f, 1f);
-                rt.anchoredPosition = new Vector2(0, -turnOrderCursor); rt.sizeDelta = new Vector2(166, tall ? 40 : 27);
-                turnOrderCursor += tall ? 43 : 30;
-                // accent dot
-                var dot = new GameObject("Dot"); dot.transform.SetParent(rt, false);
-                var dimg = dot.AddComponent<Image>(); Soft(dimg);
-                dimg.color = e.isBoss ? Danger : (i == 0 ? Gold : Accent);
-                var drt = dimg.rectTransform; drt.anchorMin = drt.anchorMax = new Vector2(0f, 1f); drt.pivot = new Vector2(0f, 1f);
-                drt.anchoredPosition = new Vector2(10, tall ? -9 : -10); drt.sizeDelta = new Vector2(8, 8);
 
-                var t = MakeText(rt, (i == 0 ? "NOW  " : $"{i + 1}.  ") + e.displayName, fontBody, 14, TextAlignmentOptions.TopLeft, new Vector2(0, 1), new Vector2(0, 1));
-                var trt = t.rectTransform; trt.anchorMin = new Vector2(0, 1); trt.anchorMax = new Vector2(1, 1);
-                trt.pivot = new Vector2(0, 1); trt.anchoredPosition = new Vector2(24, -3); trt.sizeDelta = new Vector2(-28, 18);
-                t.color = i == 0 ? Gold : TxtMain;
-
-                // INTENT: what this enemy is about to do. Planning beats reacting — the whole fight
-                // changes character once you can see the incoming blow one turn early.
-                if (tall)
+            bool playerPhase = heroes != null && heroes.Count > 0;
+            TrackerHeader(playerPhase ? "YOUR PHASE" : "ENEMY PHASE", playerPhase ? Accent : Danger);
+            if (playerPhase)
+                foreach (var h in heroes)
                 {
-                    var it = MakeText(rt, intent, fontBody, 11.5f, TextAlignmentOptions.TopLeft, new Vector2(0, 1), new Vector2(0, 1));
-                    var irt = it.rectTransform; irt.anchorMin = new Vector2(0, 1); irt.anchorMax = new Vector2(1, 1);
-                    irt.pivot = new Vector2(0, 1); irt.anchoredPosition = new Vector2(24, -21); irt.sizeDelta = new Vector2(-28, 16);
-                    it.richText = true; it.enableWordWrapping = false; it.overflowMode = TextOverflowModes.Ellipsis;
+                    if (h == null || !h.IsAlive) continue;
+                    bool now = controller.ActiveHero == h;
+                    TrackerChip((now ? "NOW  " : "»  ") + h.displayName, "", false,
+                        now ? new Color(Gold.r, Gold.g, Gold.b, 0.22f) : new Color(0.15f, 0.2f, 0.32f, 0.55f),
+                        now ? Gold : Accent, now ? Gold : TxtMain);
                 }
-                if (++i >= 6) break;
+
+            TrackerHeader(playerPhase ? "THEN — ENEMY PHASE" : "ACTING NOW", new Color(1f, 0.55f, 0.45f));
+            foreach (var e in enemies)
+            {
+                string intent = IntentOf(e);
+                TrackerChip(e.displayName, intent, intent.Length > 0,
+                    e.isBoss ? new Color(0.5f, 0.16f, 0.16f, 0.55f) : new Color(0.30f, 0.16f, 0.16f, 0.55f),
+                    Danger, TxtMain);
             }
         }
 
         private int turnOrderCursor;
+
+        private void TrackerHeader(string label, Color color)
+        {
+            var t = MakeText(turnOrderRow, label, fontBody, 12.5f, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
+            var trt = t.rectTransform; trt.anchoredPosition = new Vector2(0, -turnOrderCursor); trt.sizeDelta = new Vector2(166, 18);
+            t.color = color; t.characterSpacing = 6f;
+            turnOrderCursor += 21;
+        }
+
+        private void TrackerChip(string name, string intent, bool tall, Color bg, Color dotColor, Color nameColor)
+        {
+            var chip = new GameObject("Chip"); chip.transform.SetParent(turnOrderRow, false);
+            var img = chip.AddComponent<Image>(); Soft(img); img.color = bg;
+            var rt = img.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f); rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0, -turnOrderCursor); rt.sizeDelta = new Vector2(166, tall ? 40 : 27);
+            turnOrderCursor += tall ? 43 : 30;
+
+            var dot = new GameObject("Dot"); dot.transform.SetParent(rt, false);
+            var dimg = dot.AddComponent<Image>(); Soft(dimg); dimg.color = dotColor;
+            var drt = dimg.rectTransform; drt.anchorMin = drt.anchorMax = new Vector2(0f, 1f); drt.pivot = new Vector2(0f, 1f);
+            drt.anchoredPosition = new Vector2(10, tall ? -9 : -10); drt.sizeDelta = new Vector2(8, 8);
+
+            var t = MakeText(rt, name, fontBody, 14, TextAlignmentOptions.TopLeft, new Vector2(0, 1), new Vector2(0, 1));
+            var trt = t.rectTransform; trt.anchorMin = new Vector2(0, 1); trt.anchorMax = new Vector2(1, 1);
+            trt.pivot = new Vector2(0, 1); trt.anchoredPosition = new Vector2(24, -3); trt.sizeDelta = new Vector2(-28, 18);
+            t.color = nameColor;
+
+            // INTENT: what this enemy is about to do. Planning beats reacting — the whole fight
+            // changes character once you can see the incoming blow one turn early.
+            if (tall)
+            {
+                var it = MakeText(rt, intent, fontBody, 11.5f, TextAlignmentOptions.TopLeft, new Vector2(0, 1), new Vector2(0, 1));
+                var irt = it.rectTransform; irt.anchorMin = new Vector2(0, 1); irt.anchorMax = new Vector2(1, 1);
+                irt.pivot = new Vector2(0, 1); irt.anchoredPosition = new Vector2(24, -21); irt.sizeDelta = new Vector2(-28, 16);
+                it.richText = true; it.enableWordWrapping = false; it.overflowMode = TextOverflowModes.Ellipsis;
+            }
+        }
 
         // A short, readable description of an enemy's NEXT action. A committed telegraph outranks
         // everything (it is already locked in); otherwise we ask the brain for a side-effect-free
@@ -397,45 +522,137 @@ namespace RPGArena.UI
         }
 
         // --- action commands ----------------------------------------------------------
-        // Defensive: while an enemy winds up, the BRACE prompt pulses; SPACE inside the window
-        // softens the incoming blow (BattleController resolves it at x0.7).
+        // Defensive: BLOCK is a timed skill now, not a free window. While the enemy winds up, a
+        // fast needle ping-pongs over a small gold core — press SPACE ON GOLD for a PERFECT BLOCK
+        // (×0.55), near it for a BLOCK (×0.78); a bad press FUMBLES the guard (full damage) and a
+        // no-press eats the hit. The sweep speed is randomised per attack so it cannot be metronomed:
+        // reading the needle IS the skill, and a good block feels earned.
+        private Coroutine braceCo;
+
         private void UpdateBracePrompt()
         {
             if (bracePanel == null || controller == null) return;
-            if (controller.BraceWindowOpen)
+            if (controller.BraceWindowOpen && braceCo == null)
+                braceCo = StartCoroutine(BraceBarRoutine());
+        }
+
+        private IEnumerator BraceBarRoutine()
+        {
+            bracePanel.SetActive(true);
+            bracePanel.transform.localScale = Vector3.one;
+            braceText.text = "";
+            foreach (Transform child in bracePanel.transform)
+                if (child.gameObject.name == "BlockTrack") Destroy(child.gameObject);
+
+            // Build the mini needle track inside the brace panel.
+            var trackGo = new GameObject("BlockTrack"); trackGo.transform.SetParent(bracePanel.transform, false);
+            var track = trackGo.AddComponent<Image>(); Soft(track); track.color = new Color(0.05f, 0.05f, 0.09f, 0.97f); track.raycastTarget = false;
+            var trt = track.rectTransform;
+            trt.anchorMin = new Vector2(0.5f, 0f); trt.anchorMax = new Vector2(0.5f, 0f); trt.pivot = new Vector2(0.5f, 1f);
+            trt.anchoredPosition = new Vector2(0, -6); trt.sizeDelta = new Vector2(300, 30);
+            System.Action<float, float, Color> zone = (min, max, col) =>
             {
-                if (!bracePanel.activeSelf)
+                var z = new GameObject("Zone"); z.transform.SetParent(trt, false);
+                var zi = z.AddComponent<Image>(); Soft(zi); zi.color = col; zi.raycastTarget = false;
+                var zrt = zi.rectTransform;
+                zrt.anchorMin = new Vector2(min, 0.15f); zrt.anchorMax = new Vector2(max, 0.85f);
+                zrt.offsetMin = zrt.offsetMax = Vector2.zero;
+            };
+            zone(0.34f, 0.66f, new Color(Accent.r, Accent.g, Accent.b, 0.30f));
+            zone(0.46f, 0.54f, new Color(Gold.r, Gold.g, Gold.b, 0.85f));
+            var needleGo = new GameObject("Needle"); needleGo.transform.SetParent(trt, false);
+            var needle = needleGo.AddComponent<Image>(); needle.color = Color.white; needle.raycastTarget = false;
+            var nrt = needle.rectTransform;
+            nrt.anchorMin = new Vector2(0f, 0f); nrt.anchorMax = new Vector2(0f, 1f);
+            nrt.sizeDelta = new Vector2(4f, 0f); nrt.anchoredPosition = Vector2.zero;
+
+            braceText.text = "!!  BLOCK ON GOLD  —  SPACE  !!";
+            braceText.color = new Color(1f, 0.93f, 0.5f);
+            if (braceImg != null) braceImg.color = new Color(0.32f, 0.06f, 0.05f, 0.95f);
+
+            // Random sweep speed per attack — a metronome press cannot cheese it.
+            float speed = Random.Range(1.35f, 1.95f);   // full track lengths per second
+            float t = Random.Range(0f, 0.6f);           // random start phase too
+            bool pressed = false; float pressPos = 0f;
+
+            while (controller.BraceWindowOpen && !pressed)
+            {
+                if (PauseMenu.IsPaused) { yield return null; continue; }
+                t += Time.unscaledDeltaTime * speed;
+                float pos = Mathf.PingPong(t, 1f);
+                nrt.anchorMin = new Vector2(pos, 0f); nrt.anchorMax = new Vector2(pos, 1f);
+                var kb = Keyboard.current;
+                if (kb != null && kb.spaceKey.wasPressedThisFrame) { pressed = true; pressPos = pos; }
+                yield return null;
+            }
+
+            if (pressed)
+            {
+                float off = Mathf.Abs(pressPos - 0.5f);
+                if (off < 0.06f)
                 {
-                    bracePanel.SetActive(true);
-                    braceShownLanded = false;
-                    braceText.text = "!!  BRACE  —  SPACE  !!";
-                    braceText.color = new Color(1f, 0.93f, 0.5f);
+                    controller.SubmitBrace(0.55f);
+                    braceText.text = "PERFECT BLOCK!";
+                    braceText.color = new Color(1f, 0.9f, 0.4f);
+                    if (braceImg != null) braceImg.color = new Color(0.30f, 0.24f, 0.05f, 0.95f);
+                    GameBootstrap.Instance?.Audio?.PlaySfx("crit");
                 }
-                float k = controller.BraceTimeLeft / Mathf.Max(0.01f, controller.braceWindow);
-                bracePanel.transform.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(Time.unscaledTime * 16f));
-                if (braceImg != null) braceImg.color = Color.Lerp(new Color(0.32f, 0.06f, 0.05f, 0.95f), new Color(0.62f, 0.10f, 0.07f, 0.97f), k);
-                // Keyboard reads bypass the pause overlay's raycaster, so gate on pause explicitly —
-                // otherwise the player could pause, press SPACE at leisure, and buy a free brace.
+                else if (off < 0.18f)
+                {
+                    controller.SubmitBrace(0.78f);
+                    braceText.text = "BLOCKED!";
+                    braceText.color = new Color(0.5f, 1f, 0.6f);
+                    if (braceImg != null) braceImg.color = new Color(0.08f, 0.30f, 0.14f, 0.95f);
+                    GameBootstrap.Instance?.Audio?.PlaySfx("ui_click");
+                }
+                else
+                {
+                    controller.SubmitBrace(1f);   // consumed the attempt, blocked nothing
+                    braceText.text = "FUMBLED!";
+                    braceText.color = new Color(1f, 0.5f, 0.45f);
+                    if (braceImg != null) braceImg.color = new Color(0.32f, 0.08f, 0.06f, 0.95f);
+                }
+                Destroy(trackGo);
+                // Manual unscaled wait — WaitForSecondsRealtime never resumes under an unfocused
+                // editor's Step loop (the documented timeScale-stall gotcha).
+                float hold = 0f;
+                while (hold < 0.55f) { hold += Time.unscaledDeltaTime; yield return null; }
+            }
+            else
+            {
+                Destroy(trackGo);
+            }
+
+            bracePanel.SetActive(false);
+            braceCo = null;
+        }
+
+        // FOLLOW-UP: a surprise opening after a landed blow. The prompt appears at a random beat
+        // and lives ~0.3s — pure reaction. Pressing it lands a bonus echo strike.
+        private GameObject followPanel;
+        private TMP_Text followText;
+
+        private void UpdateFollowUpPrompt()
+        {
+            if (followPanel == null || controller == null) return;
+            bool open = controller.FollowUpPromptOpen;
+            if (open && !followPanel.activeSelf)
+            {
+                followPanel.SetActive(true);
+                followText.text = "!!  OPENING — SPACE  !!";
+            }
+            else if (!open && followPanel.activeSelf) followPanel.SetActive(false);
+
+            if (open)
+            {
+                followPanel.transform.localScale = Vector3.one * (1f + 0.10f * Mathf.Sin(Time.unscaledTime * 22f));
                 var kb = Keyboard.current;
                 if (!PauseMenu.IsPaused && kb != null && kb.spaceKey.wasPressedThisFrame)
                 {
-                    controller.SubmitBrace();
-                    GameBootstrap.Instance?.Audio?.PlaySfx("ui_click");
+                    controller.SubmitFollowUp();
+                    GameBootstrap.Instance?.Audio?.PlaySfx("crit");
                 }
             }
-            else if (controller.BraceLanded)
-            {
-                if (!braceShownLanded)
-                {
-                    braceShownLanded = true;
-                    bracePanel.SetActive(true);
-                    bracePanel.transform.localScale = Vector3.one;
-                    braceText.text = "BRACED!";
-                    braceText.color = new Color(0.5f, 1f, 0.6f);
-                    if (braceImg != null) braceImg.color = new Color(0.08f, 0.30f, 0.14f, 0.95f);
-                }
-            }
-            else if (bracePanel.activeSelf) bracePanel.SetActive(false);
         }
 
         // Offensive: the timed-strike bar. The needle sweeps once; lock it on gold for a PERFECT
@@ -469,8 +686,8 @@ namespace RPGArena.UI
                 zrt.anchorMin = new Vector2(min, 0.12f); zrt.anchorMax = new Vector2(max, 0.88f);
                 zrt.offsetMin = zrt.offsetMax = Vector2.zero;
             };
-            makeZone(0.28f, 0.72f, new Color(Accent.r, Accent.g, Accent.b, 0.30f));   // GOOD band
-            makeZone(0.425f, 0.575f, new Color(Gold.r, Gold.g, Gold.b, 0.85f));       // PERFECT core
+            makeZone(0.32f, 0.68f, new Color(Accent.r, Accent.g, Accent.b, 0.30f));   // GOOD band
+            makeZone(0.45f, 0.55f, new Color(Gold.r, Gold.g, Gold.b, 0.85f));         // PERFECT core
 
             var needleGo = new GameObject("Needle"); needleGo.transform.SetParent(trt, false);
             var needle = needleGo.AddComponent<Image>(); needle.color = Color.white; needle.raycastTarget = false;
@@ -478,11 +695,15 @@ namespace RPGArena.UI
             nrt.anchorMin = new Vector2(0f, 0f); nrt.anchorMax = new Vector2(0f, 1f);
             nrt.sizeDelta = new Vector2(5f, 0f); nrt.anchoredPosition = Vector2.zero;
 
-            var hint = MakeText(actionPanel, "SPACE or click to strike — gold = PERFECT (+18%)", fontBody, 13, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
-            Place(hint, new Vector2(0, -108), new Vector2(380, 20)); hint.color = TxtMuted;
+            var hint = MakeText(actionPanel, "the needle passes gold TWICE — out, then back. Strike on gold (+18%)", fontBody, 13, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
+            Place(hint, new Vector2(0, -108), new Vector2(400, 20)); hint.color = TxtMuted;
 
-            const float sweep = 0.85f;
-            const float armAfter = 0.15f;   // grace: the click/keypress that OPENED the bar must not lock it
+            // ONE pass out, ONE pass back, then it resolves. Two chances at a SMALLER gold makes the
+            // rhythm readable on a first playthrough (you watch the out-pass, you strike the return)
+            // while the tighter core keeps PERFECT an earned hit rather than a default.
+            const float sweep = 0.8f;        // seconds per direction
+            const float total = sweep * 2f;
+            const float armAfter = 0.15f;    // grace: the click/keypress that OPENED the bar must not lock it
             float t = 0f, pos = 0f;
             bool locked = false;
 
@@ -493,13 +714,13 @@ namespace RPGArena.UI
 
             yield return null;   // never observe the click frame's own key state
 
-            while (!locked && t < sweep)
+            while (!locked && t < total)
             {
                 // A paused game must not sweep: the bar runs on unscaled time, so without this the
                 // needle would race on behind the pause menu and auto-resolve the attack as SLOPPY.
                 if (PauseMenu.IsPaused) { yield return null; continue; }
                 t += Time.unscaledDeltaTime;
-                pos = Mathf.Clamp01(t / sweep);
+                pos = t < sweep ? Mathf.Clamp01(t / sweep) : Mathf.Clamp01(1f - (t - sweep) / sweep);
                 nrt.anchorMin = new Vector2(pos, 0f); nrt.anchorMax = new Vector2(pos, 1f);
                 var kb = Keyboard.current;
                 if (t >= armAfter && kb != null && kb.spaceKey.wasPressedThisFrame) locked = true;
@@ -508,8 +729,8 @@ namespace RPGArena.UI
 
             float off = Mathf.Abs(pos - 0.5f);
             float mult; string call; Color cc;
-            if (locked && off < 0.075f) { mult = 1.18f; call = "PERFECT!"; cc = Gold; }
-            else if (locked && off < 0.22f) { mult = 1f; call = "GOOD"; cc = Accent; }
+            if (locked && off < 0.05f) { mult = 1.18f; call = "PERFECT!"; cc = Gold; }
+            else if (locked && off < 0.18f) { mult = 1f; call = "GOOD"; cc = Accent; }
             else { mult = 0.9f; call = "SLOPPY"; cc = TxtMuted; }
             GameBootstrap.Instance?.Audio?.PlaySfx(mult > 1.1f ? "crit" : "ui_click");
             juice?.Announce(hero.transform.position + Vector3.up * 2.5f, call, cc, mult > 1.1f ? 44f : 30f);
@@ -730,13 +951,16 @@ namespace RPGArena.UI
             move.onClick.AddListener(() => controller.SubmitReposition());
             y += 38f;
 
-            // HOLD — act at the end of the round instead. Named for what it BUYS ("act after your
-            // allies"), because "delay" reads like a penalty when it is the combo party's best tool:
-            // it is how a physical hero gets to swing AFTER the Mage has frozen the boss.
-            if (controller.CanHold)
+            // Back out to the hero pick without spending the turn. HOLD is gone — choosing who acts
+            // next IS the ordering mechanic now, so "act after your allies" is just picking them later.
+            if (controller.HeroesYetToAct != null && controller.HeroesYetToAct.Count > 1)
             {
-                var hold = MakeSimpleButton(actionPanel, "»  Hold  —  act after your allies", new Vector2(0, -y), Accent, true);
-                hold.onClick.AddListener(() => controller.SubmitHold());
+                var switchBtn = MakeSimpleButton(actionPanel, "←  Switch hero", new Vector2(0, -y), TxtMuted, true);
+                switchBtn.onClick.AddListener(() =>
+                {
+                    GameBootstrap.Instance?.Audio?.PlaySfx("ui_click");
+                    controller.CancelHeroSelection();
+                });
                 y += 38f;
             }
 
@@ -1062,9 +1286,10 @@ namespace RPGArena.UI
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = canvasGo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            // 1920x1080 like every other canvas (RunFlow/Pause/MainMenu): consistent scaling AND a
-            // ~33% smaller HUD than the old 1280x720 reference — the battlefield gets the screen back.
-            scaler.referenceResolution = new Vector2(1920, 1080);
+            // ~15% LARGER than the other canvases' 1920x1080 on purpose: the battle HUD is the one
+            // screen where the player reads numbers under time pressure, and playtest feedback was
+            // that it ran small. A smaller reference resolution scales every element up uniformly.
+            scaler.referenceResolution = new Vector2(1664, 936);
             scaler.matchWidthOrHeight = 0.5f;
             canvasGo.AddComponent<GraphicRaycaster>();
             canvasRoot = canvasGo;
@@ -1157,6 +1382,12 @@ namespace RPGArena.UI
             Stretch(braceText, 8, 4, 8, 4);
             bracePanel.SetActive(false);
 
+            // ---- FOLLOW-UP prompt (flashes above the brace slot on a random beat) ----
+            followPanel = MakePanel(root, new Vector2(0.5f, 0f), new Vector2(0, 120), new Vector2(340, 48), new Color(0.30f, 0.22f, 0.04f, 0.96f));
+            followText = MakeText(followPanel.GetComponent<RectTransform>(), "", fontHeader, 22, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);
+            Stretch(followText, 8, 4, 8, 4); followText.color = Gold;
+            followPanel.SetActive(false);
+
             // ---- VALOR (bottom center) ----
             MakePanel(root, new Vector2(0.5f, 0f), new Vector2(0, 14), new Vector2(456, 28), Panel);
             valorFill = MakeBar(root, new Vector2(0.5f, 0f), new Vector2(0, 14), new Vector2(448, 24), Gold);
@@ -1169,6 +1400,76 @@ namespace RPGArena.UI
             log = MakeText(logPanel.GetComponent<RectTransform>(), "", fontBody, 15, TextAlignmentOptions.BottomLeft, Vector2.zero, Vector2.zero);
             Stretch(log, 12, 8, 12, 8); log.richText = true; log.lineSpacing = 6f;
             logPanel.SetActive(false);
+
+            // ---- ANNOUNCER (centre screen): "Warrior used Power Strike on The Dragon" ----
+            var annGo = new GameObject("Announcer"); annGo.transform.SetParent(root, false);
+            announceBg = annGo.AddComponent<Image>(); Soft(announceBg);
+            announceBg.color = new Color(0.02f, 0.03f, 0.06f, 0.72f); announceBg.raycastTarget = false;
+            var annRt = announceBg.rectTransform;
+            annRt.anchorMin = annRt.anchorMax = new Vector2(0.5f, 0.72f); annRt.pivot = new Vector2(0.5f, 0.5f);
+            annRt.anchoredPosition = Vector2.zero; annRt.sizeDelta = new Vector2(760, 52);
+            announceText = MakeText(annRt, "", fontHeader, 26, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);
+            Stretch(announceText, 12, 4, 12, 4);
+            annGo.SetActive(false);
+
+            // ---- COMBO ADVISOR (top left): live, board-driven suggestions ----
+            advisorPanel = MakePanel(root, new Vector2(0f, 1f), new Vector2(12, -12), new Vector2(348, 148), Panel);
+            var advRt = advisorPanel.GetComponent<RectTransform>();
+            var advTitle = PanelTitle(advRt, "COMBO ADVISOR", 14, 8, 20); advTitle.color = Gold; advTitle.characterSpacing = 6;
+            advisorText = MakeText(advRt, "", fontBody, 14.5f, TextAlignmentOptions.TopLeft, Vector2.zero, Vector2.zero);
+            Stretch(advisorText, 14, 8, 10, 34); advisorText.richText = true; advisorText.lineSpacing = 10f;
+        }
+
+        // --- combo advisor ----------------------------------------------------------------
+        // Reads the actual board every frame and says what is WORTH DOING RIGHT NOW. This is the
+        // "occupy the player from minute one" panel: it teaches the combo web by pointing at the
+        // live opportunity instead of explaining theory.
+        private GameObject advisorPanel;
+        private TMP_Text advisorText;
+        private string advisorSig = "";
+
+        private void RefreshAdvisor()
+        {
+            if (advisorText == null || controller == null || controller.Context == null) return;
+            var ctx = controller.Context;
+            var boss = ctx.boss;
+            if (boss == null || !boss.IsAlive) { if (advisorPanel.activeSelf) advisorPanel.SetActive(false); return; }
+            if (!advisorPanel.activeSelf) advisorPanel.SetActive(true);
+
+            var lines = new List<string>(4);
+            var st = boss.Status;
+            bool wet = st != null && st.Has(StatusFlag.Wet);
+            bool oiled = st != null && st.Has(StatusFlag.Oiled);
+            bool marked = st != null && st.Has(StatusFlag.Marked);
+            bool frozen = st != null && st.Has(StatusFlag.Frozen);
+
+            if (frozen)
+                lines.Add("<color=#F2C14E>» FROZEN — hit it with PHYSICAL for SHATTER ×2.3!</color>");
+            else if (wet)
+                lines.Add("<color=#46C8E6>» it is WET — Ice now = guaranteed FREEZE</color>");
+            else if (marked && oiled)
+                lines.Add("<color=#F2C14E>» MARKED + OILED — any physical hit = QUARRY ×1.9</color>");
+            else if (oiled)
+                lines.Add("<color=#8FD8A0>» OILED — physical hits +15%; add a MARK for QUARRY</color>");
+            else
+                lines.Add("<color=#8FD8A0>» coat it first: Water Bomb (Thief) or Pitch Arrow (Archer)</color>");
+
+            if (boss.telegraphedAbility != null)
+                lines.Add("<color=#FF7A5C>» it is CHARGING — hits build +50% Break now. Race it!</color>");
+            else if (boss.isStaggered)
+                lines.Add("<color=#F2C14E>» BROKEN — everything ×1.85. Unload your biggest hits!</color>");
+            else if (boss.rageStacks >= 4)
+                lines.Add($"<color=#FF9E7A>» Fury ×{boss.rageStacks} and climbing — BREAK it to vent</color>");
+
+            if (ctx.charge != null && ctx.charge.IsFull)
+                lines.Add("<color=#F2C14E>» VALOR FULL — Overdrive is ready</color>");
+            else if (marked && frozen)
+                lines.Add("<color=#B9A3E8>» BRITTLE (Marked+Frozen) — crits almost guaranteed</color>");
+
+            string text = string.Join("\n", lines);
+            if (text == advisorSig) return;
+            advisorSig = text;
+            advisorText.text = text;
         }
 
         // Position a TMP text by anchored pos + size (anchor/pivot already set by MakeText).

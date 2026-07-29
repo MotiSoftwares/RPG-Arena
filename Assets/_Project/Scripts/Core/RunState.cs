@@ -2,6 +2,10 @@ using System.Collections.Generic;
 
 namespace RPGArena.Core
 {
+    // HARD is the default on purpose: the game is designed to kill players who don't engage with
+    // combos, Breaks and the action commands. EASY exists for people who want the spectacle.
+    public enum Difficulty { Easy, Hard }
+
     // Lightweight, in-memory state for a single run of the boss gauntlet. Created once by
     // GameBootstrap and kept for the whole session — this is a boss-rush, not a save-heavy
     // RPG (CLAUDE.md §4.15). Roguelite boons (Appendix E.2) accumulate here across bosses.
@@ -117,6 +121,10 @@ namespace RPGArena.Core
             restsPurchased = snapRests;
             startValor = snapValor;
         }
+
+        // Chosen at the main menu; survives the whole run. Reset() leaves it alone — flipping
+        // difficulty is an explicit menu act, not something a retry should quietly undo.
+        public Difficulty difficulty = Difficulty.Hard;
 
         // How far the player is in the gauntlet (0 = first boss).
         public int currentBossIndex;

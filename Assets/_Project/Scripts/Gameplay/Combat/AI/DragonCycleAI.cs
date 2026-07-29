@@ -14,15 +14,16 @@ namespace RPGArena.Combat.AI
     public class DragonCycleAI : AIBehavior
     {
         [Header("Cycle moves (assign the Dragon's abilities)")]
-        public Ability clawSwipe;
+        public Ability clawSwipe;           // ATTACK 1: single-target maul on the threat leader
+        public Ability wingBuffet;          // ATTACK 2: party-wide physical
+        public Ability chargingBreath;      // the telegraph — lashes mid-charge, FlameBreath lands next turn
+        public Ability flameBreath;         // ATTACK 3: the committed fire AoE
+        public Ability terrifyingRoar;      // the DEBUFF: party-wide Weaken (Scream animation)
+        [Tooltip("Legacy slots — no longer in the rotation; kept so old assets deserialize cleanly.")]
         public Ability tailSweep;
         public Ability tailGuard;
-        public Ability chargingBreath;
-        public Ability flameBreath;
-        public Ability wingBuffet;          // a second AoE — phase-2+ pressure on a spread party
 
         [Header("Tuning")]
-        [Range(0f, 1f)] public float tailSweepChance = 0.2f;
         [Range(0f, 1f)] public float phase2HpFraction = 0.5f;
         [Range(0f, 1f)] public float phase3HpFraction = 0.15f;
 
@@ -39,18 +40,22 @@ namespace RPGArena.Combat.AI
             return cycle[idx];
         }
 
-        // The HP-gated rotation. Shared by DecideAction and PreviewIntent so the preview can never
-        // drift from what actually happens.
+        // The HP-gated rotation: 3 attacks + 1 debuff, USED WISELY — the Roar softens the party
+        // right before the committed Flame Breath window, the Wing Buffet punishes a spread party,
+        // and the Claw mauls whoever tops the threat table. Every entry either deals damage or
+        // visibly debuffs; the charge turn itself lashes (BossMoveCommand), so no turn is empty.
+        // Shared by DecideAction and PreviewIntent so the preview can never drift from reality.
         private List<Ability> BuildCycle(Entity self)
         {
             float hpFrac = self.stats.maxHP > 0 ? (float)self.currentHP / self.stats.maxHP : 1f;
             var wing = wingBuffet != null ? wingBuffet : tailSweep;
+            var roar = terrifyingRoar != null ? terrifyingRoar : clawSwipe;
             var charge = chargingBreath != null ? chargingBreath : flameBreath;
             if (hpFrac <= phase3HpFraction)
-                return new List<Ability> { charge, clawSwipe, charge, wing };        // FINAL FURY
+                return new List<Ability> { charge, wing, clawSwipe, charge };        // FINAL FURY: breath after breath
             if (hpFrac <= phase2HpFraction)
-                return new List<Ability> { clawSwipe, charge, wing, clawSwipe };     // ENRAGED
-            return new List<Ability> { clawSwipe, tailSweep, clawSwipe, charge };    // STALKING
+                return new List<Ability> { clawSwipe, roar, charge, wing };          // ENRAGED: soften, then burn
+            return new List<Ability> { clawSwipe, wing, roar, charge };              // STALKING: the readable loop
         }
 
         public override Ability DecideAction(BattleContext ctx, Entity self,

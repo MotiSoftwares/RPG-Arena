@@ -223,6 +223,26 @@ namespace RPGArena.Combat.Commands
                 caster.telegraphedAbility = a.telegraphsAbility;
                 ctx.Log($"  >>> {Name(caster)} is charging {a.telegraphsAbility.displayName}! (defend, break it, or dodge) <<<");
                 ctx.RaiseTelegraph(a.telegraphsAbility);
+
+                // The charge is NOT a free turn any more: if the move has power, the boss lashes out
+                // while gathering it (a tail flick at a fraction of a real hit). Every enemy turn now
+                // deals visible damage — "the boss stood there doing nothing" rounds are gone, and
+                // the telegraph still reads loud because the REAL payload lands next turn.
+                if (a.power > 0f && req.targets != null && req.targets.Length > 0
+                    && req.targets[0] != null && req.targets[0].team != caster.team && req.targets[0].IsAlive)
+                {
+                    var t = req.targets[0];
+                    var info = new DamageInfo
+                    {
+                        source = caster, target = t, ability = a, element = a.element,
+                        basePower = a.power * req.Mult, isMagic = a.isMagic,
+                        forceHit = a.autoHit, hitTier = a.hitTier
+                    };
+                    var r = ctx.damage.Compute(info);
+                    ctx.damage.Apply(r, ctx);
+                    ctx.lastActionResults.Add(r);
+                    ctx.Log($"      ...and lashes out at {Name(t)} mid-charge ({(r.hit ? r.amount.ToString() : "graze")})!");
+                }
             }
             else
             {

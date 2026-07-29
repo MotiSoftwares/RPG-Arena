@@ -10,29 +10,30 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7b335960c99a30f42b5f43ed52ac5c82, type: 3}
-  m_Name: Dragon_ChargingBreath
+  m_Name: Dragon_TerrifyingRoar
   m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.Ability
-  displayName: Charging Breath
-  description: 
-  icon: {fileID: 21300000, guid: 53364a33722c58643bceb9f323e16a60, type: 3}
-  effectType: 8
-  targetRule: 0
-  element: 1
+  displayName: Terrifying Roar
+  description: A bone-shaking roar that WEAKENS the whole party's attack.
+  icon: {fileID: 0}
+  effectType: 4
+  targetRule: 1
+  element: 0
   isMagic: 0
-  power: 0.35
+  power: 0
   hits: 1
   mpCost: 0
   cooldown: 0
   mpRegenOnUse: 0
   flatPower: 0
-  hitTier: 1
-  autoHit: 0
+  hitTier: 0
+  autoHit: 1
   rollsRiskDie: 0
   riskFloor: 0
   backfireKind: 0
   backfireStatus: {fileID: 0}
-  statusesToApply: []
-  telegraphsAbility: {fileID: 11400000, guid: 3a801d386b05f2a4e935b183ad772751, type: 2}
+  statusesToApply:
+  - {fileID: 11400000, guid: 8198901c24c7f3d44bd9d0941ade1b59, type: 2}
+  telegraphsAbility: {fileID: 0}
   consumesSetupFlags: 0
   devourHealPercentMaxHP: 0.04
   devourFuryPerFlag: 2
@@ -52,7 +53,7 @@ MonoBehaviour:
   bonusVsFlagMult: 1.5
   executeBelowHpPct: 0
   executeMult: 1.6
-  vfxPrefab: {fileID: 3744133877081091469, guid: a2a060732547fe64581bb0cb3c2bdf1d, type: 3}
+  vfxPrefab: {fileID: 1901902437216624, guid: 3bdca15d736d48f409ccf70e68bf79de, type: 3}
   vfxIsProjectile: 0
   sfxId: 
   animationTrigger: Attack

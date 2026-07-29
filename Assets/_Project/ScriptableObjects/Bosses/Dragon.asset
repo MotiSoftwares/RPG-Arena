@@ -36,11 +36,10 @@ MonoBehaviour:
     critDamage: 1.5
   abilities:
   - {fileID: 11400000, guid: 4df8a9503b30df84b8bd8f5263c6cffd, type: 2}
-  - {fileID: 11400000, guid: 786db29e19f2c2e4faccd1e48d9cf04d, type: 2}
-  - {fileID: 11400000, guid: c341649ab8b49284d95f79ebf273892f, type: 2}
-  - {fileID: 11400000, guid: 6cd2334ee429d25488b1301be963d96a, type: 2}
-  - {fileID: 11400000, guid: 3a801d386b05f2a4e935b183ad772751, type: 2}
   - {fileID: 11400000, guid: da85898901b109d469dab1a9a360080e, type: 2}
+  - {fileID: 11400000, guid: 3a801d386b05f2a4e935b183ad772751, type: 2}
+  - {fileID: 11400000, guid: 6cd2334ee429d25488b1301be963d96a, type: 2}
+  - {fileID: 11400000, guid: 6b31222f3c7d1a04cb76e6595f3812c5, type: 2}
   elementProfile: {fileID: 11400000, guid: 536218707724b8d44812663fc6c44510, type: 2}
   aiBehavior: {fileID: 11400000, guid: bf55b47a2631b0242992aa5e8d5d1c13, type: 2}
   phases:
@@ -52,9 +51,12 @@ MonoBehaviour:
     hpThresholdPercent: 0.15
     enrage: 1
     attackMultiplier: 1.5
-  modelHeight: 5
+  modelHeight: 7.5
   staggerThreshold: 115
   staggeredTurns: 2
+  staggerDecayPerTurn: 0
   minions:
+  - {fileID: 11400000, guid: 9ccae8e34b3a3b448a35171b2205ad80, type: 2}
+  - {fileID: 11400000, guid: 9ccae8e34b3a3b448a35171b2205ad80, type: 2}
   - {fileID: 11400000, guid: 9ccae8e34b3a3b448a35171b2205ad80, type: 2}
   - {fileID: 11400000, guid: 9ccae8e34b3a3b448a35171b2205ad80, type: 2}
