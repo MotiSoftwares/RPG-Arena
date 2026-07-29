@@ -618,6 +618,22 @@ namespace RPGArena.UI
 
         // --- target picker ------------------------------------------------------------
         // Only single-enemy skills need a choice, and only while the boss actually has living adds.
+        // THE SINGLE FUNNEL from "the target is settled" to resolution, so every path into an action
+        // agrees on which action-commands that skill earns.
+        //
+        // It did not, and the bug was invisible: the target picker called StartTimingBar directly,
+        // and that 3-arg overload hardcodes RiskStake.Press. So whenever the boss had a living add —
+        // i.e. most of the Dragon fight, which opens with two whelps — picking a SPECIAL skipped the
+        // STAKE menu entirely and silently resolved at PRESS. The player never saw the choice and
+        // never knew it existed.
+        private void BeginAction(Entity hero, Ability ab, Entity target)
+        {
+            // A risk-die SPECIAL asks how hard to push BEFORE the strike is timed.
+            if (ab.rollsRiskDie && IsDamaging(ab)) { BuildStakeMenu(hero, ab, target); return; }
+            if (IsDamaging(ab)) { StartTimingBar(hero, ab, target); return; }
+            controller.SubmitAction(ab, target);
+        }
+
         private bool NeedsTargetChoice(Ability ab)
         {
             if (ab == null || controller == null || controller.Context == null) return false;
@@ -627,12 +643,22 @@ namespace RPGArena.UI
             return alive > 0 && controller.Context.boss != null && controller.Context.boss.IsAlive;
         }
 
-        // One row per living enemy with its HP and (for the boss) its Break progress, so choosing
-        // "finish the whelp" vs "keep breaking the dragon" is an informed decision.
         private void BuildTargetPicker(Entity hero, Ability ab)
+            => BuildEnemyPicker(hero, $"{ab.displayName.ToUpper()} — PICK A TARGET", ab,
+                                t => BeginAction(hero, ab, t), () => BuildActionMenu(hero));
+
+        private void BuildItemTargetPicker(Entity hero, ItemDefinition item)
+            => BuildEnemyPicker(hero, $"{item.displayName.ToUpper()} — PICK A TARGET", item.ability,
+                                t => controller.SubmitItem(item, t), () => BuildItemMenu(hero));
+
+        // One row per living enemy with its HP and (for the boss) its Break progress, so choosing
+        // "finish the whelp" vs "keep breaking the dragon" is an informed decision. Shared by skills
+        // and consumables — `previewAbility` only drives the combo tag, `onPick` does the committing.
+        private void BuildEnemyPicker(Entity hero, string title, Ability previewAbility,
+                                      System.Action<Entity> onPick, System.Action onBack)
         {
             ClearChildren(actionPanel);
-            if (menuTitle != null) menuTitle.text = $"{ab.displayName.ToUpper()} — PICK A TARGET";
+            if (menuTitle != null) menuTitle.text = title;
             var ctx = controller.Context;
             float y = 0f;
             var options = new List<Entity>();
@@ -660,20 +686,22 @@ namespace RPGArena.UI
                 if (captured.isBoss)
                     detail += captured.isStaggered ? "   <color=#FFD24A>BROKEN — burst now!</color>"
                             : $"   break {Mathf.RoundToInt(captured.staggerMeter)}/{Mathf.RoundToInt(captured.staggerThreshold)}";
-                detail += ComboTag(hero, ab, ab.followsAttunement ? hero.currentAttunement : ab.element, captured);
+                if (previewAbility != null)
+                    detail += ComboTag(hero, previewAbility,
+                                       previewAbility.followsAttunement ? hero.currentAttunement : previewAbility.element,
+                                       captured);
                 var dT = MakeText(rt, detail, fontBody, 12, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
                 Stretch(dT, 14, 3, 12, 24); dT.color = TxtMuted; dT.richText = true;
 
                 b.onClick.AddListener(() =>
                 {
                     GameBootstrap.Instance?.Audio?.PlaySfx("ui_click");
-                    if (IsDamaging(ab)) StartTimingBar(hero, ab, captured);
-                    else controller.SubmitAction(ab, captured);
+                    onPick(captured);
                 });
                 y += 50f;
             }
-            var back = MakeSimpleButton(actionPanel, "←  Back to skills", new Vector2(0, -y), Accent, true);
-            back.onClick.AddListener(() => BuildActionMenu(hero));
+            var back = MakeSimpleButton(actionPanel, "←  Back", new Vector2(0, -y), Accent, true);
+            back.onClick.AddListener(() => onBack());
         }
 
         // --- action menu --------------------------------------------------------------
@@ -760,7 +788,12 @@ namespace RPGArena.UI
                     btn.onClick.AddListener(() =>
                     {
                         GameBootstrap.Instance?.Audio?.PlaySfx("ui_click");
-                        controller.SubmitItem(captured, PickTarget(hero, captured.ability));
+                        // Offensive consumables need the same target choice a skill gets. Without it
+                        // PickTarget's adds-first rule force-fed every Slick Flask and Flashbang to
+                        // the first living whelp — a Wet coating on a 90 HP add that dies before you
+                        // can detonate it, which is the entire value of the item thrown away.
+                        if (NeedsTargetChoice(captured.ability)) BuildItemTargetPicker(hero, captured);
+                        else controller.SubmitItem(captured, PickTarget(hero, captured.ability));
                     });
                     y += 50f;
                 }
@@ -833,12 +866,7 @@ namespace RPGArena.UI
                     BuildTargetPicker(hero, ab);
                     return;
                 }
-                var tgt = PickTarget(hero, ab);
-                // A risk-die SPECIAL asks how hard you want to push BEFORE the strike is timed, so
-                // the gamble is a read on the board rather than a slot-machine pull.
-                if (ab.rollsRiskDie && IsDamaging(ab)) { BuildStakeMenu(hero, ab, tgt); return; }
-                if (IsDamaging(ab)) StartTimingBar(hero, ab, tgt);   // action command: earn your multiplier
-                else controller.SubmitAction(ab, tgt);
+                BeginAction(hero, ab, PickTarget(hero, ab));
             });
         }
 
