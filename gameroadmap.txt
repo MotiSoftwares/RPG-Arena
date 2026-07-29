@@ -1,0 +1,28 @@
+ui organization hod
+organization and responsiveness
+animations seuquencing and events
+
+visually - no more work
+
+features:
+items with currency
+inventory
+add minions system with specific minion attacking sequnce
+minions -> drop items
+audio mixers like in class
+smaller ui and camera positioning
+
+cinematic introduction
+
+particle system -> materials assets for particle system (shader graph?)
+(dragon spits fire and bowman shoots arrows etc)
+
+
+animation events - maaybe - event bus?
+https://youtu.be/4_DTAnigmaQ?si=GJHX-g2Eao1BgZkE
+
+ai - unity plugable ai
+https://youtube.com/playlist?list=PLX2vGYjWbI0ROSj_B0_eir_VkHrEkd4pi&si=BGp5Wq3alZF8i7n3
+
+animations still clunky and mismatched
+

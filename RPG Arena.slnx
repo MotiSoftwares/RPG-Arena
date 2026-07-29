@@ -1,0 +1,12 @@
+﻿<Solution>
+  <Project Path="RPGArena.Gameplay.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="RPGArena.Audio.csproj" />
+  <Project Path="RPGArena.EditorTools.csproj" />
+  <Project Path="RPGArena.UI.csproj" />
+  <Project Path="RPGArena.Tests.csproj" />
+  <Project Path="RPGArena.Core.csproj" />
+  <Project Path="RPGArena.Narrative.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="RPGArena.Cheats.csproj" />
+</Solution>

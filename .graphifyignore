@@ -1,0 +1,78 @@
+﻿# graphify: keep extraction code-only (no LLM key required) — auto-added
+# docs / text
+*.md
+*.mdx
+*.markdown
+*.mkd
+*.txt
+*.rst
+*.pdf
+*.doc
+*.docx
+*.ppt
+*.pptx
+*.csv
+*.rtf
+# markup / templates / config-markup (no AST grammar -> would need LLM)
+*.html
+*.htm
+*.xml
+*.yml
+*.yaml
+*.toml
+*.ini
+*.cfg
+*.conf
+*.webmanifest
+*.plist
+*.properties
+*.vue
+*.svelte
+*.astro
+# images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.webp
+*.bmp
+*.tiff
+*.icns
+# audio / video
+*.mp4
+*.mov
+*.webm
+*.avi
+*.mkv
+*.mp3
+*.wav
+*.flac
+*.swf
+# 3d / graphics / fonts
+*.glb
+*.gltf
+*.hdr
+*.glsl
+*.obj
+*.fbx
+*.blend
+*.ttf
+*.otf
+# binaries / db / archives
+*.db
+*.sqlite
+*.bin
+*.dll
+*.exe
+*.so
+*.dylib
+*.pak
+*.node
+*.wasm
+*.gz
+*.tgz
+*.jar
+*.aar
+graphify-out/
