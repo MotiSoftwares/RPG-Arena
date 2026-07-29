@@ -502,6 +502,23 @@ namespace RPGArena.Combat
             // retry), driven by the OnBattleWon / OnBattleLost channels raised above.
         }
 
+        // The action camera, found by interface and cached (the scene has exactly one).
+        private IActionCamera actionCamera;
+        private bool actionCameraSearched;
+        private IActionCamera ActionCamera
+        {
+            get
+            {
+                if (!actionCameraSearched)
+                {
+                    actionCameraSearched = true;
+                    foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+                        if (mb is IActionCamera ac) { actionCamera = ac; break; }
+                }
+                return actionCamera;
+            }
+        }
+
         // Find a narrative intro by interface (no compile-time dependency on the Narrative asm).
         private IBattleIntro FindIntro()
         {
@@ -632,10 +649,13 @@ namespace RPGArena.Combat
             // difficulties. One multiplier at the damage step fixes physical and magic uniformly.
             if (diff == Difficulty.Hard)
             {
+                // Eased 15% from the first tuning (was 1.15 dmg / 1.10 HP): playtest read as
+                // punishing rather than demanding. Hard still means the enemy out-hits and
+                // out-lasts its base numbers — it just no longer wipes a competent party.
                 foreach (var e in enemies)
                 {
-                    e.difficultyDamageMult = 1.15f;
-                    e.stats.maxHP = Mathf.RoundToInt(e.stats.maxHP * 1.10f);
+                    e.difficultyDamageMult = 0.98f;
+                    e.stats.maxHP = Mathf.RoundToInt(e.stats.maxHP * 0.94f);
                     e.currentHP = e.stats.maxHP;
                 }
                 Context.Log("HARD MODE — the enemy hits harder and endures longer. Combo or die.");
@@ -699,9 +719,10 @@ namespace RPGArena.Combat
         private void PlaceCombatants()
         {
             // Right of frame at roughly the party's depth, so the heroes turn to PROFILE (not away)
-            // to face it. Pushed further right (3.85 -> 5.1) so the two sides read as opposing
-            // battle lines with real charge distance between them, not a bar brawl.
-            var bossPos = new Vector3(5.1f, 0f, -0.25f);
+            // to face it. Pushed out again (5.1 -> 7.4) because a 30%-larger dragon plus a four-whelp
+            // skirmish line had the two armies practically touching — the arena needs visible
+            // no-man's-land between the lines for the charge to read as a charge.
+            var bossPos = new Vector3(7.4f, 0f, -0.25f);
             int frontIdx = 0, backIdx = 0;
             for (int i = 0; i < Context.heroes.Count; i++)
             {
@@ -711,10 +732,12 @@ namespace RPGArena.Combat
                 h.transform.rotation = Quaternion.Euler(0, 90, 0);
                 Vector3 faceBoss = bossPos - h.transform.position; faceBoss.y = 0f;
                 float scale = h.modelPrefab != null ? 1.2f : 1f;     // make the 3D heroes read larger
-                // camBlend 0.48: yaw the heroes further toward the lens than the old 0.34 — the
-                // player asked to see FACES, not shoulder blades. Still under 0.5 so "facing the
-                // boss" reads truthfully when they attack.
-                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss, scale, 0f, 0.48f);
+                // camBlend 0.75: the heroes stand at ~90 degrees to the lens when they face the boss,
+                // so each 0.01 of blend is worth ~0.9 degrees of yaw toward the camera. 0.48 still
+                // showed too much shoulder; 0.75 turns them a further ~25 degrees into a proper
+                // three-quarter view. Kept below 1.0 so they are never facing the player outright,
+                // which would read as ignoring the enemy they are about to hit.
+                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss, scale, 0f, 0.75f);
                 var motion = h.gameObject.AddComponent<CombatantMotion>();    // lunge/recoil (+ procedural bob if no model)
                 if (h.modelPrefab != null) motion.bobAmplitude = 0f;          // the Animator's Idle replaces the bob
             }
@@ -739,9 +762,10 @@ namespace RPGArena.Combat
                 var m = Context.minions[i];
                 minionDefs.TryGetValue(m, out var md);
                 // adds form a staggered skirmish LINE between the armies (two alternating depths) —
-                // they read as the threat you must clear first, and with four of them the arc stays
-                // between party and boss instead of marching off into the foreground.
-                var mp = new Vector3(1.15f + i * 1.05f, 0f, -1.65f - (i % 2) * 0.95f);
+                // they read as the threat you must clear first. Held back toward their master now
+                // that the boss sits at 7.4, so the whelps screen the dragon instead of crowding
+                // the party's front rank.
+                var mp = new Vector3(3.15f + i * 1.15f, 0f, -1.65f - (i % 2) * 0.95f);
                 m.transform.position = mp;
                 Vector3 faceParty = new Vector3(-4.4f, 0f, 0f) - mp; faceParty.y = 0f;
                 float mh = md != null ? md.modelHeight : 2.2f;
@@ -846,6 +870,10 @@ namespace RPGArena.Combat
                 caster.GetComponent<CombatantMotion>()?.FaceTarget(look);
             }
             caster.GetComponentInChildren<RPGArena.Characters.AnimationDriver>()?.PlayCast();
+            // Heals and buffs never reach OnDamageDealt, so they would be the one action type with
+            // no action-camera punch-in. Driven through IActionCamera so this assembly never names
+            // the presentation layer (the IBattleIntro pattern).
+            ActionCamera?.FocusOnActor(caster);
             if (ability.vfxPrefab == null) return;
             // Buff/heal/aura prefabs are authored around the character's feet — ground them at EACH
             // recipient (a party-wide blessing should visibly bless the whole party, not just hero #1).

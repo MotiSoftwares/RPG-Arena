@@ -26,7 +26,7 @@ MonoBehaviour:
     maxHP: 150
     maxMP: 130
     baseAttack: 0
-    baseMagicAttack: 12
+    baseMagicAttack: 4
     baseDefense: 5
     baseSpeed: 13
     baseAccuracy: 12

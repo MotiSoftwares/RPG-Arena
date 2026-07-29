@@ -94,10 +94,13 @@ namespace RPGArena.Combat
             //    un-Broken dragon's damage escalates — the pressure that punishes ignoring the meter.
             float offense = src != null ? (info.isMagic ? src.MagicAttack : src.Attack) : 0f;
             float furyMult = (src != null && src.rageStacks > 0) ? (1f + src.rageStacks * cfg.rageDamagePerStack) : 1f;
+            // The party-wide output dial. Applied here (not on the Entity) so it lands on every hero
+            // uniformly and shows up in the headless balance gate exactly as it does in the live game.
+            float heroMult = (src != null && src.team == Characters.Team.Heroes) ? cfg.heroDamageMult : 1f;
             float dmg = offense * Mathf.Max(0f, info.basePower) * damageRoll
                       * (src != null ? src.damageOutMultiplier : 1f)
                       * (src != null ? src.difficultyDamageMult : 1f)   // Easy/Hard, physical AND magic
-                      * furyMult * glanceMult;
+                      * heroMult * furyMult * glanceMult;
 
             // 3) ELEMENT modifier. Absorb (negative sentinel) flips the hit into a heal.
             var reaction = (tgt != null && tgt.elementProfile != null)

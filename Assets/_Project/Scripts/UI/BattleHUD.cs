@@ -409,7 +409,9 @@ namespace RPGArena.UI
         {
             var t = MakeText(turnOrderRow, label, fontBody, 12.5f, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
             var trt = t.rectTransform; trt.anchoredPosition = new Vector2(0, -turnOrderCursor); trt.sizeDelta = new Vector2(166, 18);
-            t.color = color; t.characterSpacing = 6f;
+            // No letter-spacing here: "THEN — ENEMY PHASE" plus spacing was wider than the panel.
+            t.color = color; t.characterSpacing = 0f;
+            t.enableWordWrapping = false; t.overflowMode = TextOverflowModes.Ellipsis;
             turnOrderCursor += 21;
         }
 
@@ -431,6 +433,7 @@ namespace RPGArena.UI
             var trt = t.rectTransform; trt.anchorMin = new Vector2(0, 1); trt.anchorMax = new Vector2(1, 1);
             trt.pivot = new Vector2(0, 1); trt.anchoredPosition = new Vector2(24, -3); trt.sizeDelta = new Vector2(-28, 18);
             t.color = nameColor;
+            t.enableWordWrapping = false; t.overflowMode = TextOverflowModes.Ellipsis;
 
             // INTENT: what this enemy is about to do. Planning beats reacting — the whole fight
             // changes character once you can see the incoming blow one turn early.
@@ -548,8 +551,8 @@ namespace RPGArena.UI
             var trackGo = new GameObject("BlockTrack"); trackGo.transform.SetParent(bracePanel.transform, false);
             var track = trackGo.AddComponent<Image>(); Soft(track); track.color = new Color(0.05f, 0.05f, 0.09f, 0.97f); track.raycastTarget = false;
             var trt = track.rectTransform;
-            trt.anchorMin = new Vector2(0.5f, 0f); trt.anchorMax = new Vector2(0.5f, 0f); trt.pivot = new Vector2(0.5f, 1f);
-            trt.anchoredPosition = new Vector2(0, -6); trt.sizeDelta = new Vector2(300, 30);
+            trt.anchorMin = new Vector2(0.5f, 0f); trt.anchorMax = new Vector2(0.5f, 0f); trt.pivot = new Vector2(0.5f, 0f);
+            trt.anchoredPosition = new Vector2(0, 10); trt.sizeDelta = new Vector2(390, 34);
             System.Action<float, float, Color> zone = (min, max, col) =>
             {
                 var z = new GameObject("Zone"); z.transform.SetParent(trt, false);
@@ -566,7 +569,7 @@ namespace RPGArena.UI
             nrt.anchorMin = new Vector2(0f, 0f); nrt.anchorMax = new Vector2(0f, 1f);
             nrt.sizeDelta = new Vector2(4f, 0f); nrt.anchoredPosition = Vector2.zero;
 
-            braceText.text = "!!  BLOCK ON GOLD  —  SPACE  !!";
+            braceText.text = "!!  BLOCK ON GOLD  !!";
             braceText.color = new Color(1f, 0.93f, 0.5f);
             if (braceImg != null) braceImg.color = new Color(0.32f, 0.06f, 0.05f, 0.95f);
 
@@ -581,8 +584,7 @@ namespace RPGArena.UI
                 t += Time.unscaledDeltaTime * speed;
                 float pos = Mathf.PingPong(t, 1f);
                 nrt.anchorMin = new Vector2(pos, 0f); nrt.anchorMax = new Vector2(pos, 1f);
-                var kb = Keyboard.current;
-                if (kb != null && kb.spaceKey.wasPressedThisFrame) { pressed = true; pressPos = pos; }
+                if (StrikeInputThisFrame()) { pressed = true; pressPos = pos; }
                 yield return null;
             }
 
@@ -627,6 +629,20 @@ namespace RPGArena.UI
             braceCo = null;
         }
 
+        // The action-command "hit it NOW" input: SPACE, left mouse, or any touch, read anywhere on
+        // screen. Every timed prompt (strike bar, block needle, follow-up) shares this so they can
+        // never disagree about what counts as a press.
+        private static bool StrikeInputThisFrame()
+        {
+            var kb = Keyboard.current;
+            if (kb != null && kb.spaceKey.wasPressedThisFrame) return true;
+            var mouse = Mouse.current;
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame) return true;
+            var touch = UnityEngine.InputSystem.Touchscreen.current;
+            if (touch != null && touch.primaryTouch.press.wasPressedThisFrame) return true;
+            return false;
+        }
+
         // FOLLOW-UP: a surprise opening after a landed blow. The prompt appears at a random beat
         // and lives ~0.3s — pure reaction. Pressing it lands a bonus echo strike.
         private GameObject followPanel;
@@ -639,15 +655,14 @@ namespace RPGArena.UI
             if (open && !followPanel.activeSelf)
             {
                 followPanel.SetActive(true);
-                followText.text = "!!  OPENING — SPACE  !!";
+                followText.text = "!!  OPENING — SPACE / CLICK  !!";
             }
             else if (!open && followPanel.activeSelf) followPanel.SetActive(false);
 
             if (open)
             {
                 followPanel.transform.localScale = Vector3.one * (1f + 0.10f * Mathf.Sin(Time.unscaledTime * 22f));
-                var kb = Keyboard.current;
-                if (!PauseMenu.IsPaused && kb != null && kb.spaceKey.wasPressedThisFrame)
+                if (!PauseMenu.IsPaused && StrikeInputThisFrame())
                 {
                     controller.SubmitFollowUp();
                     GameBootstrap.Instance?.Audio?.PlaySfx("crit");
@@ -722,8 +737,10 @@ namespace RPGArena.UI
                 t += Time.unscaledDeltaTime;
                 pos = t < sweep ? Mathf.Clamp01(t / sweep) : Mathf.Clamp01(1f - (t - sweep) / sweep);
                 nrt.anchorMin = new Vector2(pos, 0f); nrt.anchorMax = new Vector2(pos, 1f);
-                var kb = Keyboard.current;
-                if (t >= armAfter && kb != null && kb.spaceKey.wasPressedThisFrame) locked = true;
+                // SPACE or a click ANYWHERE on screen. Requiring the click to land on the little
+                // track made a reaction test into an aiming test — you cannot watch the needle and
+                // steer a cursor at the same time, so the whole mechanic read as unresponsive.
+                if (t >= armAfter && !PauseMenu.IsPaused && StrikeInputThisFrame()) locked = true;
                 yield return null;
             }
 
@@ -1063,7 +1080,7 @@ namespace RPGArena.UI
             var name = MakeText(rt, ab.displayName, fontHeader, 16, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.zero);
             Stretch(name, textLeft, 22, 86, 3);
             name.color = affordable ? TxtMain : TxtMuted;
-            name.enableWordWrapping = false; name.overflowMode = TextOverflowModes.Overflow;
+            name.enableWordWrapping = false; name.overflowMode = TextOverflowModes.Ellipsis;
 
             string costStr = ab.cooldown > 0 && hero.IsOnCooldown(ab) ? $"CD {hero.CooldownRemaining(ab)}"
                            : ab.mpCost > 0 ? $"{ab.mpCost} MP" : "free";
@@ -1106,7 +1123,8 @@ namespace RPGArena.UI
             var btn = go.AddComponent<Button>(); btn.targetGraphic = img; btn.interactable = enabled;
             var cb = btn.colors; cb.highlightedColor = new Color(1.3f, 1.3f, 1.3f); cb.fadeDuration = 0.07f; btn.colors = cb;
             var t = MakeText(rt, label, fontBody, 15, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);
-            Stretch(t, 0, 0, 0, 0); t.color = accent;
+            Stretch(t, 6, 0, 6, 0); t.color = accent;
+            t.enableWordWrapping = false; t.overflowMode = TextOverflowModes.Ellipsis;
             if (enabled) btn.onClick.AddListener(() => GameBootstrap.Instance?.Audio?.PlaySfx("ui_click"));
             return btn;
         }
@@ -1311,10 +1329,11 @@ namespace RPGArena.UI
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = canvasGo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            // ~15% LARGER than the other canvases' 1920x1080 on purpose: the battle HUD is the one
-            // screen where the player reads numbers under time pressure, and playtest feedback was
-            // that it ran small. A smaller reference resolution scales every element up uniformly.
-            scaler.referenceResolution = new Vector2(1664, 936);
+            // 1920x1080 like every other canvas (RunFlow/Pause/MainMenu). A scale-up experiment
+            // read as oversized in playtest and was reverted; the real complaint behind it was
+            // panels CLIPPING their contents, which is fixed by sizing each box to what it holds
+            // rather than by inflating the whole HUD.
+            scaler.referenceResolution = new Vector2(1920, 1080);
             scaler.matchWidthOrHeight = 0.5f;
             canvasGo.AddComponent<GraphicRaycaster>();
             canvasRoot = canvasGo;
@@ -1349,10 +1368,19 @@ namespace RPGArena.UI
             telegraphPanel.SetActive(false);
 
             // ---- TURN ORDER (top right) ----
-            // taller: enemy rows now carry an INTENT line under the name
-            var toPanel = MakePanel(root, new Vector2(1f, 1f), new Vector2(-12, -12), new Vector2(184, 292), Panel).GetComponent<RectTransform>();
+            // Sized for the WORST case, which the old 292px panel could not hold: two phase headers
+            // plus three hero chips plus five enemy chips (four whelps and the Dragon), each enemy
+            // chip tall because it carries an INTENT line. That is ~350px of content, so the list
+            // was spilling out past the panel edge.
+            var toPanel = MakePanel(root, new Vector2(1f, 1f), new Vector2(-12, -12), new Vector2(184, 396), Panel).GetComponent<RectTransform>();
             var toTitle = PanelTitle(toPanel, "TURN ORDER", 14, 8, 20); toTitle.color = Accent; toTitle.characterSpacing = 6;
-            turnOrderRow = MakeRow(root, new Vector2(1f, 1f), new Vector2(-104, -44), new Vector2(172, 244));
+            // THE out-of-bounds bug. MakeRow sets pivot = anchor, so with anchor (1,1) the row hung
+            // its width to the LEFT of the anchor point: the row spanned x -276..-104 while the panel
+            // spans -196..-12, i.e. every chip stuck ~80px out past the panel's left edge. Centring
+            // the row on the panel's own centre (-104) is the fix.
+            turnOrderRow = MakeRow(root, new Vector2(1f, 1f), new Vector2(-104, -44), new Vector2(172, 348));
+            turnOrderRow.pivot = new Vector2(0.5f, 1f);
+            turnOrderRow.anchoredPosition = new Vector2(-104, -44);
 
             // ---- PARTY (bottom left): 3 hero cards ----
             for (int i = 0; i < 3; i++)
@@ -1380,15 +1408,18 @@ namespace RPGArena.UI
                 heroStatusRows.Add(MakeRow(st, new Vector2(0f, 0f), new Vector2(16, 6), new Vector2(330, 16)));
             }
 
-            // ---- ACTION MENU (bottom right) ---- (410 tall: 5 skill rows + Overdrive + Move +
-            // Items all fit with margin — smaller sizes used to clip the last row)
-            menuPanelGo = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 16), new Vector2(424, 410), Panel);
+            // ---- ACTION MENU (bottom right) ----
+            // Worst case is 5 skill rows (54 each) + Overdrive + Move + Switch hero + Items (40
+            // each) = 430px of content. The old 370px inner box silently clipped the bottom rows,
+            // which is why the menu read as "out of bounds". 470px inner leaves real margin, and
+            // the panel is wider so 18pt skill names no longer collide with the MP column.
+            menuPanelGo = MakePanel(root, new Vector2(1f, 0f), new Vector2(-16, 16), new Vector2(424, 450), Panel);
             var menuPanel = menuPanelGo.GetComponent<RectTransform>();
             menuPanelGo.SetActive(false);   // shown only while a hero is choosing
             menuTitle = PanelTitle(menuPanel, "", 14, 8, 20); menuTitle.color = Accent; menuTitle.characterSpacing = 3;
-            var menuInner = MakeRow(menuPanel, new Vector2(0f, 1f), new Vector2(10, -34), new Vector2(404, 370));
+            var menuInner = MakeRow(menuPanel, new Vector2(0f, 1f), new Vector2(10, -34), new Vector2(404, 410));
             menuInner.anchorMin = new Vector2(0f, 1f); menuInner.anchorMax = new Vector2(1f, 1f);
-            menuInner.offsetMin = new Vector2(10, -404); menuInner.offsetMax = new Vector2(-10, -34);
+            menuInner.offsetMin = new Vector2(10, -444); menuInner.offsetMax = new Vector2(-10, -34);
             menuInner.pivot = new Vector2(0.5f, 1f);
             actionPanel = menuInner;
 
@@ -1400,15 +1431,22 @@ namespace RPGArena.UI
             Stretch(coachCaption, 10, 4, 10, 4); coachCaption.color = new Color(1f, 0.95f, 0.7f);
             coachPanel.SetActive(false);
 
-            // ---- BRACE prompt (above the valor bar; hidden until an enemy winds up) ----
-            bracePanel = MakePanel(root, new Vector2(0.5f, 0f), new Vector2(0, 52), new Vector2(380, 56), new Color(0.32f, 0.06f, 0.05f, 0.95f));
+            // ---- BLOCK prompt (mid-screen, hidden until an enemy winds up) ----
+            // It used to sit just above the Valor bar at the bottom edge, where the Valor panel
+            // overlapped its needle track — the block read as unusable ("basically invincible").
+            // Now it lives out over the battlefield at eye level, clear of every other panel, and
+            // sized so the needle is actually readable at a glance.
+            bracePanel = MakePanel(root, new Vector2(0.5f, 0.38f), Vector2.zero, new Vector2(430, 108), new Color(0.32f, 0.06f, 0.05f, 0.95f));
             braceImg = bracePanel.GetComponent<Image>();
-            braceText = MakeText(bracePanel.GetComponent<RectTransform>(), "", fontHeader, 24, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);
-            Stretch(braceText, 8, 4, 8, 4);
+            braceText = MakeText(bracePanel.GetComponent<RectTransform>(), "", fontHeader, 22, TextAlignmentOptions.Top, Vector2.zero, Vector2.zero);
+            // Label sits in the TOP half only; the needle track owns the bottom. Word-wrap off so a
+            // long call-out can never spill a second line down over the track.
+            Stretch(braceText, 8, 52, 8, 6);
+            braceText.enableWordWrapping = false; braceText.overflowMode = TextOverflowModes.Overflow;
             bracePanel.SetActive(false);
 
-            // ---- FOLLOW-UP prompt (flashes above the brace slot on a random beat) ----
-            followPanel = MakePanel(root, new Vector2(0.5f, 0f), new Vector2(0, 120), new Vector2(340, 48), new Color(0.30f, 0.22f, 0.04f, 0.96f));
+            // ---- FOLLOW-UP prompt (mid-screen, just above the block slot) ----
+            followPanel = MakePanel(root, new Vector2(0.5f, 0.52f), Vector2.zero, new Vector2(380, 54), new Color(0.30f, 0.22f, 0.04f, 0.96f));
             followText = MakeText(followPanel.GetComponent<RectTransform>(), "", fontHeader, 22, TextAlignmentOptions.Center, Vector2.zero, Vector2.zero);
             Stretch(followText, 8, 4, 8, 4); followText.color = Gold;
             followPanel.SetActive(false);

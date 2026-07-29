@@ -9,9 +9,19 @@ namespace RPGArena.Core
     public class BalanceConfig : ScriptableObject
     {
         [Header("Element multipliers")]
-        // How far a weakness or resistance bends incoming damage (×1.5 / ×0.5 default).
+        // How far a weakness or resistance bends incoming damage.
+        // RESIST was 0.5, and that single number was most of the "the Mage does ten times what
+        // everyone else does" problem: the Dragon and the Evil Warrior both RESIST Physical, which
+        // is the only element three of the four classes can throw, while the Mage's Ice is their
+        // WEAKNESS. Halving three classes while boosting the fourth is a 3x swing before a single
+        // stat is compared. 0.65 keeps resistance meaningful (you still want the right element, and
+        // Break still strips it) without making the physical trio's whole kit feel broken.
         public float weakMult = 1.5f;
-        public float resistMult = 0.5f;
+        public float resistMult = 0.65f;
+
+        [Header("Party output")]
+        [Tooltip("Flat multiplier on ALL hero damage. The party-wide difficulty dial: raise it when the fight reads as a slog, lower it when combos trivialise bosses. Enemies are unaffected (they scale via Entity.difficultyDamageMult).")]
+        public float heroDamageMult = 1.5f;
 
         [Header("Defense mitigation")]
         // Percentage mitigation = Defense / (Defense + K): soft, diminishing returns

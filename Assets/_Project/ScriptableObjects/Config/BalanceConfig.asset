@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: BalanceConfig
   m_EditorClassIdentifier: RPGArena.Core::RPGArena.Core.BalanceConfig
   weakMult: 1.5
-  resistMult: 0.5
+  resistMult: 0.65
+  heroDamageMult: 1.5
   defenseK: 100
   staggerDamageMult: 1.85
   staggerBuildNormalHit: 8
@@ -52,6 +53,7 @@ MonoBehaviour:
   riskBigDamageMult: 1.5
   riskJackpotDamageMult: 2
   riskSelfRecoilPct: 0.12
+  controlLockTurns: 4
   stakeSteadyFloor: 0.3
   stakeSteadyScale: 0.5
   stakeSteadyDamageMult: 0.85

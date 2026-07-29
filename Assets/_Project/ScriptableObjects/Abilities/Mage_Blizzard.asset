@@ -19,7 +19,7 @@ MonoBehaviour:
   targetRule: 0
   element: 2
   isMagic: 1
-  power: 2.5
+  power: 2.1
   hits: 1
   mpCost: 36
   cooldown: 5
@@ -34,6 +34,9 @@ MonoBehaviour:
   statusesToApply:
   - {fileID: 11400000, guid: af1513dd3500c974680d97183717bae8, type: 2}
   telegraphsAbility: {fileID: 0}
+  consumesSetupFlags: 0
+  devourHealPercentMaxHP: 0.04
+  devourFuryPerFlag: 2
   stanceAction: 0
   attunementOptions: 
   stanceStatuses: []

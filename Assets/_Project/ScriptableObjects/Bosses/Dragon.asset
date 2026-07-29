@@ -51,7 +51,7 @@ MonoBehaviour:
     hpThresholdPercent: 0.15
     enrage: 1
     attackMultiplier: 1.5
-  modelHeight: 7.5
+  modelHeight: 9.75
   staggerThreshold: 115
   staggeredTurns: 2
   staggerDecayPerTurn: 0

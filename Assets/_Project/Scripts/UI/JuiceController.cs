@@ -13,7 +13,7 @@ namespace RPGArena.UI
     // turns combat results into game-feel — floating damage numbers, hit-stop, camera shake, a
     // screen flash, and the BREAK slow-mo spectacle. It never touches combat logic, and every
     // effect degrades gracefully (a missing camera or canvas just skips that effect).
-    public class JuiceController : MonoBehaviour
+    public class JuiceController : MonoBehaviour, IActionCamera
     {
         [Header("Channels (subscribed)")]
         public DamageResultChannel onDamageDealt;
@@ -151,6 +151,20 @@ namespace RPGArena.UI
         private void OnTurnFocus(Entity actor)
         {
             if (actor == null || cam == null) return;
+            // ENEMIES ONLY. An enemy's turn start and its swing are the same beat, so focusing here
+            // reads correctly. A HERO's turn start is the moment their action MENU opens — the
+            // player then sits choosing a skill while the camera has already pushed in and eased
+            // back out, so by the time they actually swing the shot is over. Heroes are focused
+            // from AttackBeat/FocusOnActor instead, when the strike genuinely begins.
+            if (actor.team != Characters.Team.Enemies) return;
+            FocusOn(actor.transform.position + Vector3.up * 1.4f, 1.25f);
+        }
+
+        // Called by the battle loop the instant an action actually starts resolving, so the punch-in
+        // lands on the character who is swinging rather than on whoever is browsing a menu.
+        public void FocusOnActor(Entity actor)
+        {
+            if (actor == null || cam == null) return;
             FocusOn(actor.transform.position + Vector3.up * 1.4f,
                     actor.team == Characters.Team.Enemies ? 1.25f : 1f);
         }
@@ -259,6 +273,10 @@ namespace RPGArena.UI
             BattleController.PresentationBusyUntil = Mathf.Max(BattleController.PresentationBusyUntil, start + 1.1f);
             float lead = start - Time.time;
             if (lead > 0f) yield return new WaitForSeconds(lead);
+
+            // The action punch-in, fired HERE rather than on turn-start, so a hero gets their
+            // close-up as the blow begins instead of while the menu is still open.
+            if (r.source != null) FocusOnActor(r.source);
 
             TargetAnchors(r.target, r.target.isBoss ? 1.6f : 1.0f, r.target.isBoss ? 3.6f : 2.2f, out Vector3 bodyCenter, out Vector3 head);
             Vector3 dir = r.source != null ? (r.target.transform.position - r.source.transform.position) : Vector3.forward;

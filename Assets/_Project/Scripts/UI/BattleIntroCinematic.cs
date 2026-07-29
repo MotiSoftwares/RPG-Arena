@@ -44,13 +44,22 @@ namespace RPGArena.UI
             Vector3 homePos = juice.CameraBasePos;
             float homeFov = juice.CameraBaseFov;
 
-            // Close-up: low angle just left of the boss, looking up at its head.
+            // Close-up: low angle just left of the boss, looking up at its HEAD.
+            //
+            // Framing is derived from the boss's real rendered bounds, never from fixed offsets. The
+            // old constants (look at bossPos + 2.6u) were authored against a 5u dragon; once it grew
+            // the shot pointed at its throat, and it would have been just as wrong for the 3.4u
+            // Black Mage in the other direction. Scaling off the silhouette keeps every boss framed
+            // on the face no matter how big it is.
             Vector3 bossPos = boss.transform.position;
-            Vector3 closePos = bossPos + new Vector3(-4.6f, 1.6f, -3.4f);
+            Bounds b = BossBounds(boss);
+            float h = Mathf.Max(1.5f, b.size.y);
+            Vector3 head = new Vector3(b.center.x, b.min.y + h * 0.86f, b.center.z);
+            float dist = Mathf.Clamp(h * 1.30f, 4.5f, 16f);
+            Vector3 closePos = head + new Vector3(-dist * 0.62f, h * 0.06f, -dist * 0.80f);
             juice.SetCameraBase(closePos, 34f);
             cam.transform.localPosition = closePos;
-            Vector3 lookTarget = bossPos + Vector3.up * 2.6f;
-            cam.transform.rotation = Quaternion.LookRotation((lookTarget - closePos).normalized, Vector3.up);
+            cam.transform.rotation = Quaternion.LookRotation((head - closePos).normalized, Vector3.up);
             Quaternion closeRot = cam.transform.rotation;
 
             var (overlay, title, sub) = BuildOverlay(boss.displayName);
@@ -71,8 +80,9 @@ namespace RPGArena.UI
                 float k = Mathf.Clamp01(t / 0.35f);
                 title.alpha = k; sub.alpha = Mathf.Clamp01((t - 0.25f) / 0.4f);
                 title.transform.localScale = Vector3.one * Mathf.Lerp(1.25f, 1f, Mathf.SmoothStep(0f, 1f, k));
-                // slow push-in for menace
-                juice.SetCameraBase(Vector3.Lerp(closePos, closePos + new Vector3(0.35f, 0.1f, 0.5f), t / holdOnBoss), 34f);
+                // slow push-in for menace, scaled to the boss so it reads the same at any size
+                Vector3 creep = (head - closePos).normalized * (h * 0.10f);
+                juice.SetCameraBase(Vector3.Lerp(closePos, closePos + creep, t / holdOnBoss), 34f);
                 yield return null;
             }
 
@@ -91,6 +101,22 @@ namespace RPGArena.UI
             cam.transform.rotation = homeRot;
             Destroy(overlay.transform.parent.gameObject);
             IsIntroDone = true;
+        }
+
+        // The boss's true on-screen silhouette: every renderer under it, merged. Falls back to a
+        // sane box if the model has not attached yet, so the intro can never divide by nothing.
+        private static Bounds BossBounds(Characters.Entity boss)
+        {
+            var rends = boss.GetComponentsInChildren<Renderer>(false);
+            bool any = false;
+            Bounds b = new Bounds(boss.transform.position + Vector3.up, Vector3.one * 2f);
+            foreach (var r in rends)
+            {
+                if (r == null || r is ParticleSystemRenderer) continue;   // VFX would balloon the box
+                if (!any) { b = r.bounds; any = true; }
+                else b.Encapsulate(r.bounds);
+            }
+            return b;
         }
 
         // Full-screen black fade + centered title card, on its own topmost canvas.

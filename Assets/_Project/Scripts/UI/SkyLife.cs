@@ -48,11 +48,82 @@ namespace RPGArena.UI
 
         private void Start()
         {
+            BuildSun();
             BuildSkyDragon();
             BuildGodRays();
             BuildFog();
             BuildClouds();
             BuildBirds();
+        }
+
+        // THE SUN. The far sky was a flat nebula gradient with no anchor in it — nothing for the
+        // god-rays to come FROM and no focal point above the horizon. This puts a real disc up
+        // there, aligned with the scene's key light so the rays, the shadows and the sun all agree
+        // about where the light is coming from. Sprites render unlit, so it reads as a light source
+        // rather than a lit object, and it sits at 700u so nothing in the arena can ever occlude it.
+        private void BuildSun()
+        {
+            // The scene's key light comes from BEHIND the camera, so placing the disc up-light put
+            // it off-screen at negative Z where the player can never see it. The sun has to live in
+            // the sky the camera is actually pointed at; the painted nebula backdrop is not
+            // physically consistent anyway, so matching the visible bright quadrant beats matching
+            // the shadow vector nobody can cross-check.
+            var key = FindKeyLight();
+            Vector3 dir = new Vector3(0.30f, 0.46f, 0.84f).normalized;
+            if (key != null)
+            {
+                // Keep the sun on the same SIDE as the key light horizontally, so the rim lighting
+                // on the characters still reads as coming from roughly the right place.
+                float side = -key.transform.forward.x;
+                dir = new Vector3(Mathf.Sign(side == 0f ? 1f : side) * 0.30f, 0.46f, 0.84f).normalized;
+            }
+            Vector3 pos = dir * 700f;
+
+            var core = MakeSkySprite("Sun", RadialSprite(128, 2.4f), pos,
+                                     new Color(1f, 0.95f, 0.82f, 0.95f), 44f);
+            var halo = MakeSkySprite("SunHalo", RadialSprite(128, 0.75f), pos + dir * -6f,
+                                     new Color(1f, 0.78f, 0.52f, 0.30f), 190f);
+            sunCore = core.transform; sunHalo = halo.transform;
+        }
+
+        private Transform sunCore, sunHalo;
+
+        private Light FindKeyLight()
+        {
+            Light best = null;
+            foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
+                if (l.type == LightType.Directional && (best == null || l.intensity > best.intensity)) best = l;
+            return best;
+        }
+
+        // A soft radial disc. `falloff` above 1 tightens the core into a bright sun; below 1 spreads
+        // it into an atmospheric halo.
+        private Sprite RadialSprite(int size, float falloff)
+        {
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            float c = (size - 1) * 0.5f;
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    float d = Mathf.Clamp01(Vector2.Distance(new Vector2(x, y), new Vector2(c, c)) / c);
+                    float a = Mathf.Pow(Mathf.Clamp01(1f - d), falloff);
+                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+                }
+            tex.Apply();
+            return Track(Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 8f), tex);
+        }
+
+        private GameObject MakeSkySprite(string name, Sprite sprite, Vector3 pos, Color col, float scale)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(transform, false);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite; sr.color = col;
+            sr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            sr.receiveShadows = false;
+            go.transform.position = pos;
+            go.transform.localScale = Vector3.one * scale;
+            return go;
         }
 
         private void BuildSkyDragon()
@@ -234,6 +305,22 @@ namespace RPGArena.UI
 
         private void Update()
         {
+            // The sun and its halo are flat sprites, so they must square up to the lens or they
+            // vanish edge-on. The halo also breathes very slowly, which sells atmosphere over a
+            // static decal.
+            var cam = Camera.main;
+            if (cam != null && sunCore != null)
+            {
+                Quaternion face = Quaternion.LookRotation(sunCore.position - cam.transform.position);
+                sunCore.rotation = face;
+                if (sunHalo != null)
+                {
+                    sunHalo.rotation = face;
+                    float pulse = 1f + 0.035f * Mathf.Sin(Time.time * 0.22f);
+                    sunHalo.localScale = Vector3.one * (190f * pulse);
+                }
+            }
+
             // The wild dragon rides a slow circle, banking into the turn, bobbing on thermals.
             if (flyer != null)
             {

@@ -24,7 +24,7 @@ MonoBehaviour:
     DEX: 0
     INT: 0
     LUK: 0
-    maxHP: 1300
+    maxHP: 1600
     maxMP: 200
     baseAttack: 30
     baseMagicAttack: 0
