@@ -148,12 +148,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9abd97b9328d3bb479bdc0abf3977490, type: 3}
   m_Name: 
   m_EditorClassIdentifier: RPGArena.UI::RPGArena.UI.MainMenuUI
-  backgroundSprite: {fileID: 21300000, guid: 8ee70d54dec5cc34d93d0f3e32fa521b, type: 3}
+  backgroundSprite: {fileID: 21300000, guid: bb473710bf1af5a4697c6389cfdcd6ab, type: 3}
   classPortraits:
   - {fileID: 21300000, guid: 9deaf404a20622a48b64201f4aafe7b6, type: 3}
   - {fileID: 21300000, guid: ce7c1dc33856b1c4cad1b6356ad160c8, type: 3}
   - {fileID: 21300000, guid: 01f5a1c13173cb74ba4df28a40359b13, type: 3}
   - {fileID: 21300000, guid: f3083ff2a3fdcca42a0062df2eed1501, type: 3}
+  titleVideo: {fileID: 32900000, guid: b4b005e3c71ee234b8d7ab6dbdf37559, type: 3}
   uiFont: {fileID: 11400000, guid: 59ee34472c5892a4196858080cc2141e, type: 2}
 --- !u!4 &886015411
 Transform:

@@ -139,13 +139,32 @@ namespace RPGArena.UI
             BuildBackground(root);
 
             // Main panel.
+            //
+            // THE MENU LIVES IN THE RIGHT-HAND COLUMN. The title art puts the dragon and the burning
+            // colosseum in the left two-thirds and leaves a deliberately dark, low-detail band down
+            // the right — so a centred button stack sat directly on top of the artwork's subject and
+            // fought it for attention. Everything on this panel is anchored to MenuColumnX instead.
             mainPanel = Panel(root, "Main");
             var mp = (RectTransform)mainPanel.transform;
-            var title = Label(mp, "ARENA OF THE ALGORITHMS", new Vector2(0.5f, 0.80f), 74, TextAnchor.MiddleCenter, 1600);
+            menuColumnX = MenuColumnX;
+
+            var title = Label(mp, "ARENA OF THE\nALGORITHMS", new Vector2(MenuColumnX, 0.80f), 58, TextAnchor.MiddleCenter, 660);
             title.color = new Color(1f, 0.82f, 0.35f); title.fontStyle = FontStyles.Bold;
+            title.lineSpacing = -14f;
             AddOutline(title.gameObject, new Color(0.25f, 0.04f, 0f, 0.95f), 3);
-            var sub = Label(mp, "A turn-based boss-rush RPG", new Vector2(0.5f, 0.72f), 26, TextAnchor.MiddleCenter, 1000);
-            sub.color = new Color(0.85f, 0.85f, 0.9f); AddOutline(sub.gameObject, new Color(0, 0, 0, 0.8f), 2);
+
+            // A thin rule under the title — cheap, and it reads as deliberate typesetting rather
+            // than two floating strings.
+            var rule = new GameObject("Rule"); rule.transform.SetParent(mp, false);
+            var rimg = rule.AddComponent<Image>(); rimg.color = new Color(1f, 0.72f, 0.30f, 0.75f); rimg.raycastTarget = false;
+            var rrt = rimg.rectTransform;
+            rrt.anchorMin = rrt.anchorMax = new Vector2(MenuColumnX, 0.715f);
+            rrt.pivot = new Vector2(0.5f, 0.5f); rrt.sizeDelta = new Vector2(360, 2);
+
+            var sub = Label(mp, "A TURN-BASED BOSS RUSH", new Vector2(MenuColumnX, 0.675f), 20, TextAnchor.MiddleCenter, 660);
+            sub.color = new Color(0.82f, 0.84f, 0.92f); sub.characterSpacing = 10f;
+            AddOutline(sub.gameObject, new Color(0, 0, 0, 0.8f), 2);
+
             MenuButton(mp, "Play", 0.56f, () => ShowSelect());
             MenuButton(mp, "How to Play", 0.47f, () => ShowInfo("HOW TO PLAY",
                 "Pick 3 of 4 heroes. Read the boss: exploit its WEAKNESS (Ice), never use what it ABSORBS (Fire heals it!).\nSpamming basics can't win — set up cross-class combos: Wet (Thief) -> Ice (Mage) = FREEZE, then a physical\nhit = SHATTER. Mark + Freeze = BRITTLE crits. Build the STAGGER bar and BREAK the dragon to VENT its\nSearing Fury (its damage grows every turn you don't). Charge VALOR for an OVERDRIVE surge. Strong attacks\ncan miss — the menu shows each move's hit %. Click an ability to act."));
@@ -153,6 +172,9 @@ namespace RPGArena.UI
             MenuButton(mp, "Credits", 0.29f, () => ShowInfo("CREDITS",
                 "Arena of the Algorithms — a student software-engineering project.\nBuilt with Unity 6.3 (URP). SFX: ElevenLabs. Art: Pollinations. 3D: Tripo. Narrative: Ink.\nMade with AI assistance (Claude Code + Unity MCP)."));
             MenuButton(mp, "Quit", 0.20f, Quit);
+
+            // Every other panel is a full-screen form, so it goes back to centre.
+            menuColumnX = 0.5f;
 
             // Select panel.
             selectPanel = Panel(root, "Select");
@@ -337,21 +359,38 @@ namespace RPGArena.UI
             return t;
         }
 
+        // Where the main panel's column sits horizontally (viewport fraction). The title art is
+        // composed with its subject on the left, so the menu deliberately occupies the dark band.
+        private const float MenuColumnX = 0.735f;
+        private float menuColumnX = 0.5f;
+
         private Button MenuButton(RectTransform parent, string label, float anchorY, UnityEngine.Events.UnityAction onClick)
         {
             var go = new GameObject("Button"); go.transform.SetParent(parent, false);
             var img = go.AddComponent<Image>();
-            var rt = img.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(0.5f, anchorY); rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = new Vector2(420, 60);
+            var rt = img.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(menuColumnX, anchorY); rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = new Vector2(400, 58);
             var btn = go.AddComponent<Button>(); btn.targetGraphic = img;
+            // Smoked glass rather than solid blue slabs: the art should read THROUGH the menu, which
+            // is the whole reason for having art behind it.
             var cb = btn.colors;
-            cb.normalColor = new Color(0.16f, 0.26f, 0.42f, 0.92f);
-            cb.highlightedColor = new Color(0.34f, 0.52f, 0.8f, 1f);
-            cb.pressedColor = new Color(0.1f, 0.16f, 0.28f, 1f);
+            cb.normalColor = new Color(0.06f, 0.07f, 0.11f, 0.78f);
+            cb.highlightedColor = new Color(0.20f, 0.16f, 0.10f, 0.94f);
+            cb.pressedColor = new Color(0.03f, 0.04f, 0.06f, 0.96f);
+            cb.disabledColor = new Color(0.06f, 0.07f, 0.11f, 0.35f);
             cb.selectedColor = cb.normalColor; cb.fadeDuration = 0.12f;
             btn.colors = cb; img.color = cb.normalColor;
+
+            // Gold spine on the leading edge, echoing the title colour and the embers in the art.
+            var edge = new GameObject("Edge"); edge.transform.SetParent(rt, false);
+            var eimg = edge.AddComponent<Image>(); eimg.color = new Color(1f, 0.72f, 0.30f, 0.9f); eimg.raycastTarget = false;
+            var ert = eimg.rectTransform;
+            ert.anchorMin = new Vector2(0f, 0f); ert.anchorMax = new Vector2(0f, 1f);
+            ert.pivot = new Vector2(0f, 0.5f); ert.sizeDelta = new Vector2(3, 0); ert.anchoredPosition = Vector2.zero;
+
             btn.onClick.AddListener(() => { Audio?.PlaySfx("ui_click"); onClick(); });
-            var t = Label((RectTransform)go.transform, label, new Vector2(0.5f, 0.5f), 26, TextAnchor.MiddleCenter, 420);
-            t.fontStyle = FontStyles.Bold; AddOutline(t.gameObject, new Color(0, 0, 0, 0.7f), 1);
+            var t = Label((RectTransform)go.transform, label, new Vector2(0.5f, 0.5f), 25, TextAnchor.MiddleCenter, 400);
+            t.fontStyle = FontStyles.Bold; t.characterSpacing = 4f;
+            AddOutline(t.gameObject, new Color(0, 0, 0, 0.7f), 1);
             return btn;
         }
 
