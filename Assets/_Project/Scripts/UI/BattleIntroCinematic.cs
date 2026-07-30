@@ -56,10 +56,26 @@ namespace RPGArena.UI
             float h = Mathf.Max(1.5f, b.size.y);
             Vector3 head = new Vector3(b.center.x, b.min.y + h * 0.86f, b.center.z);
             float dist = Mathf.Clamp(h * 1.30f, 4.5f, 16f);
-            Vector3 closePos = head + new Vector3(-dist * 0.62f, h * 0.06f, -dist * 0.80f);
+            Vector3 camOffset = new Vector3(-dist * 0.62f, h * 0.06f, -dist * 0.80f);
+            // COMPOSITION. The camera sits at aim + camOffset and the LookRotation below is derived
+            // from that SAME offset, so whatever we aim at lands on the exact centre pixel: these
+            // offset constants choose only the ANGLE and DISTANCE of the shot and can never move the
+            // boss within the frame. Moving the AIM translates the whole rig, which slides the boss
+            // the OPPOSITE way on screen — so to seat him lower and further left we aim slightly
+            // ABOVE and to SCREEN-RIGHT of his face. screenRight is read off the live optical axis
+            // (the shot is yawed ~38 deg, so screen-left is NOT -X); crossing with world up drops
+            // the offset's y term, which makes screenRight independent of both h and the dist clamp.
+            // Both nudges are fractions of h, so every boss composes identically: +0.060h up reads
+            // as ~7.5% of frame height DOWN, +0.086h right as ~6.0% of frame width LEFT (dragon
+            // 7.46/6.02, Evil Warrior 7.46/6.02, Black Mage 7.31/5.90 — his dist is the only one
+            // that clamps). Tuning: 0.010 of the up coefficient = 1.24% of frame height, 0.010 of
+            // the right coefficient = 0.70% of frame width, both independent of h.
+            Vector3 screenRight = Vector3.Cross(Vector3.up, -camOffset).normalized;
+            Vector3 aim = head + Vector3.up * (h * 0.060f) + screenRight * (h * 0.086f);
+            Vector3 closePos = aim + camOffset;
             juice.SetCameraBase(closePos, 34f);
             cam.transform.localPosition = closePos;
-            cam.transform.rotation = Quaternion.LookRotation((head - closePos).normalized, Vector3.up);
+            cam.transform.rotation = Quaternion.LookRotation((aim - closePos).normalized, Vector3.up);
             Quaternion closeRot = cam.transform.rotation;
 
             var (overlay, title, sub) = BuildOverlay(boss.displayName);
@@ -81,7 +97,10 @@ namespace RPGArena.UI
                 title.alpha = k; sub.alpha = Mathf.Clamp01((t - 0.25f) / 0.4f);
                 title.transform.localScale = Vector3.one * Mathf.Lerp(1.25f, 1f, Mathf.SmoothStep(0f, 1f, k));
                 // slow push-in for menace, scaled to the boss so it reads the same at any size
-                Vector3 creep = (head - closePos).normalized * (h * 0.10f);
+                // -camOffset IS the optical axis by construction (it equals (aim - closePos)), so the
+                // menace push-in stays dead along the lens. Using (head - closePos) here would creep
+                // diagonally and drag the face back toward centre, undoing the reframe over the hold.
+                Vector3 creep = -camOffset.normalized * (h * 0.10f);
                 juice.SetCameraBase(Vector3.Lerp(closePos, closePos + creep, t / holdOnBoss), 34f);
                 yield return null;
             }

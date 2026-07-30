@@ -23,7 +23,15 @@ namespace RPGArena.UI
 
         [Header("Art")]
         public Sprite backgroundSprite;     // title-screen background (assigned by SceneSetup)
-        public Sprite[] classPortraits = new Sprite[4];   // Warrior/Mage/Thief/Archer (select cards)
+        public Sprite[] classPortraits = new Sprite[4];   // Warrior/Mage/Thief (select cards)
+
+        [Header("Animated title screen")]
+        // Optional looping ambient video behind the menu (embers, smoke, drifting god-rays). When it
+        // is unset — or on a platform whose VideoPlayer cannot open it — the menu falls back to
+        // backgroundSprite and looks exactly as it did, so this can never leave a black screen.
+        public UnityEngine.Video.VideoClip titleVideo;
+        private UnityEngine.Video.VideoPlayer videoPlayer;
+        private RenderTexture videoTarget;
 
         [SerializeField] private TMP_FontAsset uiFont;     // SlimUI Poppins-Bold SDF (wired in scene); falls back to TMP default
         private TMP_FontAsset font;
@@ -217,7 +225,8 @@ namespace RPGArena.UI
             return go;
         }
 
-        // Full-screen title art + a dark vignette overlay so text stays readable.
+        // Full-screen title art (video when we have one, still art otherwise) plus a readability
+        // treatment so the menu text never fights the picture.
         private void BuildBackground(RectTransform root)
         {
             var bg = new GameObject("Background"); bg.transform.SetParent(root, false);
@@ -227,9 +236,70 @@ namespace RPGArena.UI
             img.raycastTarget = false;
             var rt = img.rectTransform; rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
 
+            if (titleVideo != null) BuildVideoLayer(root);
+
+            // Two layers instead of one flat 50% wash. The flat wash is what made the art look muddy:
+            // it greys the entire frame equally, including the parts that were already dark. A
+            // bottom-weighted gradient darkens where the BUTTONS are and leaves the dragon and the
+            // sky at full contrast, so the picture reads and the text is still legible.
+            var grad = new GameObject("Vignette"); grad.transform.SetParent(root, false);
+            var gimg = grad.AddComponent<Image>(); gimg.raycastTarget = false;
+            gimg.sprite = VerticalFade();
+            var grt = gimg.rectTransform; grt.anchorMin = Vector2.zero; grt.anchorMax = Vector2.one; grt.offsetMin = Vector2.zero; grt.offsetMax = Vector2.zero;
+
             var ov = new GameObject("Overlay"); ov.transform.SetParent(root, false);
-            var oimg = ov.AddComponent<Image>(); oimg.color = new Color(0.02f, 0.02f, 0.05f, 0.5f); oimg.raycastTarget = false;
+            var oimg = ov.AddComponent<Image>(); oimg.color = new Color(0.02f, 0.02f, 0.05f, 0.20f); oimg.raycastTarget = false;
             var ort = oimg.rectTransform; ort.anchorMin = Vector2.zero; ort.anchorMax = Vector2.one; ort.offsetMin = Vector2.zero; ort.offsetMax = Vector2.zero;
+        }
+
+        // Looping ambient video, rendered to a RenderTexture and shown on a RawImage above the still.
+        // The still deliberately stays underneath: the player takes a few frames to present its first
+        // frame, and with nothing behind it the menu opens on a black flash.
+        private void BuildVideoLayer(RectTransform root)
+        {
+            videoTarget = new RenderTexture(1920, 1080, 0);
+            var go = new GameObject("TitleVideo"); go.transform.SetParent(root, false);
+            var raw = go.AddComponent<RawImage>();
+            raw.texture = videoTarget; raw.raycastTarget = false;
+            var vrt = raw.rectTransform; vrt.anchorMin = Vector2.zero; vrt.anchorMax = Vector2.one; vrt.offsetMin = Vector2.zero; vrt.offsetMax = Vector2.zero;
+
+            videoPlayer = go.AddComponent<UnityEngine.Video.VideoPlayer>();
+            videoPlayer.clip = titleVideo;
+            videoPlayer.renderMode = UnityEngine.Video.VideoRenderMode.RenderTexture;
+            videoPlayer.targetTexture = videoTarget;
+            videoPlayer.isLooping = true;
+            videoPlayer.playOnAwake = true;
+            videoPlayer.waitForFirstFrame = true;
+            // Music comes from the AudioManager through the mixer; a video audio track would bypass
+            // it entirely and ignore the settings sliders.
+            videoPlayer.audioOutputMode = UnityEngine.Video.VideoAudioOutputMode.None;
+            videoPlayer.Play();
+        }
+
+        // A 1x64 transparent-at-top to dark-at-bottom ramp, generated rather than authored so there
+        // is no art dependency. Tracked because a generated Texture2D/Sprite is NOT collected when
+        // its GameObject dies — the same leak SkyLife had to fix.
+        private Sprite fadeSprite; private Texture2D fadeTex;
+        private Sprite VerticalFade()
+        {
+            fadeTex = new Texture2D(1, 64, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            for (int y = 0; y < 64; y++)
+            {
+                float k = 1f - y / 63f;                        // 0 at the top row, 1 at the bottom
+                float a = Mathf.SmoothStep(0f, 1f, k) * 0.80f;
+                fadeTex.SetPixel(0, y, new Color(0.01f, 0.01f, 0.03f, a));
+            }
+            fadeTex.Apply();
+            fadeSprite = Sprite.Create(fadeTex, new Rect(0, 0, 1, 64), new Vector2(0.5f, 0.5f));
+            return fadeSprite;
+        }
+
+        private void OnDestroy()
+        {
+            if (videoPlayer != null) videoPlayer.Stop();
+            if (videoTarget != null) videoTarget.Release();
+            if (fadeSprite != null) Destroy(fadeSprite);
+            if (fadeTex != null) Destroy(fadeTex);
         }
 
         // Give a TMP label a crisp dark outline (legible over the cinematic background) via an
