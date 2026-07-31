@@ -133,8 +133,16 @@ namespace RPGArena.Combat
         // Warn on common authoring mistakes so a bad asset is caught in the Inspector (§3.4).
         private void OnValidate()
         {
-            if (effectType == EffectType.BossMove && telegraphsAbility == null && (statusesToApply == null || statusesToApply.Length == 0))
-                Debug.LogWarning($"[{name}] BossMove '{displayName}' does nothing: no telegraphsAbility and no statuses.", this);
+            // A BossMove has THREE ways to matter, not two: telegraph a follow-up, apply statuses,
+            // or eat the party's setup flags (the Black Mage's Devour, resolved by BossMoveCommand
+            // via consumesSetupFlags). Omitting the third made Devour Magic — the entire identity of
+            // boss two — log "does nothing" on every import despite being correctly authored and
+            // fully implemented. A false alarm on a working asset is worse than no check, because it
+            // trains you to ignore the one warning that would catch a genuinely dead boss move.
+            // `power > 0` also counts: a BossMove with power lashes out mid-charge.
+            if (effectType == EffectType.BossMove && telegraphsAbility == null && !consumesSetupFlags
+                && power <= 0f && (statusesToApply == null || statusesToApply.Length == 0))
+                Debug.LogWarning($"[{name}] BossMove '{displayName}' does nothing: no telegraphsAbility, no statuses, no power and does not consume setup flags.", this);
             if (effectType == EffectType.Stance && stanceAction == StanceAction.CycleAttunement && (attunementOptions == null || attunementOptions.Length == 0))
                 Debug.LogWarning($"[{name}] CycleAttunement '{displayName}' has no attunementOptions.", this);
             if (effectType == EffectType.Stance && stanceAction == StanceAction.ToggleStatus && (stanceStatuses == null || stanceStatuses.Length < 2))

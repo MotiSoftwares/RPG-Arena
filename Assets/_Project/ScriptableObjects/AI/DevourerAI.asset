@@ -21,4 +21,4 @@ MonoBehaviour:
   devour: {fileID: 11400000, guid: efb102904a6104b45aa7154ad1ba33c6, type: 2}
   phase2HpFraction: 0.5
   channelChance: 0.28
-  devourMinFlags: 2
+  devourMinFlags: 1
