@@ -719,9 +719,12 @@ namespace RPGArena.Combat
         // Keeping every combatant within ~1.5u of the same depth means facing the enemy reads as a
         // clean profile, which the camera-blend then rotates into a flattering 3/4 front view.
         // The gentle stagger still separates the three heroes in frame and adds depth.
+        // Spread out for a roomier stage: the party pushed further left and given more gap between
+        // its own members, so three heroes read as three individuals rather than a huddle. The Z
+        // stagger stays inside the ~1.5u depth band the staging rule demands.
         private static Vector3 HeroSlot(bool backRow, int indexInRow)
-            => backRow ? new Vector3(-3.85f - indexInRow * 1.45f, 0f, 0.15f + indexInRow * 0.95f)
-                       : new Vector3(-2.05f - indexInRow * 1.25f, 0f, -1.25f + indexInRow * 0.85f);
+            => backRow ? new Vector3(-4.70f - indexInRow * 1.70f, 0f, 0.15f + indexInRow * 1.00f)
+                       : new Vector3(-2.90f - indexInRow * 1.45f, 0f, -1.30f + indexInRow * 0.90f);
 
         // Re-place every hero into tidy row slots (party order preserved). Used at battle start and
         // again after a mid-battle row swap so the wedge never ends up with holes.
@@ -745,7 +748,10 @@ namespace RPGArena.Combat
             // to face it. Pushed out again (5.1 -> 7.4) because a 30%-larger dragon plus a four-whelp
             // skirmish line had the two armies practically touching — the arena needs visible
             // no-man's-land between the lines for the charge to read as a charge.
-            var bossPos = new Vector3(7.4f, 0f, -0.25f);
+            // 7.4 -> 10.2: more no-man's-land between the armies now that the camera has pulled back
+            // far enough to hold it. The whelp line below moves with it and gets its OWN gap from the
+            // boss, so the dragon no longer looks like it is wearing its minions.
+            var bossPos = new Vector3(8.4f, 0f, -0.25f);
             int frontIdx = 0, backIdx = 0;
             for (int i = 0; i < Context.heroes.Count; i++)
             {
@@ -788,9 +794,9 @@ namespace RPGArena.Combat
                 // they read as the threat you must clear first. Held back toward their master now
                 // that the boss sits at 7.4, so the whelps screen the dragon instead of crowding
                 // the party's front rank.
-                var mp = new Vector3(3.15f + i * 1.15f, 0f, -1.65f - (i % 2) * 0.95f);
+                var mp = new Vector3(3.10f + i * 1.05f, 0f, -1.75f - (i % 2) * 1.05f);
                 m.transform.position = mp;
-                Vector3 faceParty = new Vector3(-4.4f, 0f, 0f) - mp; faceParty.y = 0f;
+                Vector3 faceParty = new Vector3(-5.6f, 0f, 0f) - mp; faceParty.y = 0f;
                 float mh = md != null ? md.modelHeight : 2.2f;
                 AttachBody(m.gameObject, m.modelPrefab, m.stageSprite, new Color(0.45f, 0.2f, 0.2f), 1.2f, 2.0f, 0, faceParty, 1f, mh, 0.22f);
                 if (md != null && md.animatorOverride != null)
