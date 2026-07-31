@@ -772,6 +772,10 @@ namespace RPGArena.Combat
                 AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss, scale, 0f, 0.75f, 30f);
                 var motion = h.gameObject.AddComponent<CombatantMotion>();    // lunge/recoil (+ procedural bob if no model)
                 if (h.modelPrefab != null) motion.bobAmplitude = 0f;          // the Animator's Idle replaces the bob
+                // Hand the motion component the SAME pose used above, so re-aiming after an action
+                // reproduces it instead of squaring the hero up to the enemy.
+                motion.camBlend = 0.75f;
+                motion.extraYawTowardCamera = 30f;
             }
             if (Context.boss != null)
             {
@@ -783,6 +787,7 @@ namespace RPGArena.Combat
                 // Mostly face the heroes (low camera blend) so attacks visibly aim at the party.
                 AttachBody(Context.boss.gameObject, Context.boss.modelPrefab, Context.boss.stageSprite, new Color(0.5f, 0.12f, 0.12f), 2.0f, 3.0f, 0, faceHeroes, 1f, Mathf.Max(2f, boss.modelHeight), 0.18f);
                 var bm = Context.boss.gameObject.AddComponent<CombatantMotion>();
+                bm.camBlend = 0.18f;   // must match the AttachBody call above, or re-aiming loses the pose
                 bm.lungeDistance = 0.8f;
                 bm.bobAmplitude = Context.boss.modelPrefab != null ? 0f : 0.12f;   // a heavier-feeling 2D boss bobs
             }
@@ -808,6 +813,7 @@ namespace RPGArena.Combat
                     if (anim != null) anim.runtimeAnimatorController = md.animatorOverride;
                 }
                 var mm = m.gameObject.AddComponent<CombatantMotion>();
+                mm.camBlend = 0.22f;   // must match the AttachBody call above
                 mm.lungeDistance = 0.6f;
                 mm.bobAmplitude = 0f;
             }
@@ -958,20 +964,11 @@ namespace RPGArena.Combat
                 model.transform.SetParent(host.transform, false);
                 // 3/4 view: blend facing-the-foe with facing-the-camera so the model's FRONT shows
                 // (not a dead-on profile). Yaw the model, not the camera, so the backdrop + shadow stay put.
-                Vector3 faceFoe = faceDir; faceFoe.y = 0f;
-                var cam = Camera.main;
-                Vector3 faceCam = (cam != null ? cam.transform.position - host.transform.position : new Vector3(0, 0, -1)); faceCam.y = 0f;
-                Vector3 look = faceFoe.sqrMagnitude > 0.0001f && faceCam.sqrMagnitude > 0.0001f
-                    ? Vector3.Slerp(faceFoe.normalized, faceCam.normalized, camBlend)
-                    : (faceFoe.sqrMagnitude > 0.0001f ? faceFoe.normalized : Vector3.forward);
-                // Keep turning past the blend. The sign is read off the cross product so it always
-                // continues toward the camera regardless of which side of the stage the actor is on
-                // (Unity: cross(a,b).y > 0 means a positive yaw about up carries a toward b).
-                if (Mathf.Abs(extraYawTowardCamera) > 0.01f && faceCam.sqrMagnitude > 0.0001f)
-                {
-                    float sign = Vector3.Dot(Vector3.Cross(look, faceCam.normalized), Vector3.up) >= 0f ? 1f : -1f;
-                    look = Quaternion.AngleAxis(sign * extraYawTowardCamera, Vector3.up) * look;
-                }
+                // Shared with CombatantMotion.FaceTarget so the spawn pose and every mid-fight
+                // re-aim agree. They did NOT before: FaceTarget did a raw look-at, so the first
+                // skill a hero used snapped them square to the enemy and lost this pose for good.
+                Vector3 look = CombatantMotion.PresentationFacing(faceDir, host.transform.position,
+                                                                  camBlend, extraYawTowardCamera);
                 model.transform.rotation = Quaternion.LookRotation(look, Vector3.up);
                 if (modelScale > 0f && !Mathf.Approximately(modelScale, 1f)) model.transform.localScale *= modelScale;
                 // Auto-scale to a target world height (used to make the boss dragon big and looming

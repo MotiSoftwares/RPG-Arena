@@ -179,12 +179,47 @@ namespace RPGArena.Characters
 
         // Turn to face a world direction over a short beat — used by ranged/casting attackers so
         // they actually AIM at their target instead of firing from a 3/4 stage pose.
+        // The 3/4 presentation pose this combatant was SPAWNED with, so a mid-fight re-aim can
+        // reproduce it. Set by BattleController right after it builds the body.
+        //
+        // Without these, FaceTarget did a bare LookRotation straight at the foe — so the first skill
+        // a hero cast snapped them square to the dragon and they showed the camera their back for the
+        // rest of the fight. The spawn pose was correct; every action after it was not.
+        [System.NonSerialized] public float camBlend;
+        [System.NonSerialized] public float extraYawTowardCamera;
+
+        // THE one place that turns "where the foe is" into "where the body actually points".
+        // Both spawn placement (BattleController.AttachBody) and every mid-fight re-aim go through
+        // it, so the two can never drift apart again.
+        public static Vector3 PresentationFacing(Vector3 faceFoe, Vector3 fromPos, float camBlend, float extraYaw)
+        {
+            faceFoe.y = 0f;
+            var cam = Camera.main;
+            Vector3 faceCam = cam != null ? cam.transform.position - fromPos : new Vector3(0f, 0f, -1f);
+            faceCam.y = 0f;
+            if (faceFoe.sqrMagnitude < 0.0001f)
+                return faceCam.sqrMagnitude > 0.0001f ? faceCam.normalized : Vector3.forward;
+            if (faceCam.sqrMagnitude < 0.0001f) return faceFoe.normalized;
+
+            Vector3 look = Vector3.Slerp(faceFoe.normalized, faceCam.normalized, camBlend);
+            // Sign derived so an actor on either side of the stage still turns TOWARD the lens.
+            if (Mathf.Abs(extraYaw) > 0.01f)
+            {
+                float sign = Vector3.Dot(Vector3.Cross(look, faceCam.normalized), Vector3.up) >= 0f ? 1f : -1f;
+                look = Quaternion.AngleAxis(sign * extraYaw, Vector3.up) * look;
+            }
+            return look;
+        }
+
         public void FaceTarget(Vector3 worldDir, float turnTime = 0.15f)
         {
             if (!ready || dashing) return;
             worldDir.y = 0f;
             if (worldDir.sqrMagnitude < 0.0001f) return;
-            StartCoroutine(FaceRoutine(Quaternion.LookRotation(worldDir.normalized, Vector3.up), turnTime));
+            // Re-aim through the SAME presentation blend used at spawn, not a raw look-at.
+            Vector3 look = PresentationFacing(worldDir, body != null ? body.position : transform.position,
+                                              camBlend, extraYawTowardCamera);
+            StartCoroutine(FaceRoutine(Quaternion.LookRotation(look, Vector3.up), turnTime));
         }
 
         private System.Collections.IEnumerator FaceRoutine(Quaternion look, float turnTime)
