@@ -13,7 +13,7 @@ namespace RPGArena.UI
     // turns combat results into game-feel — floating damage numbers, hit-stop, camera shake, a
     // screen flash, and the BREAK slow-mo spectacle. It never touches combat logic, and every
     // effect degrades gracefully (a missing camera or canvas just skips that effect).
-    public class JuiceController : MonoBehaviour, IActionCamera
+    public class JuiceController : MonoBehaviour, IActionCamera, IAbilityFx
     {
         [Header("Channels (subscribed)")]
         public DamageResultChannel onDamageDealt;
@@ -46,10 +46,17 @@ namespace RPGArena.UI
         public float floatLife = 0.9f;
         public float floatRise = 90f;
 
-        [Header("Melee slash arcs (Hovl 'Slash effects' — the only URP-clean part of that pack)")]
-        public GameObject slashNormal;    // Stone slash — plain physical connect
-        public GameObject slashCrit;      // Charge slash red — crits
-        public GameObject slashShatter;   // Snow slash — the SHATTER detonation
+        // NOTHING in Assets/Hovl Studio is URP-clean: all 45 of its materials (38 in Magic effects
+        // pack, 7 in MoonSword) reference shader guids 0406db5a14f94604a8c57ccfbc9f3b46 /
+        // 933532a4fcc9baf4fa0491de14d08ed7, and NEITHER shader asset exists in this project (the
+        // packs ship no .shader files at all). The three prefabs that used to be wired here — Stone
+        // slash, Charge slash red, Snow slash — drew Unity's magenta error shader, not a blade arc.
+        // Left as fields so a real slash-arc pack can be dropped in later; the melee block below
+        // already guards on null and falls through to the code-built SpawnVFX burst.
+        [Header("Melee slash arcs (leave EMPTY until a URP-safe arc pack exists)")]
+        public GameObject slashNormal;
+        public GameObject slashCrit;
+        public GameObject slashShatter;
 
         [Header("Ultimate wind-up")]
         // Gathering VFX played at the caster's feet while an ultimate charges. Assigned in the scene
@@ -187,6 +194,166 @@ namespace RPGArena.UI
             if (chargeUpFx == null) return;
             var fx = Instantiate(chargeUpFx, caster.transform.position, Quaternion.identity);
             Destroy(fx, 2.5f);
+        }
+
+        // ---- IAbilityFx: the non-damaging skills, finally sold -------------------------------
+        //
+        // ApplyStatus / Buff / Debuff produce no DamageResult, so they never reach AttackBeat: no
+        // impact burst, no boss-scale multiplier, no projectile flight, no flinch, no shake.
+        // BattleController used to bloom their prefab at the TARGET'S FEET at Quaternion.identity,
+        // unscaled, with vfxIsProjectile ignored — which on a 7.5-unit dragon buried the Thief's
+        // Water Bomb splash in the dirt under its belly. Three rules, in order of how much they can
+        // break:
+        //   * the GUARANTEED part — a code-built burst tinted by the status being applied, placed at
+        //     the renderer-measured body centre and boss-scaled, plus a flinch and a shake. This is
+        //     what makes a setup skill impossible to read as a dead turn, and it needs no assets, so
+        //     it fires even when the authored prefab is missing or (like every Hovl prefab) broken.
+        //   * vfxIsProjectile -> THROWN from the caster's chest on the throw clip's own release
+        //     frame, detonating on arrival (ProjectileFlight owns the aim + startLifetime maths).
+        //   * everything else -> the authored prefab stays at the FEET, exactly where it is today.
+        //     Do NOT "improve" this to the body centre: Dragon_TerrifyingRoar, BlackMage_Curse,
+        //     BlackMage_Hex, ItemFx_Flashbang and Archer_PitchArrow all come through here with
+        //     GROUND-authored circles, and blooming those at chest height floats a magic circle
+        //     inside the party's torsos.
+        // Returns the seconds the battle loop should hold the turn for.
+        public float PlayAbilityFx(Entity caster, Ability ability, Entity[] targets)
+        {
+            if (caster == null || ability == null) return 0f;
+
+            // Give the action a SOUND too. Ability.sfxId was authored-but-never-read (BattleAudio
+            // derives ids from the element on the damage path only), so a status skill landed in
+            // total silence. Core is visible from UI, and BattleHUD already calls PlaySfx directly.
+            if (!string.IsNullOrEmpty(ability.sfxId))
+                Core.GameBootstrap.Instance?.Audio?.PlaySfx(ability.sfxId);
+
+            bool atFoe = ability.targetRule == TargetRule.SingleEnemy
+                      || ability.targetRule == TargetRule.AllEnemies;
+
+            if (!atFoe)
+            {
+                // Self / ally support: buff and aura prefabs are authored around the feet, and a
+                // party-wide blessing must visibly bless the whole party — keep both behaviours.
+                bool any = false;
+                if (targets != null)
+                    foreach (var t in targets)
+                    {
+                        if (t == null) continue;
+                        any = true;
+                        if (ability.vfxPrefab != null)
+                            SpawnAuthored(ability.vfxPrefab, t.transform.position + Vector3.up * 0.05f, Quaternion.identity);
+                    }
+                if (!any && ability.vfxPrefab != null)
+                    SpawnAuthored(ability.vfxPrefab, caster.transform.position + Vector3.up * 0.05f, Quaternion.identity);
+                return 0f;
+            }
+
+            Color tint = StatusTint(ability);
+            ElementType motion = StatusMotion(ability);
+            bool thrown = ability.vfxPrefab != null && ability.vfxIsProjectile;
+            const float releaseDelay = 0.45f;      // same fallback the damage path's shots use
+            float hold = 0f;
+            if (targets != null)
+                foreach (var t in targets)
+                {
+                    if (t == null) continue;
+                    TargetAnchors(t, t.isBoss ? 1.6f : 1.0f, t.isBoss ? 3.6f : 2.2f, out Vector3 bodyCenter, out _);
+                    float scale = t.isBoss ? 1.6f : 1.25f;
+                    if (thrown)
+                    {
+                        // Estimated hold: release beat + a conservative 16 u/s flight. The coroutine
+                        // does the exact thing; WaitForPresentation's 2.5s guard covers any slip.
+                        hold = Mathf.Max(hold, releaseDelay
+                             + Mathf.Max(0.15f, Vector3.Distance(caster.transform.position, bodyCenter) / 16f));
+                        StartCoroutine(ThrowAndBurst(caster, ability.vfxPrefab, t, tint, motion, scale, releaseDelay));
+                    }
+                    else
+                    {
+                        if (ability.vfxPrefab != null)
+                            SpawnAuthored(ability.vfxPrefab, t.transform.position + Vector3.up * 0.05f, Quaternion.identity);
+                        StatusBurst(t, bodyCenter, tint, motion, scale);
+                    }
+                }
+            return hold;
+        }
+
+        // A THROWN bomb. Two beats, like every other strike in the game: wait for the throw clip's
+        // own contact frame (the Thief has no Cast state, so PlayCast already fell back to Attack and
+        // TimeToContact reads that clip), THEN launch. Releasing synchronously would fling the bomb
+        // out of her hand on frame 0 of the wind-up — precisely the class of bug the P2 pass killed.
+        private IEnumerator ThrowAndBurst(Entity caster, GameObject prefab, Entity target,
+                                          Color tint, ElementType motion, float scale, float releaseDelay)
+        {
+            yield return WaitForContact(caster, releaseDelay);
+            if (caster == null || target == null || prefab == null) yield break;
+            TargetAnchors(target, target.isBoss ? 1.6f : 1.0f, target.isBoss ? 3.6f : 2.2f, out Vector3 bodyCenter, out _);
+            TargetAnchors(caster, 1.2f, 2.0f, out Vector3 muzzle, out _);
+            // Spawn already positioned AND aimed — these prefabs burst-fire a world-space particle on
+            // their very first frame, so an origin spawn shoots the bushes. NEVER scale a projectile:
+            // Water attack and Dard magic shoot both use scalingMode Hierarchy, where transform scale
+            // multiplies particle START SPEED, while ProjectileFlight computes startLifetime from the
+            // UNSCALED speed — a x1.6 boss scale would detonate the shot 1.6x past the dragon. The
+            // damage path (AttackBeat) spawns its projectiles unscaled for exactly this reason; the
+            // boss-scaled punch comes from StatusBurst instead.
+            Vector3 pdir = bodyCenter - muzzle;
+            var aim = pdir.sqrMagnitude > 0.001f ? Quaternion.LookRotation(pdir.normalized) : Quaternion.identity;
+            var shot = SpawnAuthored(prefab, muzzle, aim, 0f);   // lifetime 0: ProjectileFlight owns teardown
+            float flight = ProjectileFlight.Launch(shot, muzzle, bodyCenter);
+            yield return new WaitForSeconds(flight);
+            if (target != null) StatusBurst(target, bodyCenter, tint, motion, scale);
+        }
+
+        // Instantiate an authored VFX prefab de-looped and (optionally) self-destroying. Vendor auras
+        // ship LOOPING, so they either strobe or get cut mid-cycle; configure BEFORE the first
+        // simulation frame — the same rule the Erb projectiles obey. Verified safe for every prefab
+        // already on this path: Magic buff / Shield buff / Healing buff / Death magic circle / Magic
+        // circle contain no looping systems at all, so de-looping them is a no-op.
+        private GameObject SpawnAuthored(GameObject prefab, Vector3 pos, Quaternion rot, float lifetime = 4f)
+        {
+            var fx = Instantiate(prefab, pos, rot);
+            foreach (var p in fx.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                var main = p.main;
+                main.loop = false;
+            }
+            if (lifetime > 0f) Destroy(fx, lifetime);
+            return fx;
+        }
+
+        // Colour for a setup skill, read off the STATUS it applies.
+        // StatusEffectDefinition.tint is pure presentation data (no system reads it), so authoring it
+        // is free. Wet must never look like Marked: the whole combo web depends on the player being
+        // able to read the target at a glance. Falls back to the ability's element.
+        private static Color StatusTint(Ability a)
+        {
+            if (a.statusesToApply != null)
+                foreach (var s in a.statusesToApply)
+                    if (s != null && s.tint != Color.white) return s.tint;
+            return ElementColor(a.element);
+        }
+
+        // Reuse SpawnVFX's per-element MOTION identity so a coating drifts like liquid and a mark
+        // implodes like a shadow, instead of every status throwing the generic physical spark-puff.
+        private static ElementType StatusMotion(Ability a)
+        {
+            if (a.statusesToApply != null)
+                foreach (var s in a.statusesToApply)
+                {
+                    if (s == null) continue;
+                    if (s.flag == RPGArena.Combat.Status.StatusFlag.Wet
+                     || s.flag == RPGArena.Combat.Status.StatusFlag.Frozen) return ElementType.Ice;
+                    if (s.flag == RPGArena.Combat.Status.StatusFlag.Marked) return ElementType.Dark;
+                }
+            return a.element;
+        }
+
+        // The guaranteed part: a setup skill ALWAYS puts a visible, correctly-coloured burst and a
+        // flinch on the target, so laying Wet/Oiled/Marked can never read as a dead turn — even when
+        // its authored prefab is missing or (Archer_PitchArrow, BlackMage_Hex) a broken Hovl prefab.
+        private void StatusBurst(Entity target, Vector3 bodyCenter, Color tint, ElementType motion, float scale)
+        {
+            SpawnVFX(bodyCenter, tint, motion, 44, scale);
+            FlashBody(target, new Color(1.5f, 1.9f, 2.3f), 0.08f);
+            shakeAmount = Mathf.Max(shakeAmount, shakeOnHit * 0.5f);
         }
 
         public void FocusOn(Vector3 worldPoint, float strength = 1f, float hold = 1.5f)

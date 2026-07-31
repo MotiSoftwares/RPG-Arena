@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.Status.StatusEffectDefinition
   displayName: Oiled
   icon: {fileID: 0}
-  tint: {r: 1, g: 1, b: 1, a: 1}
+  tint: {r: 0.55, g: 0.42, b: 0.15, a: 1}
   kind: 3
   flag: 2
   durationTurns: 3

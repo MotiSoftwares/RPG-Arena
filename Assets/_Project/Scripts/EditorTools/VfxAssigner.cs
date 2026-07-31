@@ -13,7 +13,12 @@ namespace RPGArena.EditorTools
     // established assigner pattern (IconAssigner / CombatantSpriteAssigner).
     public static class VfxAssigner
     {
-        private static readonly string[] VfxRoots = { "Assets/ErbGameArt", "Assets/Hovl Studio" };
+        // ERB ONLY. All 45 materials under Assets/Hovl Studio (38 in Magic effects pack, 7 in
+        // MoonSword) reference shader guids 0406db5a14f94604a8c57ccfbc9f3b46 /
+        // 933532a4fcc9baf4fa0491de14d08ed7, and NEITHER shader asset exists in this project — the
+        // packs ship no .shader files at all. Anything picked from there draws the error shader.
+        // Re-adding this root silently re-breaks two dozen abilities with no console error.
+        private static readonly string[] VfxRoots = { "Assets/ErbGameArt" };
         private const string Abilities = "Assets/_Project/ScriptableObjects/Abilities";
 
         [MenuItem("RPGArena/Assign Ability VFX")]
@@ -40,6 +45,14 @@ namespace RPGArena.EditorTools
             if (nm.Contains("Blizzard")) return Find("Ice freeze skill") ?? Find("Ice arrow");
             if (nm.Contains("ArrowRain") || nm.Contains("Arrow Rain")) return Find("Spears rain");
             if (nm.Contains("Heal")) return Find("Healing buff") ?? Find("Healing");
+            // HAND-AUTHORED (the Thief water/coating pass). The generic rules below send every
+            // ApplyStatus skill to the golden 'Magic buff' and every Debuff to the broken Hovl
+            // 'Debuff', which is how three of the Thief's five skills ended up invisible or magenta.
+            if (nm == "Thief_WaterBomb") return Find("Water attack");        // blue WATER, thrown
+            if (nm == "ItemFx_SlickFlask") return Find("Water attack");      // same coating, in a bottle
+            if (nm == "Thief_ShadowMark") return Find("Dard magic shoot");   // dark bolt, thrown
+            if (nm == "Thief_DarkSight") return Find("Glowing orbs");        // the vanish aura
+            if (nm == "Thief_Assassinate") return Find("Death magic circle");// the d20 finisher
 
             // By effect type (non-damaging support).
             switch (a.effectType)

@@ -108,3 +108,12 @@ InitTestScene*.unity*
 
 # transient index lock from the graphify tooling
 .graphify_indexing.lock
+
+# --- cleanup 2026-07-31: junk that regenerates or should never have been committed ---
+# Unity regenerates the solution/project files on every open.
+*.slnx
+/GeneratedAssets/
+# Created by a `> dev/null` redirect on Windows, which has no /dev/null.
+/dev/
+# Archives have no business in a Unity project tree.
+*.rar

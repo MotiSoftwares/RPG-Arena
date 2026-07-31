@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: RPGArena.Gameplay::RPGArena.Combat.Status.StatusEffectDefinition
   displayName: Wet
   icon: {fileID: 0}
-  tint: {r: 1, g: 1, b: 1, a: 1}
+  tint: {r: 0.35, g: 0.72, b: 1, a: 1}
   kind: 3
   flag: 1
   durationTurns: 3

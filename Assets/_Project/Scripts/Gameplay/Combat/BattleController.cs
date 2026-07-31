@@ -524,6 +524,24 @@ namespace RPGArena.Combat
             }
         }
 
+        // The ability-FX seam (see IAbilityFx), found and cached the same way. Null in a bare or
+        // harness scene — which is exactly when PlayNonDamagingFx keeps its old inline feet-bloom.
+        private IAbilityFx abilityFx;
+        private bool abilityFxSearched;
+        private IAbilityFx AbilityFx
+        {
+            get
+            {
+                if (!abilityFxSearched)
+                {
+                    abilityFxSearched = true;
+                    foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+                        if (mb is IAbilityFx af) { abilityFx = af; break; }
+                }
+                return abilityFx;
+            }
+        }
+
         // Find a narrative intro by interface (no compile-time dependency on the Narrative asm).
         private IBattleIntro FindIntro()
         {
@@ -879,6 +897,22 @@ namespace RPGArena.Combat
             // no action-camera punch-in. Driven through IActionCamera so this assembly never names
             // the presentation layer (the IBattleIntro pattern).
             ActionCamera?.FocusOnActor(caster);
+
+            // Hand the whole effect to presentation when the seam is present. Only the UI layer can
+            // reach the renderer-measured anchors, the boss-scale multiplier, ProjectileFlight and
+            // the code-built elemental burst — this assembly must never name them (UI -> Gameplay is
+            // one-way). The seam returns how long it needs, so a THROWN bomb gets to land before the
+            // turn advances; WaitForPresentation (called right after us) honours PresentationBusyUntil
+            // and hard-caps itself at 2.5s, so a bad estimate can never hang the fight.
+            var fxSeam = AbilityFx;
+            if (fxSeam != null)
+            {
+                float need = fxSeam.PlayAbilityFx(caster, ability, targets);
+                if (need > 0f)
+                    PresentationBusyUntil = Mathf.Max(PresentationBusyUntil, Time.time + need + 0.35f);
+                return;
+            }
+
             if (ability.vfxPrefab == null) return;
             // Buff/heal/aura prefabs are authored around the character's feet — ground them at EACH
             // recipient (a party-wide blessing should visibly bless the whole party, not just hero #1).

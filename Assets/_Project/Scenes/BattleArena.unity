@@ -166680,9 +166680,10 @@ MonoBehaviour:
   breakSlowMoDuration: 0.7
   floatLife: 0.9
   floatRise: 90
-  slashNormal: {fileID: 3153472991145048103, guid: 3407e378c048bb5438424b28c7740b48, type: 3}
-  slashCrit: {fileID: 8145502431507700120, guid: 000832214335ffd4782827d2a4510f4a, type: 3}
-  slashShatter: {fileID: 2060900179291159282, guid: ca6705a3f9070d14d819d179493bcfa0, type: 3}
+  slashNormal: {fileID: 0}
+  slashCrit: {fileID: 0}
+  slashShatter: {fileID: 0}
+  chargeUpFx: {fileID: 1151652431613522, guid: dc081e8ab4711ba478a129a906452987, type: 3}
   uiFont: {fileID: 11400000, guid: 59ee34472c5892a4196858080cc2141e, type: 2}
 --- !u!4 &939583426
 Transform:
