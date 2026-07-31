@@ -54,6 +54,7 @@ MonoBehaviour:
   executeMult: 1.6
   vfxPrefab: {fileID: 1151652431613522, guid: dc081e8ab4711ba478a129a906452987, type: 3}
   vfxIsProjectile: 0
+  vfxAnchor: 1
   sfxId: 
   animationTrigger: Attack
   tags: []

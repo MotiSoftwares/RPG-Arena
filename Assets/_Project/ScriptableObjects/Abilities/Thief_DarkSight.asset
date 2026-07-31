@@ -55,6 +55,7 @@ MonoBehaviour:
   executeMult: 1.6
   vfxPrefab: {fileID: 1427244075889090, guid: 5ada718ad8eefc341a11217c754bc91a, type: 3}
   vfxIsProjectile: 0
+  vfxAnchor: 0
   sfxId: hit_holy
   animationTrigger: Attack
   tags: []

@@ -593,18 +593,15 @@ namespace RPGArena.UI
                 // here) — unless a projectile already delivered it to this exact spot.
                 if (!projectileDelivered && r.ability != null && r.ability.vfxPrefab != null)
                 {
-                    // AT THE FEET, not at the torso. Almost every authored non-projectile effect in
-                    // the Erb set is GROUND-BASED — spikes erupting, magic circles, spears/meteor
-                    // rain — and spawning those at bodyCenter hangs them in mid-air at the target's
-                    // chest height. On a 9.8u dragon that put a row of stone spikes up in the sky.
-                    // The non-damaging path (PlayAbilityFx) has always used the feet; this is the
-                    // damage path being brought into line with it.
-                    //
-                    // bodyCenter still drives the code-built burst above and the projectile aim,
-                    // where being pulled toward the camera is exactly what we want.
-                    var fx = Instantiate(r.ability.vfxPrefab,
-                                         r.target.transform.position + Vector3.up * 0.05f,
-                                         Quaternion.identity);
+                    // PER-ABILITY anchor, not a blanket rule. Planting every authored effect at the
+                    // feet (an earlier attempt at the floating-spikes bug) buried impact effects at
+                    // the base of a 9.8u dragon and visibly drained the punch out of the whole game.
+                    // Body is the default and the flashier read; Ground is only for prefabs authored
+                    // to erupt from the floor.
+                    Vector3 at = r.ability.vfxAnchor == VfxAnchor.Ground
+                        ? r.target.transform.position + Vector3.up * 0.05f
+                        : bodyCenter;
+                    var fx = Instantiate(r.ability.vfxPrefab, at, Quaternion.identity);
                     fx.transform.localScale *= r.target.isBoss ? 1.6f : 1.25f;
                     Destroy(fx, 4f);
                 }

@@ -21,6 +21,12 @@ namespace RPGArena.Combat
     // E.3 trim are the Mage's attunement cycle and the Warrior's Berserk/Guardian toggle.
     public enum StanceAction { None, CycleAttunement, ToggleStatus }
 
+    // Where a non-projectile vfxPrefab is planted on its target. Purely presentational — logic never
+    // reads it. Body is the default because it is the flashier read and it is what most effects want;
+    // Ground exists for prefabs authored to erupt from the floor, which look absurd hovering at a
+    // 9.8u dragon's chest.
+    public enum VfxAnchor { Body, Ground }
+
     // DATA ONLY. An ability is a designer-authored ScriptableObject; its behaviour lives in
     // a Command (the Slay-the-Spire model, §4.3). Adding content never means new engine code.
     [CreateAssetMenu(menuName = "RPGArena/Ability", fileName = "Ability")]
@@ -105,6 +111,8 @@ namespace RPGArena.Combat
         public GameObject vfxPrefab;
         [Tooltip("The vfxPrefab is a directional projectile: spawn it at the CASTER and fly it to the target (instead of blooming it on the target).")]
         public bool vfxIsProjectile;
+        [Tooltip("Where a NON-projectile vfxPrefab is planted. Body = on the target's torso, pulled toward the camera so the mesh cannot swallow it — the right choice for impacts, explosions and bursts, and the flashier read. Ground = at the target's feet, for effects authored to erupt from or lie on the floor (magic circles, spikes, meteor/spear rain); those look absurd floating at chest height on a tall boss.")]
+        public VfxAnchor vfxAnchor = VfxAnchor.Body;
         public string sfxId;
         public string animationTrigger = "Attack";
 

@@ -55,6 +55,7 @@ MonoBehaviour:
   executeMult: 1.6
   vfxPrefab: {fileID: 1854664128299224, guid: 54b3bccc9622b8b44932bc314b6ec605, type: 3}
   vfxIsProjectile: 1
+  vfxAnchor: 0
   sfxId: hit_ice
   animationTrigger: Attack
   tags: []

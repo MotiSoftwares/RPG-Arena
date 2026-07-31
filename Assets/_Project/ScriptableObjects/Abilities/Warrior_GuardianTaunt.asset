@@ -24,6 +24,7 @@ MonoBehaviour:
   mpCost: 10
   cooldown: 2
   mpRegenOnUse: 0
+  flatPower: 0
   hitTier: 0
   autoHit: 0
   rollsRiskDie: 0
@@ -34,6 +35,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b767e3e911bdfee44a5977f9310124ae, type: 2}
   - {fileID: 11400000, guid: ab0e7875f3628684eacc07f0c5f66736, type: 2}
   telegraphsAbility: {fileID: 0}
+  consumesSetupFlags: 0
+  devourHealPercentMaxHP: 0.04
+  devourFuryPerFlag: 2
   stanceAction: 0
   attunementOptions: 
   stanceStatuses: []
@@ -52,6 +56,7 @@ MonoBehaviour:
   executeMult: 1.6
   vfxPrefab: {fileID: 1361995951083618, guid: acd1463ce2d63c34daa4daaaaab28fe4, type: 3}
   vfxIsProjectile: 0
+  vfxAnchor: 0
   sfxId: 
   animationTrigger: Attack
   tags: []

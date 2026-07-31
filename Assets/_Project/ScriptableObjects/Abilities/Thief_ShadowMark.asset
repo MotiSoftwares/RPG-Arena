@@ -55,6 +55,7 @@ MonoBehaviour:
   executeMult: 1.6
   vfxPrefab: {fileID: 1105111623985532, guid: d03268a4406450646bbcdef70ee8ea3d, type: 3}
   vfxIsProjectile: 1
+  vfxAnchor: 0
   sfxId: hit_dark
   animationTrigger: Attack
   tags: []
