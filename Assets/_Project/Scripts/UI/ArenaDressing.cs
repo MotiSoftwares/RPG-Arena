@@ -195,7 +195,15 @@ namespace RPGArena.UI
             shape.scale = new Vector3(22f, 3f, 14f);
             var vel = ps.velocityOverLifetime; vel.enabled = true;
             vel.space = ParticleSystemSimulationSpace.World;
+            // ALL THREE AXES, AND ALL IN THE SAME MODE. Unity requires the x/y/z of a velocity
+            // module to share one MinMaxCurve mode; setting only x left y and z at their default
+            // Constant(0) while x became TwoConstants, which logs "Particle Velocity curves must
+            // all be in the same mode" every time the system is built. The two-argument
+            // MinMaxCurve constructor is what selects TwoConstants, so y and z have to use it too
+            // even where the range is zero.
             vel.x = new ParticleSystem.MinMaxCurve(-0.25f, 0.25f);
+            vel.y = new ParticleSystem.MinMaxCurve(0f, 0f);          // lift comes from gravityModifier
+            vel.z = new ParticleSystem.MinMaxCurve(-0.18f, 0.18f);
             var col = ps.colorOverLifetime; col.enabled = true;
             var grad = new Gradient();
             grad.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(new Color(1f, 0.5f, 0.15f), 1f) },
