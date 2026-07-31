@@ -52,7 +52,7 @@ MonoBehaviour:
   bonusVsFlagMult: 1.5
   executeBelowHpPct: 0
   executeMult: 1.6
-  vfxPrefab: {fileID: 0}
+  vfxPrefab: {fileID: 1051704587376508, guid: fffb77091d2311b4bb70c69cbd77ef57, type: 3}
   vfxIsProjectile: 0
   sfxId: 
   animationTrigger: Attack
