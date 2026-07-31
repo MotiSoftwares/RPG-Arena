@@ -766,7 +766,10 @@ namespace RPGArena.Combat
                 // showed too much shoulder; 0.75 turns them a further ~25 degrees into a proper
                 // three-quarter view. Kept below 1.0 so they are never facing the player outright,
                 // which would read as ignoring the enemy they are about to hit.
-                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss, scale, 0f, 0.75f);
+                // +30 degrees PAST the blend, on request: the party is a presentational line facing
+                // the player, not a simulation of where a fighter would really stand. This turns them
+                // beyond dead-on toward the lens, so faces read at a glance across the wider stage.
+                AttachBody(h.gameObject, h.modelPrefab, h.stageSprite, HeroPalette[i % HeroPalette.Length], 1f, 1.9f, i, faceBoss, scale, 0f, 0.75f, 30f);
                 var motion = h.gameObject.AddComponent<CombatantMotion>();    // lunge/recoil (+ procedural bob if no model)
                 if (h.modelPrefab != null) motion.bobAmplitude = 0f;          // the Animator's Idle replaces the bob
             }
@@ -938,7 +941,12 @@ namespace RPGArena.Combat
             }
         }
 
-        private static void AttachBody(GameObject host, GameObject modelPrefab, Sprite sprite, Color color, float width, float height, int order, Vector3 faceDir, float modelScale = 1f, float targetModelHeight = 0f, float camBlend = 0.5f)
+        // extraYawTowardCamera: degrees of yaw applied ON TOP of the camBlend, continuing to rotate
+        // toward the camera and PAST it if asked. camBlend alone saturates at "looking straight down
+        // the lens" (blend 1.0), so it cannot express "turn further than that" — which is exactly
+        // what a stylised, presentational party line wants. Positive values keep turning the same
+        // way the blend was already turning, so the sign is derived rather than hardcoded.
+        private static void AttachBody(GameObject host, GameObject modelPrefab, Sprite sprite, Color color, float width, float height, int order, Vector3 faceDir, float modelScale = 1f, float targetModelHeight = 0f, float camBlend = 0.5f, float extraYawTowardCamera = 0f)
         {
             if (host.transform.Find("Body") != null) return;
 
@@ -956,6 +964,14 @@ namespace RPGArena.Combat
                 Vector3 look = faceFoe.sqrMagnitude > 0.0001f && faceCam.sqrMagnitude > 0.0001f
                     ? Vector3.Slerp(faceFoe.normalized, faceCam.normalized, camBlend)
                     : (faceFoe.sqrMagnitude > 0.0001f ? faceFoe.normalized : Vector3.forward);
+                // Keep turning past the blend. The sign is read off the cross product so it always
+                // continues toward the camera regardless of which side of the stage the actor is on
+                // (Unity: cross(a,b).y > 0 means a positive yaw about up carries a toward b).
+                if (Mathf.Abs(extraYawTowardCamera) > 0.01f && faceCam.sqrMagnitude > 0.0001f)
+                {
+                    float sign = Vector3.Dot(Vector3.Cross(look, faceCam.normalized), Vector3.up) >= 0f ? 1f : -1f;
+                    look = Quaternion.AngleAxis(sign * extraYawTowardCamera, Vector3.up) * look;
+                }
                 model.transform.rotation = Quaternion.LookRotation(look, Vector3.up);
                 if (modelScale > 0f && !Mathf.Approximately(modelScale, 1f)) model.transform.localScale *= modelScale;
                 // Auto-scale to a target world height (used to make the boss dragon big and looming
