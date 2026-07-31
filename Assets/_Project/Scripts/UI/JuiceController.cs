@@ -593,7 +593,18 @@ namespace RPGArena.UI
                 // here) — unless a projectile already delivered it to this exact spot.
                 if (!projectileDelivered && r.ability != null && r.ability.vfxPrefab != null)
                 {
-                    var fx = Instantiate(r.ability.vfxPrefab, bodyCenter, Quaternion.identity);
+                    // AT THE FEET, not at the torso. Almost every authored non-projectile effect in
+                    // the Erb set is GROUND-BASED — spikes erupting, magic circles, spears/meteor
+                    // rain — and spawning those at bodyCenter hangs them in mid-air at the target's
+                    // chest height. On a 9.8u dragon that put a row of stone spikes up in the sky.
+                    // The non-damaging path (PlayAbilityFx) has always used the feet; this is the
+                    // damage path being brought into line with it.
+                    //
+                    // bodyCenter still drives the code-built burst above and the projectile aim,
+                    // where being pulled toward the camera is exactly what we want.
+                    var fx = Instantiate(r.ability.vfxPrefab,
+                                         r.target.transform.position + Vector3.up * 0.05f,
+                                         Quaternion.identity);
                     fx.transform.localScale *= r.target.isBoss ? 1.6f : 1.25f;
                     Destroy(fx, 4f);
                 }
@@ -671,7 +682,7 @@ namespace RPGArena.UI
         // centre) and where its damage number floats (just above the model). Measured from the
         // renderers so both auto-scale with the combatant's size — so effects land ON a much-bigger
         // boss dragon instead of at its feet. Falls back to fixed offsets when there are no renderers.
-        private static void TargetAnchors(Entity e, float vfxFallbackUp, float textFallbackUp, out Vector3 vfxPos, out Vector3 textPos)
+        private void TargetAnchors(Entity e, float vfxFallbackUp, float textFallbackUp, out Vector3 vfxPos, out Vector3 textPos)
         {
             var body = e.transform.Find("Body");
             if (body != null)
@@ -685,11 +696,39 @@ namespace RPGArena.UI
                     // bottom-heavy models (e.g. the dragon), which would land effects at its belly.
                     vfxPos = new Vector3(b.center.x, Mathf.Lerp(b.center.y, b.max.y, 0.45f), b.center.z);
                     textPos = new Vector3(b.center.x, b.max.y + 0.5f, b.center.z);
+                    vfxPos = InFrontOf(vfxPos, b);
                     return;
                 }
             }
             vfxPos = e.transform.position + Vector3.up * vfxFallbackUp;
             textPos = e.transform.position + Vector3.up * textFallbackUp;
+        }
+
+        // PULL THE EFFECT OUT TO THE CAMERA-FACING SURFACE.
+        //
+        // The anchor above is the centre of the body's bounds — which is INSIDE the mesh. Particles
+        // are depth-tested against that mesh, so roughly the front half of every impact effect was
+        // being swallowed by the character it was supposed to be hitting: the skill appeared to
+        // render BEHIND its own target.
+        //
+        // Offsetting along the view direction is the fix, and the distance has to come from the
+        // silhouette rather than a constant — a 9.75u dragon and a 1.8u whelp need very different
+        // clearances. For an AABB, the half-extent along a direction d is the dot of |d| with the
+        // extents, which is exactly how far we must travel to leave the box. Horizontal only: the
+        // torso height chosen above is deliberate and must not be flattened.
+        //
+        // Clamped because the dragon's box is enormous and a full half-depth would detach the effect
+        // from the body entirely; 0.85 of the way out plus a small margin sits on the surface.
+        private Vector3 InFrontOf(Vector3 anchor, Bounds b)
+        {
+            var c = cam != null ? cam : Camera.main;
+            if (c == null) return anchor;
+            Vector3 toCam = c.transform.position - anchor;
+            toCam.y = 0f;
+            if (toCam.sqrMagnitude < 0.0001f) return anchor;
+            toCam.Normalize();
+            float halfDepth = Mathf.Abs(toCam.x) * b.extents.x + Mathf.Abs(toCam.z) * b.extents.z;
+            return anchor + toCam * Mathf.Min(halfDepth * 0.85f + 0.25f, 2.2f);
         }
 
         // THE IMPACT FRAME. Fighting games sell a hit in the 3 frames around contact: the victim's
