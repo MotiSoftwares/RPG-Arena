@@ -292,6 +292,20 @@ once. The Dragon fight is clean, which points at VFX unique to the later two bos
 `Magic buff`), but those use existing supported ERB shaders with white tint and real textures. Still
 unidentified — do not "fix" it by guessing.
 
+## Running Unity in BATCHMODE rewrites ProjectSettings behind your back
+
+Two different edits were observed after `-batchmode -executeMethod` / `-runTests` runs, neither
+intended and neither announced:
+
+- **`preloadedAssets` emptied.** It held `InputSystem_Actions.inputactions`, which Unity preloads so
+  the Input System works in a player. Committing that would have shipped a build whose input could
+  fail, and nothing in the console says a word about it.
+- **A scripting define dropped** (`SENTIS_ANALYTICS_ENABLED`), because the package's editor hook does
+  not initialise in batchmode. Harmless churn, same family as commit 47ef53b.
+
+**Always `git diff ProjectSettings/ProjectSettings.asset` after any batchmode Unity run** and revert
+what you did not intend. Note the editor's own `manage_build` path did NOT do this -- only batchmode.
+
 ## Importing a new character pack (the two bugs that always bite)
 
 1. **Mixamo FBX import as `Generic` / `NoAvatar`.** They look fine in the project view and simply never
