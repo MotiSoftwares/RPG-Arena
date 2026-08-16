@@ -85,6 +85,13 @@ install, or editor extension is required to open, run, build or evaluate the gam
 
 ### 1. Starting the Game
 
+**Quickest — download the ready-made build**
+
+A packaged Windows build is attached to the repository's
+[**Releases**](../../releases) page. Download `ArenaOfTheAlgorithms-Windows-x64.zip`, extract it, and
+run `RPGArena.exe`. No Unity install required. (Windows SmartScreen will warn that the executable is
+unsigned — choose *More info ▸ Run anyway*.)
+
 **From source (Unity Editor)**
 
 Requires **Unity 6000.3.14f1**. No additional packages to install.
