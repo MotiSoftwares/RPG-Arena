@@ -3,6 +3,7 @@ using UnityEngine.InputSystem;
 using RPGArena.Combat;
 using RPGArena.Characters;
 using RPGArena.Combat.Status;
+using RPGArena.Core;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -33,8 +34,17 @@ namespace RPGArena.Cheats
         private bool godMode;
         private bool infiniteMP;
         private float timeScale = 1f;
-        private Rect window = new Rect(16, 16, 280, 560);
+        private Rect window = new Rect(16, 16, 300, 700);
+        private Vector2 scroll;
         private BattleController battle;
+
+        // Asset names of every shop consumable, so "grant all items" doesn't need a reference to the
+        // shop UI (which lives in RPGArena.UI, and Cheats must not depend on the UI assembly).
+        private static readonly string[] ShopItems =
+        {
+            "Item_HealingPotion", "Item_ManaTonic", "Item_Flashbang",
+            "Item_SlickFlask", "Item_WarDrum",
+        };
 
         // Re-find the live battle each time it might have changed (cheap; only on demand).
         private BattleController Battle => battle != null ? battle : (battle = FindFirstObjectByType<BattleController>());
@@ -70,6 +80,9 @@ namespace RPGArena.Cheats
                 GUI.DragWindow();
                 return;
             }
+
+            // Scrolled, so the panel stays usable at small window sizes as sections were added.
+            scroll = GUILayout.BeginScrollView(scroll);
 
             GUILayout.Label("— Party —", Bold());
             godMode = GUILayout.Toggle(godMode, " God Mode (party invincible)");
@@ -108,6 +121,45 @@ namespace RPGArena.Cheats
             }
 
             GUILayout.Space(6);
+            GUILayout.Label("— Valor / Overdrive —", Bold());
+            if (ctx.charge != null)
+            {
+                GUILayout.Label($"Valor {ctx.charge.valor:0}/{ctx.charge.max:0}" +
+                                (ctx.charge.overdriveActive ? "   OVERDRIVE ACTIVE" : ""));
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Fill")) ctx.charge.valor = ctx.charge.max;
+                if (GUILayout.Button("Empty")) ctx.charge.valor = 0f;
+                GUILayout.EndHorizontal();
+            }
+            else GUILayout.Label("(no charge system on this battle)");
+
+            // Run-level cheats operate on the persistent RunState, so they survive the scene change
+            // into the shop and the next fight — which is the point of "skip a level" for a grader
+            // who wants to reach boss three without playing bosses one and two.
+            GUILayout.Space(6);
+            GUILayout.Label("— Run —", Bold());
+            var run = GameBootstrap.Instance != null ? GameBootstrap.Instance.Run : null;
+            if (run != null)
+            {
+                GUILayout.Label($"Gold {run.gold}   items {run.inventory.Count}   " +
+                                $"boss {run.currentBossIndex + 1}/{RunState.BossOrder.Length} ({run.CurrentBoss})");
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("+500 gold")) run.gold += 500;
+                if (GUILayout.Button("Grant all items"))
+                    foreach (var n in ShopItems) run.AddItem(n);
+                GUILayout.EndHorizontal();
+
+                // Skipping forward has to kill the boss too, otherwise the run index and the fight
+                // on screen disagree and the victory flow would advance a second time.
+                if (run.HasNextBoss && GUILayout.Button($"SKIP to next boss ({run.NextBoss})"))
+                {
+                    run.AdvanceBoss();
+                    if (ctx.boss != null) ctx.boss.currentHP = 0;
+                }
+            }
+            else GUILayout.Label("(no run state — playing a scene directly)");
+
+            GUILayout.Space(6);
             GUILayout.Label("— Time —", Bold());
             GUILayout.Label($"Time scale: {timeScale:0.00}x");
             timeScale = GUILayout.HorizontalSlider(timeScale, 0f, 2f);
@@ -122,6 +174,7 @@ namespace RPGArena.Cheats
             GUILayout.Space(8);
             if (GUILayout.Button("Close (`)")) show = false;
 
+            GUILayout.EndScrollView();
             GUI.DragWindow();
         }
 
