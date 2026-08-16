@@ -298,7 +298,7 @@ aspect ratios.
 ## Media
 
 > ### ▶ Gameplay Video
-> **YouTube:** `<PASTE LINK HERE>`
+> **YouTube:** https://www.youtube.com/watch?v=tdfiqxb-KkU
 >
 > *(5–10 minute narrated walkthrough of the gameplay and the project's inner workings.)*
 
