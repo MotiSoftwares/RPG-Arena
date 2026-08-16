@@ -1,0 +1,194 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 1180" width="1560" height="1180"
+     font-family="'Segoe UI',Gisha,Arial,sans-serif">
+<defs>
+  <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0 0 L10 5 L0 10 z" fill="#cfd3da"/>
+  </marker>
+  <style>
+    .box   { fill:#1c1f26; stroke:#cfd3da; stroke-width:1.6; }
+    .boxhi { fill:#26303e; stroke:#7fb2e6; stroke-width:2; }
+    .term  { fill:#1c1f26; stroke:#cfd3da; stroke-width:1.6; }
+    .dec   { fill:#1c1f26; stroke:#e0b23c; stroke-width:1.8; }
+    .sub   { fill:#14171d; stroke:#5b6472; stroke-width:1.4; stroke-dasharray:7 5; }
+    .t     { fill:#eef1f5; font-size:16px; }
+    .ts    { fill:#eef1f5; font-size:14.5px; }
+    .lnk   { fill:none; stroke:#cfd3da; stroke-width:1.5; marker-end:url(#a); }
+    .lbl   { fill:#aab2be; font-size:13px; }
+    .hdr   { fill:#8fa6c4; font-size:15px; letter-spacing:.5px; }
+    .he    { font-family:Gisha,Arial,sans-serif; fill:#8b96a6; font-size:14px; }
+  </style>
+</defs>
+
+<rect width="1560" height="1180" fill="#0d0f13"/>
+
+<text x="34" y="44" fill="#eef1f5" font-size="24">GAME LOOP — Arena of the Algorithms</text>
+<text x="1526" y="44" text-anchor="end" class="he" font-size="16">תרשים זרימה — ממסך הפתיחה ועד סגירת המשחק</text>
+<path d="M34 58 L720 58" stroke="#3a4150" stroke-width="1.4"/>
+
+<!-- ================= START / MENU ================= -->
+<rect x="640" y="82" width="180" height="42" rx="21" class="term"/>
+<text x="730" y="109" text-anchor="middle" class="t">Launch Game</text>
+
+<path d="M730 124 L730 158" class="lnk"/>
+
+<rect x="628" y="158" width="204" height="46" rx="4" class="box"/>
+<text x="730" y="187" text-anchor="middle" class="t">Main Menu</text>
+
+<!-- settings side trip -->
+<path d="M628 181 L470 181" class="lnk"/>
+<text x="548" y="172" text-anchor="middle" class="lbl">Options</text>
+<rect x="300" y="158" width="170" height="46" rx="4" class="box"/>
+<text x="385" y="187" text-anchor="middle" class="t">Settings</text>
+<path d="M385 158 Q385 118 560 118 Q700 118 700 156" class="lnk"/>
+<text x="556" y="112" text-anchor="middle" class="lbl">Back</text>
+
+<!-- quit from menu -->
+<path d="M832 181 L1180 181 L1180 1044" class="lnk"/>
+<text x="1000" y="172" text-anchor="middle" class="lbl">Quit</text>
+
+<path d="M730 204 L730 238" class="lnk"/>
+<text x="772" y="226" text-anchor="middle" class="lbl">Play</text>
+
+<rect x="606" y="238" width="248" height="46" rx="4" class="box"/>
+<text x="730" y="267" text-anchor="middle" class="t">Choose 3 Heroes</text>
+
+<path d="M730 284 L730 322" class="lnk"/>
+
+<!-- ================= COMBAT SUBGRAPH ================= -->
+<rect x="150" y="322" width="1160" height="560" rx="8" class="sub"/>
+<text x="176" y="350" class="hdr">CORE COMBAT LOOP — one boss battle</text>
+<text x="1286" y="872" text-anchor="end" class="he">לולאת הקרב — סבב אחד</text>
+
+<!-- PLAYER PHASE -->
+<text x="176" y="392" class="hdr" fill="#7fb2e6">PLAYER PHASE</text>
+<rect x="176" y="404" width="236" height="46" rx="4" class="boxhi"/>
+<text x="294" y="433" text-anchor="middle" class="ts">Choose which hero acts</text>
+
+<path d="M294 450 L294 484" class="lnk"/>
+<rect x="176" y="484" width="236" height="46" rx="4" class="boxhi"/>
+<text x="294" y="513" text-anchor="middle" class="ts">Choose a skill / item</text>
+
+<path d="M294 530 L294 564" class="lnk"/>
+<rect x="176" y="564" width="236" height="46" rx="4" class="boxhi"/>
+<text x="294" y="586" text-anchor="middle" class="ts">Timing bar</text>
+<text x="294" y="604" text-anchor="middle" class="lbl">press on gold</text>
+
+<path d="M294 610 L294 644" class="lnk"/>
+<rect x="176" y="644" width="236" height="46" rx="4" class="boxhi"/>
+<text x="294" y="666" text-anchor="middle" class="ts">Resolve the action</text>
+<text x="294" y="684" text-anchor="middle" class="lbl">damage · combo · Break</text>
+
+<path d="M294 690 L294 720" class="lnk"/>
+<path d="M294 720 L200 764 L294 808 L388 764 Z" class="dec"/>
+<text x="294" y="760" text-anchor="middle" class="ts">All 3 heroes</text>
+<text x="294" y="777" text-anchor="middle" class="ts">acted?</text>
+
+<!-- No -> back to top of player phase -->
+<path d="M200 764 L166 764 Q142 764 142 720 L142 428 Q142 404 168 404 L174 404" class="lnk"/>
+<text x="120" y="592" text-anchor="middle" class="lbl">No</text>
+
+<!-- Yes -> enemy phase -->
+<path d="M388 764 L470 764" class="lnk"/>
+<text x="428" y="754" text-anchor="middle" class="lbl">Yes</text>
+
+<!-- ENEMY PHASE -->
+<text x="470" y="392" class="hdr" fill="#e08a6b">ENEMY PHASE</text>
+<rect x="470" y="404" width="250" height="46" rx="4" class="box"/>
+<text x="595" y="433" text-anchor="middle" class="ts">Minions attack</text>
+
+<path d="M595 450 L595 484" class="lnk"/>
+<rect x="470" y="484" width="250" height="46" rx="4" class="box"/>
+<text x="595" y="506" text-anchor="middle" class="ts">Boss attacks or debuffs</text>
+<text x="595" y="524" text-anchor="middle" class="lbl">it never skips a turn</text>
+
+<path d="M595 530 L595 564" class="lnk"/>
+<rect x="470" y="564" width="250" height="46" rx="4" class="box"/>
+<text x="595" y="586" text-anchor="middle" class="ts">Block window</text>
+<text x="595" y="604" text-anchor="middle" class="lbl">on every incoming hit</text>
+
+<!-- route Yes into the enemy phase column -->
+<path d="M470 764 L595 764 L595 616" class="lnk"/>
+
+<!-- decisions -->
+
+<path d="M720 587 L800 587" class="lnk"/>
+<path d="M800 587 L800 620" class="lnk"/>
+<path d="M800 620 L706 664 L800 708 L894 664 Z" class="dec"/>
+<text x="800" y="660" text-anchor="middle" class="ts">Boss</text>
+<text x="800" y="677" text-anchor="middle" class="ts">defeated?</text>
+
+<path d="M894 664 L960 664" class="lnk"/>
+<text x="928" y="654" text-anchor="middle" class="lbl">Yes</text>
+
+<path d="M800 708 L800 752" class="lnk"/>
+<text x="828" y="734" text-anchor="middle" class="lbl">No</text>
+<path d="M800 752 L706 796 L800 840 L894 796 Z" class="dec"/>
+<text x="800" y="792" text-anchor="middle" class="ts">Party</text>
+<text x="800" y="809" text-anchor="middle" class="ts">wiped out?</text>
+
+<!-- No -> next round -->
+<path d="M706 796 L560 796 L560 840 L120 840 Q96 840 96 800 L96 420 Q96 396 130 396 L174 400" class="lnk"/>
+<text x="330" y="858" text-anchor="middle" class="lbl">No — next round</text>
+
+<!-- Yes -> game over -->
+<path d="M894 796 L1000 796" class="lnk"/>
+<text x="946" y="786" text-anchor="middle" class="lbl">Yes</text>
+
+<!-- pause -->
+<rect x="960" y="404" width="200" height="46" rx="4" class="box"/>
+<text x="1060" y="433" text-anchor="middle" class="ts">Pause Menu</text>
+<path d="M720 427 L958 427" class="lnk"/>
+<text x="840" y="418" text-anchor="middle" class="lbl">Pause</text>
+<path d="M1060 450 L1060 490 L940 490 L940 470" class="lnk"/>
+<text x="1010" y="506" text-anchor="middle" class="lbl">Resume</text>
+
+<!-- ================= OUTCOMES ================= -->
+<rect x="960" y="640" width="200" height="46" rx="4" class="box"/>
+<text x="1060" y="669" text-anchor="middle" class="t">Victory</text>
+
+<rect x="1000" y="772" width="200" height="46" rx="4" class="box"/>
+<text x="1100" y="801" text-anchor="middle" class="t">Game Over</text>
+
+<!-- victory -> more bosses? -->
+<path d="M1060 686 L1060 712 L1360 712 L1360 250" class="lnk"/>
+<path d="M1360 250 L1266 206 L1360 162 L1454 206 Z" class="dec"/>
+<text x="1360" y="202" text-anchor="middle" class="ts">Another</text>
+<text x="1360" y="219" text-anchor="middle" class="ts">boss left?</text>
+
+<path d="M1266 206 L1150 206 L1150 262" class="lnk"/>
+<text x="1206" y="196" text-anchor="middle" class="lbl">Yes</text>
+<rect x="1040" y="262" width="220" height="46" rx="4" class="box"/>
+<text x="1150" y="284" text-anchor="middle" class="ts">Pick a Boon</text>
+<text x="1150" y="302" text-anchor="middle" class="lbl">then next battle</text>
+<path d="M1040 285 L900 285 L900 322" class="lnk"/>
+
+<path d="M1360 250 L1360 300" class="lnk"/>
+<text x="1400" y="282" text-anchor="middle" class="lbl">No</text>
+<rect x="1266" y="300" width="188" height="46" rx="4" class="box"/>
+<text x="1360" y="329" text-anchor="middle" class="ts">Run Complete</text>
+
+<!-- end screen -->
+<rect x="1240" y="920" width="220" height="46" rx="4" class="box"/>
+<text x="1350" y="949" text-anchor="middle" class="t">End Screen</text>
+<path d="M1200 795 L1350 795 L1350 918" class="lnk"/>
+<path d="M1360 346 L1490 346 L1490 900 L1400 900 L1400 918" class="lnk"/>
+
+<!-- end screen -> retry / menu / quit -->
+<path d="M1240 943 L1080 943" class="lnk"/>
+<text x="1160" y="934" text-anchor="middle" class="lbl">Retry</text>
+<rect x="880" y="920" width="200" height="46" rx="4" class="box"/>
+<text x="980" y="949" text-anchor="middle" class="ts">Restart Battle</text>
+<path d="M880 943 L560 943 L560 900" class="lnk"/>
+
+<path d="M1350 966 L1350 1010 L60 1010 Q36 1010 36 976 L36 190 Q36 160 70 160 L296 160" class="lnk"/>
+<text x="700" y="1002" text-anchor="middle" class="lbl">Main Menu</text>
+
+<!-- ================= QUIT ================= -->
+<rect x="1090" y="1044" width="180" height="42" rx="21" class="term"/>
+<text x="1180" y="1071" text-anchor="middle" class="t">Quit Game</text>
+<path d="M1060 450 L1060 560 L1224 560 L1224 1042" class="lnk"/>
+<text x="1152" y="552" text-anchor="middle" class="lbl">Quit</text>
+
+<text x="34" y="1140" class="he" font-size="14">מוטי ישעיהו · תרשים זרימה של לולאת המשחק</text>
+<text x="1526" y="1140" text-anchor="end" class="lbl" font-size="13">Arena of the Algorithms — Game Loop</text>
+</svg>

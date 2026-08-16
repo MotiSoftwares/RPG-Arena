@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head><meta charset="utf-8"><title>Prototyping — Paper Model &amp; Game Loop</title>
+<style>
+  @page { size: A4 landscape; margin: 9mm; }
+  html,body{ margin:0; padding:0; }
+  body{ direction:rtl; font-family:Gisha,Arial,sans-serif; color:#1b1f27; }
+  .page{ break-after:page; }
+  .page:last-child{ break-after:auto; }
+  h1{ font-size:15pt; margin:0 0 1mm; color:#7a2718; }
+  .sub{ font-size:9.5pt; color:#5b6577; margin:0 0 3mm; }
+  .en{ unicode-bidi:isolate; direction:ltr; }
+  /* A4 landscape 297x210 less 9mm margins = 279x192mm; the heading eats ~16mm, so cap
+     the HEIGHT and let width follow, or a wide SVG pushes itself onto a second page. */
+  img{ max-height:168mm; max-width:100%; width:auto; height:auto; display:block;
+       margin:0 auto; border:0.6pt solid #cdd2db; }
+  .cap{ font-size:8.6pt; color:#5b6577; margin-top:2mm; }
+</style></head>
+<body>
+
+<div class="page">
+  <h1>1 · מודל נייר — <span class="en">Paper Model</span></h1>
+  <p class="sub">סקיצה מצוירת ביד של מהלך המשחק בפעולה — "צילום מסך" של הקרב, בסגנון תיאטרון איש־מקל.
+     המספרים על הציור מפורטים במקרא שבתחתית.</p>
+  <img src="paper_model.svg" alt="Paper Model">
+  <p class="cap">זירת האלגוריתמים · מוטי ישעיהו</p>
+</div>
+
+<div class="page">
+  <h1>2 · לולאת המשחק — <span class="en">Game Loop</span></h1>
+  <p class="sub">תרשים זרימה כללי, מהפעלת המשחק ועד סגירתו. המסגרת המקווקוות היא לולאת הקרב עצמה:
+     שלב שחקן (3 גיבורים) ← שלב אויב ← בדיקת סיום ← סבב הבא.</p>
+  <img src="game_loop.svg" alt="Game Loop">
+  <p class="cap">זירת האלגוריתמים · מוטי ישעיהו</p>
+</div>
+
+</body></html>

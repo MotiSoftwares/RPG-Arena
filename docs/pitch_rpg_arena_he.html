@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8">
+<title>פיץ' — זירת האלגוריתמים</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+
+  :root{
+    --ink:#14181f; --muted:#5b6577; --line:#d9dee8;
+    --accent:#8a2f22; --accent2:#c2853a; --panel:#f6f4ef;
+  }
+
+  html,body{ margin:0; padding:0; }
+  body{
+    direction:rtl; text-align:right;
+    font-family:"Gisha","Arial","David",sans-serif;
+    color:var(--ink); font-size:10.6pt; line-height:1.72;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+
+  /* Latin / numeric runs inside Hebrew text keep their own direction */
+  bdi, .ltr{ unicode-bidi:isolate; }
+  .en{ unicode-bidi:isolate; direction:ltr; font-family:"Segoe UI","Arial",sans-serif; }
+
+  h1{
+    font-size:23pt; margin:0 0 2mm; letter-spacing:-.2px; color:var(--accent);
+  }
+  .sub{ color:var(--muted); font-size:11pt; margin:0 0 6mm; }
+
+  h2{
+    font-size:13.2pt; margin:8mm 0 2.5mm; color:var(--accent);
+    border-bottom:1.6pt solid var(--accent2); padding-bottom:1.4mm;
+  }
+  h3{ font-size:11.2pt; margin:4.5mm 0 1.2mm; color:#2b3442; }
+
+  p{ margin:0 0 2.6mm; }
+  ul{ margin:0 0 3mm; padding-right:6mm; padding-left:0; }
+  li{ margin-bottom:1.4mm; }
+
+  .lead{
+    background:var(--panel); border-right:3.5pt solid var(--accent2);
+    padding:3.5mm 4.5mm; margin:0 0 6mm; border-radius:2px;
+  }
+
+  .meta{
+    display:flex; gap:0; flex-wrap:wrap; border:1pt solid var(--line);
+    border-radius:3px; overflow:hidden; margin:0 0 7mm;
+  }
+  .meta div{ flex:1 1 33%; padding:2.6mm 3.5mm; border-left:1pt solid var(--line); }
+  .meta div:last-child{ border-left:none; }
+  .meta b{ display:block; color:var(--muted); font-weight:normal; font-size:8.6pt; }
+
+  table{ width:100%; border-collapse:collapse; margin:2mm 0 4mm; font-size:9.9pt; }
+  th,td{ border:1pt solid var(--line); padding:2.2mm 3mm; text-align:right; vertical-align:top; }
+  th{ background:var(--panel); font-weight:bold; }
+
+  .hook{
+    border:1.4pt solid var(--accent2); border-radius:3px;
+    padding:3.5mm 4.5mm; background:#fffaf2; margin:3mm 0 4mm;
+  }
+  .hook p:last-child{ margin-bottom:0; }
+
+  .quote{
+    font-size:12pt; color:var(--accent); font-weight:bold;
+    text-align:center; margin:3mm 0; line-height:1.5;
+  }
+
+  .foot{
+    margin-top:8mm; padding-top:2.5mm; border-top:1pt solid var(--line);
+    color:var(--muted); font-size:8.8pt; display:flex; justify-content:space-between;
+  }
+  .note{ color:var(--muted); font-size:9pt; }
+  .pagebreak{ break-before:page; }
+  h2,h3{ break-after:avoid; }
+  table,ul,.hook{ break-inside:avoid; }
+</style>
+</head>
+<body>
+
+<h1>זירת האלגוריתמים</h1>
+<p class="sub"><span class="en">Arena of the Algorithms</span> · פיץ' מוצר · שם עבודה</p>
+
+<div class="meta">
+  <div><b>מגיש</b>מוטי ישעיהו</div>
+  <div><b>מנוע</b><span class="en">Unity 6 · URP · C#</span></div>
+  <div><b>היקף</b>2–3 חודשי פיתוח</div>
+</div>
+
+<div class="lead">
+  <p><b>משחק תפקידים תורני של קרבות בוסים</b>, שבו כל תור דורש גם החלטה טקטית וגם ביצוע מדויק.
+  חוזה העיצוב המרכזי שלנו הוא בוטה: <b>מי שילחץ שוב ושוב על "התקפה" — יפסיד.</b>
+  הניצחון מגיע רק משרשור קומבואים בין בני הצוות, מניצול חלון ה־<bdi>Break</bdi> של הבוס, ומעמידה
+  בפקודות פעולה מתוזמנות בזמן אמת.</p>
+</div>
+
+<h2>1. הצגת עצמי</h2>
+<p>אני מוטי, סטודנט להנדסת תוכנה, ומפתח את הפרויקט הזה כיחיד — מעיצוב המערכות ועד המימוש
+ב־<span class="en">Unity</span>. הרקע שלי הוא בפיתוח תוכנה, והתחום שמושך אותי במיוחד הוא
+<b>עיצוב מערכות משחק</b>: איך כללים פשוטים מייצרים החלטות מעניינות.</p>
+
+<p>בחרתי דווקא במשחק תורני מפני שהוא חושף את העיצוב במלואו. אין רפלקסים שיסתירו מערכת חלשה —
+אם ההחלטה בתור לא מעניינת, זה מיד מורגש. זה בדיוק האתגר שרציתי לקחת.</p>
+
+<p>מה שהופך אותי למתאים לבנות את זה הוא שיטת העבודה: <b>אני מודד במקום לנחש.</b> מערכת האיזון
+של המשחק נבדקת בהרצות אוטומטיות — אלפי קרבות מדומים ללא ממשק גרפי — שמוכיחות שהמשחק אכן
+מתנהג לפי חוזה העיצוב. לדוגמה, יש בדיקה אוטומטית שנכשלת אם שחקן שרק לוחץ "התקפה" מצליח לנצח.</p>
+<p class="note">↞ מומלץ להוסיף כאן משפט אישי על ניסיון קודם / פרויקטים קודמים.</p>
+
+<h2>2. שם המשחק</h2>
+<p><b>זירת האלגוריתמים</b> (<span class="en">Arena of the Algorithms</span>) — שם עבודה.
+השם משלב את זירת הגלדיאטורים שבה מתרחשים הקרבות עם הרעיון שכל בוס הוא למעשה
+<b>חידה מערכתית</b> שצריך לפצח, ולא רק מד בריאות גדול יותר.</p>
+
+<h2>3. מטרת המשחק — ז'אנר וסגנון משחקיות</h2>
+<p><b>ז'אנר:</b> משחק תפקידים תורני בתלת־ממד בסגנון <bdi>Boss Rush</bdi> — רצף קרבות בוסים
+ללא שלבי מילוי ביניהם. משך ריצה מלאה: כ־20–30 דקות.</p>
+
+<p><b>הרכב:</b> השחקן בוחר צוות של <b>3 גיבורים</b> מתוך לוחם, קוסמת וגנב. לכל גיבור
+<b>5 יכולות בדיוק</b> — 4 בסיסיות ויכולת אולטימטיבית מסוכנת שמגלגלת קובייה.</p>
+
+<h3>הלולאה המרכזית</h3>
+<p>כל סבב מורכב משני שלבים:</p>
+<ul>
+  <li><b>שלב השחקן</b> — אתה בוחר <b>מי</b> מהגיבורים פועל בכל רגע, ולא סדר תורות כפוי.
+      זה מה שמאפשר לתזמן קומבו: להרטיב, להקפיא ולנפץ באותו סבב.</li>
+  <li><b>שלב האויב</b> — המשרתים תוקפים ואז הבוס. <b>כל אויב פועל בכל תור</b> —
+      אין סבבים שבהם "לא קרה כלום".</li>
+</ul>
+
+<h3>המערכות שמייצרות את העומק</h3>
+<table>
+  <tr><th style="width:26%">מערכת</th><th>מה היא עושה</th></tr>
+  <tr><td><b>רשת קומבו</b></td>
+      <td>שלושה קווים נפרדים. הראשי: <b>רטוב ← קרח = הקפאה ← מכה פיזית = ניפוץ ×2.3</b>.
+          הקומבו דורש תיאום בין שני גיבורים שונים.</td></tr>
+  <tr><td><b>שבירה וזעם</b></td>
+      <td>לבוס יש מד <bdi>Break</bdi>. הוא צובר <bdi>Fury</bdi> שמגביר את נזקו בכל תור —
+          <b>שבירה מאפסת אותו</b>. התעלמות מהמד = מוות איטי.</td></tr>
+  <tr><td><b>פקודות פעולה</b></td>
+      <td>סרגל תזמון על כל מתקפה, וחלון חסימה מתוזמן על כל מכה נכנסת.
+          ביצוע מושלם משפר משמעותית — אבל לא מחליף טקטיקה.</td></tr>
+  <tr><td><b>אולטימטיבי</b></td>
+      <td>שני סרגלי תזמון במקום אחד, אחרי רגע טעינה עם זום מצלמה.
+          מגלגל קובייה: יש סיכוי לפגיעה עצומה — ויש סיכוי לרתע עצמי.</td></tr>
+  <tr><td><b>מיצוב</b></td>
+      <td>שורה קדמית וסוגה אחורית. הסוגה מוגנת ממכות נשק — אבל לא ממתקפות שטח.</td></tr>
+</table>
+
+<h2>4. קהל היעד</h2>
+<p><b>הגדרה:</b> שחקני מחשב בגילאי <bdi>16–35</bdi> שאוהבים משחקי תפקידים תורניים
+ומחפשים עומק טקטי — בלי להתחייב ל־<bdi>80</bdi> שעות משחק.</p>
+
+<table>
+  <tr><th style="width:30%">פרופיל</th><th>מה הוא מחפש</th></tr>
+  <tr><td><b>חובב הז'אנר</b><br><span class="note">משחק ב־<span class="en">Persona</span>,
+      <span class="en">Octopath Traveler</span></span></td>
+      <td>מערכת קרב עשירה עם ניצול חולשות אלמנטריות — אבל בלי עשרות שעות עלילה.</td></tr>
+  <tr><td><b>שחקן הרוגלייט</b><br><span class="note">משחק ב־<span class="en">Slay the Spire</span>,
+      <span class="en">Hades</span></span></td>
+      <td>ריצות קצרות שאפשר לסיים בישיבה אחת, עם החלטות בנייה בין הקרבות.</td></tr>
+  <tr><td><b>שחקן האתגר</b><br><span class="note">משחק ב־<span class="en">Darkest Dungeon</span></span></td>
+      <td>קושי אמיתי שמעניש חוסר תשומת לב, ותחושה שהניצחון הושג ולא ניתן במתנה.</td></tr>
+</table>
+
+<p><b>פלטפורמה:</b> מחשב אישי (<span class="en">Windows</span>) כיעד ראשון.
+ממשק המשתמש נבנה כך שיתמוך גם במגע, לצורך הרחבה עתידית למובייל.</p>
+
+<h2>5. ניתוח צרכים והוק המוצר</h2>
+
+<h3>הצורך — הבעיה בז'אנר</h3>
+<p>משחקי תפקידים תורניים סובלים מבעיה מוכרת: <b>ברוב הקרבות, הפעולה האופטימלית היא ללחוץ
+"התקפה" שוב ושוב.</b> הקרב הופך לפעולה מכנית, השחקן מפסיק לקרוא את מצב הלוח, והתורות הופכים
+לזמן המתנה בין אנימציות. מנגנוני עומק קיימים — אבל לרוב אין סיבה אמיתית להשתמש בהם.</p>
+
+<div class="hook">
+  <p class="quote">ההוק שלנו: ספאם של התקפה בסיסית <u>מובטח</u> שיפסיד.</p>
+  <p>זו לא הצהרת כוונות — זו <b>בדיקה אוטומטית</b> בפרויקט. יש בדיקה שמריצה קרב שלם שבו
+  הצוות רק תוקף בסיסי, והיא <b>נכשלת אם הצוות מנצח</b>. כל שינוי איזון חייב לעבור אותה.
+  התוצאה: העומק אינו אופציונלי, הוא תנאי מעבר.</p>
+</div>
+
+<h3>מה מייחד את המוצר</h3>
+<ul>
+  <li><b>אין תור מת.</b> כל אויב פועל בכל סבב, ולעולם לא "מדלג". גם מהלך טעינה של הבוס
+      מכה תוך כדי הטעינה.</li>
+  <li><b>אין החטאה שמרגישה כמו עונש.</b> גלגול כישלון הופך למכה חלשה, לא ל"לא קרה כלום" —
+      כך שהתור של השחקן תמיד מייצר משוב.</li>
+  <li><b>אתה בוחר מי פועל.</b> חופש הסדר הוא מה שהופך קומבו רב־דמויות לאפשרי בכלל.</li>
+  <li><b>כל בוס הוא חידה אחרת.</b> הדרקון הוא חידה אלמנטרית עם מד זעם;
+      הקוסם האפל <b>אוכל</b> את ההכנות שהנחת עליו ומתרפא מהן — ומכריח אותך לשנות תוכנית.</li>
+  <li><b>מיומנות משתלמת, אך אינה מבטלת טקטיקה.</b> ביצוע מושלם משפר את הנזק,
+      אבל הכפולות הגדולות באמת מגיעות רק מקומבו ומחלון שבירה.</li>
+</ul>
+
+<h3>השוואה למוצרים דומים</h3>
+<table>
+  <tr><th style="width:24%">מוצר</th><th style="width:38%">מה הוא עושה טוב</th><th>הפער שאנחנו ממלאים</th></tr>
+  <tr><td><span class="en">Persona 5</span></td>
+      <td>ניצול חולשות אלמנטריות שמעניק תור נוסף.</td>
+      <td>דורש עשרות שעות. אצלנו אותה מערכת דחוסה לריצה של חצי שעה.</td></tr>
+  <tr><td><span class="en">Darkest Dungeon</span></td>
+      <td>מיצוב ולחץ אמיתי על השחקן.</td>
+      <td>אצלנו הקרב אקטיבי — פקודות תזמון הופכות את השחקן למשתתף גם בתור של האויב.</td></tr>
+  <tr><td><span class="en">Mario RPG</span> / <span class="en">Sea of Stars</span></td>
+      <td>פקודות פעולה מתוזמנות ומהנות.</td>
+      <td>אצלנו התזמון נשען על שכבה טקטית עמוקה בהרבה, ולא רק על משחקון תגובה.</td></tr>
+</table>
+
+<h2>6. היקף הפיתוח</h2>
+<p>משחק בהיקף קטן שנבנה ב־<span class="en">Unity</span>, תוך שימוש
+<b>בנכסים גרפיים ואודיו שפותחו על ידי אחרים</b> (חנות הנכסים) — כך שכל המאמץ ההנדסי
+מתרכז במערכות המשחק עצמן, שהן ליבת הפרויקט. היקף מתוכנן: <b>2–3 חודשי עבודה</b>.</p>
+
+<table>
+  <tr><th style="width:30%">רכיב</th><th>סטטוס</th></tr>
+  <tr><td>מנוע קרב ומערכות איזון</td><td>מיושם ומכוסה בבדיקות אוטומטיות</td></tr>
+  <tr><td>שני בוסים עם זהות מכנית נפרדת</td><td>מיושם</td></tr>
+  <tr><td>ממשק קרב, פקודות פעולה, אפקטים</td><td>מיושם</td></tr>
+  <tr><td>מסך פתיחה ותפריט ראשי</td><td>מיושם</td></tr>
+  <tr><td>ליטוש, איזון סופי ואודיו</td><td>בעבודה</td></tr>
+</table>
+
+<div class="foot">
+  <span>זירת האלגוריתמים — פיץ' מוצר</span>
+  <span>מוטי ישעיהו</span>
+</div>
+
+</body>
+</html>

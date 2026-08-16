@@ -1,0 +1,282 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150" font-family="'Segoe Print','Ink Free','Comic Sans MS',Gisha,sans-serif">
+<defs>
+  <!-- pencil wobble: displaces every stroke so nothing looks machine-drawn -->
+  <filter id="rough" x="-8%" y="-8%" width="116%" height="116%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.028" numOctaves="3" seed="11" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="3.1" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="rough2" x="-8%" y="-8%" width="116%" height="116%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="29" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <!-- paper grain -->
+  <filter id="grain">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" seed="5" result="t"/>
+    <feColorMatrix in="t" type="saturate" values="0"/>
+    <feComponentTransfer><feFuncA type="linear" slope="0.055"/></feComponentTransfer>
+    <feComposite operator="over" in2="SourceGraphic"/>
+  </filter>
+  <style>
+    .ink   { fill:none; stroke:#2b2b30; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round; }
+    .ink-t { fill:none; stroke:#2b2b30; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+    .lbl   { font-size:15px; fill:#2b2b30; }
+    .lbl-s { font-size:12.5px; fill:#4a4a52; }
+    .ui    { font-size:15px; fill:#22222a; }
+    .he    { font-family:Gisha,Arial,sans-serif; direction:rtl; }
+    .call  { font-family:Gisha,Arial,sans-serif; font-size:14.5px; fill:#7a2718; direction:rtl; }
+    .num   { font-family:Gisha,Arial,sans-serif; font-size:15px; font-weight:bold; fill:#fff; }
+    .wash-r{ fill:#c8564a; opacity:.55; } .wash-g{ fill:#6fae62; opacity:.55; }
+    .wash-b{ fill:#5b8fc9; opacity:.5; }  .wash-y{ fill:#e0b23c; opacity:.6; }
+    .wash-k{ fill:#3a3a42; opacity:.16; }
+  </style>
+</defs>
+
+<!-- ============ PAPER ============ -->
+<rect width="1600" height="1150" fill="#f4f1e8" filter="url(#grain)"/>
+<rect x="14" y="14" width="1572" height="1122" class="ink" filter="url(#rough)"/>
+
+<text x="42" y="58" font-size="27" fill="#7a2718">PAPER MODEL — “Arena of the Algorithms”</text>
+<text x="1556" y="58" class="call" font-size="17">מודל נייר — מסך הקרב בפעולה</text>
+<path d="M42 70 L800 72" class="ink-t" filter="url(#rough)"/>
+
+<!-- ============ ARENA FLOOR ============ -->
+<g filter="url(#rough)">
+  <path d="M120 300 L1330 296 L1400 720 L60 726 Z" fill="#e7e3d6" stroke="#2b2b30" stroke-width="2.6"/>
+  <path d="M150 690 Q400 700 700 694 T1330 690" class="ink-t" opacity=".5"/>
+  <path d="M190 640 Q500 650 900 644" class="ink-t" opacity=".35"/>
+</g>
+
+<!-- ============ HEROES (stick-figure theatre) ============ -->
+<!-- WARRIOR -->
+<g filter="url(#rough2)" transform="translate(250,470)">
+  <circle cx="0" cy="-46" r="17" class="ink"/>
+  <path d="M0 -29 L0 24 M0 -14 L-24 6 M0 -14 L26 2 M0 24 L-17 62 M0 24 L18 62" class="ink"/>
+  <circle cx="-34" cy="14" r="20" class="ink"/><circle cx="-34" cy="14" r="20" class="wash-b"/>
+  <path d="M28 0 L52 -44" class="ink"/><path d="M22 -6 L34 6" class="ink"/>
+  <ellipse cx="0" cy="66" rx="34" ry="7" class="wash-k"/>
+  <text x="0" y="92" text-anchor="middle" class="lbl">WARRIOR</text>
+  <text x="0" y="110" text-anchor="middle" class="lbl-s">front row</text>
+</g>
+<!-- MAGE -->
+<g filter="url(#rough2)" transform="translate(370,540)">
+  <path d="M-18 -46 L0 -84 L18 -46 Z" class="ink"/><path d="M-18 -46 L0 -84 L18 -46 Z" class="wash-b"/>
+  <circle cx="0" cy="-30" r="15" class="ink"/>
+  <path d="M0 -15 L0 26 M0 -2 L-22 14 M0 -2 L22 10 M-16 26 L-22 62 M16 26 L22 62" class="ink"/>
+  <path d="M24 12 L30 -46" class="ink"/><circle cx="31" cy="-52" r="8" class="ink"/><circle cx="31" cy="-52" r="8" class="wash-b"/>
+  <ellipse cx="0" cy="66" rx="32" ry="7" class="wash-k"/>
+  <text x="0" y="92" text-anchor="middle" class="lbl">MAGE</text>
+  <text x="0" y="110" text-anchor="middle" class="lbl-s">back row</text>
+</g>
+<!-- THIEF -->
+<g filter="url(#rough2)" transform="translate(480,470)">
+  <path d="M-15 -32 Q0 -58 15 -32 Q0 -22 -15 -32 Z" class="ink"/>
+  <circle cx="0" cy="-34" r="15" class="ink"/>
+  <path d="M0 -19 L0 24 M0 -6 L-26 4 M0 -6 L26 4 M0 24 L-16 60 M0 24 L17 60" class="ink"/>
+  <path d="M-26 4 L-42 -12 M26 4 L42 -12" class="ink-t"/>
+  <ellipse cx="0" cy="64" rx="31" ry="7" class="wash-k"/>
+  <text x="0" y="92" text-anchor="middle" class="lbl">THIEF</text>
+  <text x="0" y="110" text-anchor="middle" class="lbl-s">back row</text>
+</g>
+
+<!-- ============ WHELPS ============ -->
+<g filter="url(#rough2)">
+  <g transform="translate(830,560)">
+    <path d="M-30 0 Q-14 -24 6 -18 Q28 -14 32 4 L28 14 L-28 14 Z" class="ink"/>
+    <path d="M-30 0 Q-14 -24 6 -18 Q28 -14 32 4 L28 14 L-28 14 Z" class="wash-r"/>
+    <path d="M-22 14 L-24 28 M-6 14 L-8 28 M12 14 L12 28 M26 14 L30 26" class="ink-t"/>
+    <path d="M32 -2 L48 -10" class="ink-t"/><circle cx="18" cy="-12" r="2.6" fill="#2b2b30"/>
+    <rect x="-30" y="-38" width="60" height="7" class="ink-t"/><rect x="-30" y="-38" width="40" height="7" class="wash-r"/>
+  </g>
+  <g transform="translate(925,600) scale(.92)">
+    <path d="M-30 0 Q-14 -24 6 -18 Q28 -14 32 4 L28 14 L-28 14 Z" class="ink"/>
+    <path d="M-30 0 Q-14 -24 6 -18 Q28 -14 32 4 L28 14 L-28 14 Z" class="wash-r"/>
+    <path d="M-22 14 L-24 28 M-6 14 L-8 28 M12 14 L12 28 M26 14 L30 26" class="ink-t"/>
+    <rect x="-30" y="-38" width="60" height="7" class="ink-t"/><rect x="-30" y="-38" width="52" height="7" class="wash-r"/>
+  </g>
+  <g transform="translate(1010,556) scale(.9)">
+    <path d="M-30 0 Q-14 -24 6 -18 Q28 -14 32 4 L28 14 L-28 14 Z" class="ink"/>
+    <path d="M-30 0 Q-14 -24 6 -18 Q28 -14 32 4 L28 14 L-28 14 Z" class="wash-r"/>
+    <path d="M-22 14 L-24 28 M-6 14 L-8 28 M12 14 L12 28" class="ink-t"/>
+    <rect x="-30" y="-38" width="60" height="7" class="ink-t"/><rect x="-30" y="-38" width="30" height="7" class="wash-r"/>
+  </g>
+  <text x="925" y="662" text-anchor="middle" class="lbl">WHELPS  ×4</text>
+</g>
+
+<!-- ============ DRAGON ============ -->
+<g filter="url(#rough2)" transform="translate(1215,470)">
+  <path d="M-120 90 Q-150 20 -96 -12 Q-40 -46 30 -30 Q96 -16 104 40 Q110 84 70 96 Z" class="ink"/>
+  <path d="M-120 90 Q-150 20 -96 -12 Q-40 -46 30 -30 Q96 -16 104 40 Q110 84 70 96 Z" class="wash-r"/>
+  <path d="M-34 -30 Q-6 -128 74 -134 Q96 -136 104 -122 Q66 -112 52 -86 Q76 -84 88 -70 Q52 -66 36 -44 Q40 -30 26 -28 Z" class="ink"/>
+  <path d="M-34 -30 Q-6 -128 74 -134 Q96 -136 104 -122 Q66 -112 52 -86 Q76 -84 88 -70 Q52 -66 36 -44 Q40 -30 26 -28 Z" class="wash-r"/>
+  <path d="M-14 -60 Q28 -104 82 -126 M-4 -44 Q30 -76 66 -84 M6 -34 Q26 -50 44 -56" class="ink-t" opacity=".7"/>
+  <path d="M-96 -8 Q-136 -44 -170 -22 Q-150 6 -122 6" class="ink"/>
+  <circle cx="-150" cy="-14" r="4" fill="#2b2b30"/>
+  <path d="M-168 -30 L-190 -48 M-158 -36 L-172 -58" class="ink-t"/>
+  <path d="M-176 -6 Q-192 2 -184 12 Q-170 14 -164 4" class="ink-t"/>
+  <path d="M-181 -2 l4 8 M-173 0 l3 8 M-166 0 l2 7" class="ink-t" opacity=".8"/>
+  <path d="M-176 -8 Q-206 4 -226 22" class="ink-t"/>
+  <path d="M-226 22 q-10 8 -4 16 q10 6 16 -4" class="ink-t"/>
+  <path d="M100 60 Q160 74 190 116" class="ink"/>
+  <path d="M-96 96 L-92 128 M-30 100 L-26 132 M40 96 L46 128 M84 92 L92 122" class="ink"/>
+  <ellipse cx="-10" cy="136" rx="120" ry="12" class="wash-k"/>
+  <text x="-10" y="176" text-anchor="middle" class="lbl" font-size="18">THE DRAGON  (boss)</text>
+</g>
+
+<!-- ============ HUD: BOSS BAR ============ -->
+<g filter="url(#rough2)">
+  <rect x="530" y="96" width="540" height="76" rx="6" class="ink" fill="#faf8f1"/>
+  <text x="800" y="120" text-anchor="middle" class="ui" font-size="18">THE  DRAGON</text>
+  <rect x="552" y="128" width="496" height="18" class="ink"/>
+  <rect x="552" y="128" width="392" height="18" class="wash-r"/>
+  <text x="800" y="142" text-anchor="middle" class="lbl-s">2350 / 2350</text>
+  <rect x="552" y="152" width="496" height="11" class="ink"/>
+  <rect x="552" y="152" width="150" height="11" class="wash-y"/>
+  <text x="1060" y="162" class="lbl-s">BREAK 38/115</text>
+</g>
+
+<!-- ============ HUD: COMBO ADVISOR ============ -->
+<g filter="url(#rough2)">
+  <rect x="44" y="96" width="300" height="86" rx="6" class="ink" fill="#faf8f1"/>
+  <text x="60" y="120" class="ui" font-size="14">COMBO ADVISOR</text>
+  <text x="60" y="144" class="lbl-s">» Wet it first: Water Bomb</text>
+  <text x="60" y="164" class="lbl-s">» then Ice = FREEZE</text>
+</g>
+
+<!-- ============ HUD: TURN ORDER ============ -->
+<g filter="url(#rough2)">
+  <rect x="1300" y="96" width="256" height="196" rx="6" class="ink" fill="#faf8f1"/>
+  <text x="1316" y="120" class="ui" font-size="14">TURN ORDER</text>
+  <text x="1316" y="144" class="lbl-s">YOUR PHASE</text>
+  <rect x="1316" y="152" width="224" height="22" class="ink-t"/><text x="1326" y="168" class="lbl-s">» Warrior</text>
+  <rect x="1316" y="178" width="224" height="22" class="ink-t"/><text x="1326" y="194" class="lbl-s">» Mage</text>
+  <rect x="1316" y="204" width="224" height="22" class="ink-t"/><text x="1326" y="220" class="lbl-s">» Thief</text>
+  <text x="1316" y="246" class="lbl-s" fill="#a33">THEN — ENEMY PHASE</text>
+  <rect x="1316" y="254" width="224" height="22" class="ink-t"/><text x="1326" y="270" class="lbl-s">Dragon — Claw Swipe</text>
+</g>
+
+<!-- ============ HUD: PARTY PANELS ============ -->
+<g filter="url(#rough2)">
+  <g transform="translate(44,742)">
+    <rect width="300" height="66" rx="6" class="ink" fill="#faf8f1"/>
+    <text x="14" y="24" class="ui" font-size="15">WARRIOR</text><text x="112" y="24" class="lbl-s">FRONT</text>
+    <rect x="14" y="34" width="272" height="12" class="ink-t"/><rect x="14" y="34" width="272" height="12" class="wash-g"/>
+    <rect x="14" y="50" width="272" height="8" class="ink-t"/><rect x="14" y="50" width="120" height="8" class="wash-b"/>
+  </g>
+  <g transform="translate(44,816)">
+    <rect width="300" height="66" rx="6" class="ink" fill="#faf8f1"/>
+    <text x="14" y="24" class="ui" font-size="15">MAGE</text><text x="112" y="24" class="lbl-s">BACK</text>
+    <rect x="14" y="34" width="272" height="12" class="ink-t"/><rect x="14" y="34" width="150" height="12" class="wash-g"/>
+    <rect x="14" y="50" width="272" height="8" class="ink-t"/><rect x="14" y="50" width="248" height="8" class="wash-b"/>
+  </g>
+  <g transform="translate(44,890)">
+    <rect width="300" height="66" rx="6" class="ink" fill="#faf8f1"/>
+    <text x="14" y="24" class="ui" font-size="15">THIEF</text><text x="112" y="24" class="lbl-s">BACK</text>
+    <rect x="14" y="34" width="272" height="12" class="ink-t"/><rect x="14" y="34" width="230" height="12" class="wash-g"/>
+    <rect x="14" y="50" width="272" height="8" class="ink-t"/><rect x="14" y="50" width="190" height="8" class="wash-b"/>
+  </g>
+</g>
+
+<!-- ============ HUD: SKILL MENU ============ -->
+<g filter="url(#rough2)">
+  <rect x="1180" y="700" width="376" height="256" rx="6" class="ink" fill="#faf8f1"/>
+  <text x="1368" y="726" text-anchor="middle" class="ui" font-size="15">WARRIOR — CHOOSE A SKILL</text>
+  <g class="lbl-s">
+    <rect x="1196" y="738" width="344" height="38" class="ink-t"/>
+    <rect x="1196" y="738" width="5" height="38" class="wash-b"/>
+    <text x="1212" y="756" class="ui" font-size="14">Power Strike</text><text x="1212" y="770">75%  50-67</text><text x="1520" y="756" text-anchor="end">free</text>
+    <rect x="1196" y="782" width="344" height="38" class="ink-t"/>
+    <rect x="1196" y="782" width="5" height="38" class="wash-b"/>
+    <text x="1212" y="800" class="ui" font-size="14">Shield Bash</text><text x="1212" y="814">75%  26-35 ×2</text><text x="1520" y="800" text-anchor="end">8 MP</text>
+    <rect x="1196" y="826" width="344" height="38" class="ink-t"/>
+    <rect x="1196" y="826" width="5" height="38" class="wash-b"/>
+    <text x="1212" y="844" class="ui" font-size="14">Guardian Taunt</text><text x="1212" y="858">support</text><text x="1520" y="844" text-anchor="end">10 MP</text>
+    <rect x="1196" y="870" width="344" height="38" class="ink-t"/>
+    <rect x="1196" y="870" width="5" height="38" class="wash-y"/>
+    <text x="1212" y="888" class="ui" font-size="14">Crushing Blow</text><text x="1212" y="902">61%  104-141  d20!</text><text x="1520" y="888" text-anchor="end">25 MP</text>
+    <rect x="1196" y="914" width="344" height="30" class="ink-t"/>
+    <text x="1368" y="934" text-anchor="middle">»  Items (3)</text>
+  </g>
+</g>
+
+<!-- ============ HUD: VALOR ============ -->
+<g filter="url(#rough2)">
+  <rect x="620" y="930" width="380" height="26" rx="5" class="ink" fill="#faf8f1"/>
+  <rect x="628" y="937" width="150" height="12" class="wash-y"/>
+  <text x="810" y="948" text-anchor="middle" class="lbl-s">VALOR  38 / 100</text>
+</g>
+
+<!-- ============ THE TIMING BAR (signature mechanic) ============ -->
+<g filter="url(#rough2)">
+  <rect x="560" y="770" width="470" height="86" rx="7" class="ink" fill="#fffdf4"/>
+  <text x="795" y="796" text-anchor="middle" class="ui" font-size="16">STRIKE  ON  GOLD !</text>
+  <rect x="582" y="806" width="426" height="30" class="ink"/>
+  <rect x="718" y="806" width="154" height="30" class="wash-b" opacity=".35"/>
+  <rect x="772" y="806" width="46" height="30" class="wash-y"/>
+  <path d="M800 800 L800 842" class="ink" stroke-width="4"/>
+  <path d="M760 866 L800 844 L840 866" class="ink-t"/>
+  <text x="795" y="852" text-anchor="middle" class="lbl-s"> </text>
+</g>
+
+<!-- ============ CALLOUT MARKERS (numbers only; wording lives in the legend) ============ -->
+<g>
+  <path d="M800 176 L800 214" class="ink-t" filter="url(#rough)"/>
+  <circle cx="800" cy="228" r="15" fill="#7a2718"/><text x="800" y="234" text-anchor="middle" class="num">1</text>
+
+  <path d="M1086 336 L1150 366" class="ink-t" filter="url(#rough)"/>
+  <circle cx="1074" cy="330" r="15" fill="#7a2718"/><text x="1074" y="336" text-anchor="middle" class="num">2</text>
+
+  <path d="M778 626 L812 598" class="ink-t" filter="url(#rough)"/>
+  <circle cx="762" cy="632" r="15" fill="#7a2718"/><text x="762" y="638" text-anchor="middle" class="num">3</text>
+
+  <path d="M186 626 L226 566" class="ink-t" filter="url(#rough)"/>
+  <circle cx="176" cy="638" r="15" fill="#7a2718"/><text x="176" y="644" text-anchor="middle" class="num">4</text>
+
+  <path d="M550 812 L578 812" class="ink-t" filter="url(#rough)"/>
+  <circle cx="536" cy="812" r="15" fill="#7a2718"/><text x="536" y="818" text-anchor="middle" class="num">5</text>
+
+  <path d="M1166 742 L1192 748" class="ink-t" filter="url(#rough)"/>
+  <circle cx="1152" cy="742" r="15" fill="#7a2718"/><text x="1152" y="748" text-anchor="middle" class="num">6</text>
+
+  <path d="M354 784 L336 780" class="ink-t" filter="url(#rough)"/>
+  <circle cx="368" cy="790" r="15" fill="#7a2718"/><text x="368" y="796" text-anchor="middle" class="num">7</text>
+
+  <path d="M1018 943 L1004 943" class="ink-t" filter="url(#rough)"/>
+  <circle cx="1032" cy="943" r="15" fill="#7a2718"/><text x="1032" y="949" text-anchor="middle" class="num">8</text>
+
+  <path d="M1286 200 L1300 200" class="ink-t" filter="url(#rough)"/>
+  <circle cx="1272" cy="196" r="15" fill="#7a2718"/><text x="1272" y="202" text-anchor="middle" class="num">9</text>
+</g>
+
+<!-- ============ LEGEND ============ -->
+<g filter="url(#rough2)">
+  <rect x="44" y="978" width="1512" height="130" rx="7" class="ink" fill="#faf8f1"/>
+</g>
+<text x="1540" y="1004" class="call" font-size="16" fill="#7a2718">מקרא</text>
+<g class="call" font-size="14.5">
+  <!-- right column (first, because Hebrew reads right-to-left) -->
+  <circle cx="1500" cy="1030" r="11" fill="#7a2718"/><text x="1500" y="1035" text-anchor="middle" class="num" font-size="13">1</text>
+  <text x="1480" y="1035">מד חיים של הבוס, ומתחתיו מד השבירה</text>
+  <circle cx="1500" cy="1060" r="11" fill="#7a2718"/><text x="1500" y="1065" text-anchor="middle" class="num" font-size="13">2</text>
+  <text x="1480" y="1065">הבוס — תוקף או מטיל חולשה בכל תור</text>
+  <circle cx="1500" cy="1090" r="11" fill="#7a2718"/><text x="1500" y="1095" text-anchor="middle" class="num" font-size="13">3</text>
+  <text x="1480" y="1095">משרתים — חוסמים את הדרך אל הבוס</text>
+
+  <!-- middle column -->
+  <circle cx="1010" cy="1030" r="11" fill="#7a2718"/><text x="1010" y="1035" text-anchor="middle" class="num" font-size="13">4</text>
+  <text x="990" y="1035">3 גיבורים — שורה קדמית וסוגה אחורית</text>
+  <circle cx="1010" cy="1060" r="11" fill="#7a2718"/><text x="1010" y="1065" text-anchor="middle" class="num" font-size="13">5</text>
+  <text x="990" y="1065">סרגל תזמון — פגיעה בזהב מגדילה נזק</text>
+  <circle cx="1010" cy="1090" r="11" fill="#7a2718"/><text x="1010" y="1095" text-anchor="middle" class="num" font-size="13">6</text>
+  <text x="990" y="1095">5 יכולות לגיבור (d20 = יכולת מסוכנת)</text>
+
+  <!-- left column -->
+  <circle cx="520" cy="1030" r="11" fill="#7a2718"/><text x="520" y="1035" text-anchor="middle" class="num" font-size="13">7</text>
+  <text x="500" y="1035">חיים ומאנה לכל גיבור</text>
+  <circle cx="520" cy="1060" r="11" fill="#7a2718"/><text x="520" y="1065" text-anchor="middle" class="num" font-size="13">8</text>
+  <text x="500" y="1065">מד עוצמה משותף לצוות</text>
+  <circle cx="520" cy="1090" r="11" fill="#7a2718"/><text x="520" y="1095" text-anchor="middle" class="num" font-size="13">9</text>
+  <text x="500" y="1095">סדר תורות + כוונת האויב הבא</text>
+</g>
+
+<text x="1556" y="1136" class="call" font-size="14">מוטי ישעיהו · מודל נייר — סקיצה של מהלך המשחק בפעולה · Arena of the Algorithms</text>
+</svg>
