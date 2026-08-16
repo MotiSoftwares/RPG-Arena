@@ -243,6 +243,55 @@ Helper: `scratchpad/compilecheck.ps1`. Two real errors this caught, both invisib
 - Direct-play now **self-bootstraps** (July 30): `GameBootstrap.EnsureRuntime()` — called from `MainMenuUI.Awake` and `BattleController.Awake` — spawns `Resources/GameBootstrap.prefab` when `Instance` is null, so pressing Play on MainMenu or BattleArena gets audio, `RunState`, gold and items. The prefab IS the Boot scene's object (`SaveAsPrefabAssetAndConnect`), so the AudioManager wiring can't drift. A fallback spawn sets the static `spawningFallback` flag, which is how `Awake` knows to SKIP `Scenes.LoadScene(firstSceneName)` — without that it would bounce you straight back to the menu. The fallback run is seeded with 250 gold + 2 extra items; `Reset()` at character select wipes that, so a real run is never affected. (Old note, now obsolete: direct-play had no bootstrap and items/gold were hidden.)
 - Erb "projectile" prefabs: root ParticleSystem startSpeed 15, world-space, sub-emitters explode on particle death. Never spawn at identity/origin; configure BEFORE first sim frame (same call as Instantiate).
 
+## Capturing footage from inside Unity (Aug 16 — how the submission video was made)
+
+- **Never screen-grab the window.** The Game view is GPU-composited and Windows' `gdigrab` BitBlt path
+  returns black. `ScreenCapture.CaptureScreenshotAsTexture()` in a `WaitForEndOfFrame` coroutine reads
+  the real framebuffer, so it also picks up the Screen Space **Overlay** HUD that a `camera.Render()`
+  into a RenderTexture silently misses. The frames contain **zero editor chrome** — they are
+  indistinguishable from the shipped exe, so there is no reason to capture from a build.
+- **`Time.captureFramerate = 30`** pins BOTH `deltaTime` and `unscaledDeltaTime` to 1/30, so the take
+  plays back at true speed even though JPEG encoding drags the editor to ~3.5 real fps. Essential
+  here because the timing bars and BRACE run on unscaled time.
+- **Audio: `UnityEngine.AudioRenderer`** (`Start` / `GetSampleCountForCaptureFrame` / `Render`) is
+  Unity's offline audio path — the one Unity Recorder uses. It hands you exactly the samples belonging
+  to each captured frame, so A/V stay locked no matter how far below real time the capture runs.
+  Capturing the audio thread's real-time output instead desyncs within seconds. **Drain it EVERY
+  frame** — skip one and the next call returns a bigger block and the track drifts permanently.
+  Measured: 13.12s of WAV against 13.13s of video. Write 32-bit float WAV (fmt tag 3) and patch the
+  header sizes on close.
+- **Batchmode `-executeMethod` builds fail while the Editor has the project open** (exit 1, log stops
+  at "Successfully changed project path"). Use the MCP `manage_build` tool to build inside the running
+  Editor instead. Also: `BuildScript.BuildWindows` calls `EditorApplication.Exit(1)` on failure, so do
+  NOT invoke it from `execute_code` — it would close the editor.
+- Driving the HUD for footage: call the HUD's private `StartTimingBar(hero, ab, target)` by reflection
+  rather than `BattleController.SubmitAction` — SubmitAction skips `TimingSequenceRoutine`, so the
+  needle bar never appears on camera. Lock a bar by reading the `Needle` RectTransform's
+  `anchorMin.x` (that IS the value the scoring reads) rather than dead-reckoning against sweep time.
+  **The last hero of a phase auto-selects**, so waiting on the hero-pick panel alone spins until
+  timeout and silently drops that hero's turn.
+
+## `RunFlow.Text()` sets `pivot = anchor` — boxes are NOT centred on their anchor
+
+A box's extent is `(anchorY × parentH)` with `(anchorY × boxH)` *below* that point, i.e. it grows
+upward from the anchor. Every boon card was laid out as if the anchor were the centre, putting the
+name box at 212..262 in card space and the description box's top at 241 — and because the description
+is `UpperCenter`, its first line rendered straight through the boon's own name. **All three cards in
+every draft were unreadable**, and it was invisible in play because nobody stops on the victory screen
+long enough to read it; it only showed up on a frozen 1080p capture frame. Card is 300 tall; the
+working layout is banner 267..289 / name 220..264 / description 39..209.
+
+## Open: a flat-pink disc during the Black Mage and Evil Warrior fights
+
+~2s, flat `(254,1,216)`, hard-edged, no falloff, no shading. **Not** a missing shader. Ruled out, all
+verified: no material asset with a null/unsupported shader; no renderer with an empty material slot
+(the 153 "empty" slots in ErbGameArt are all slot **1** on ParticleSystemRenderers — the unused trail
+material slot, harmless); no ability referencing the built-in-RP `Effects with projectors/` prefabs;
+and a watcher scanning every renderer every frame through both fights never caught the error shader
+once. The Dragon fight is clean, which points at VFX unique to the later two bosses (`Glowing orbs` /
+`Magic buff`), but those use existing supported ERB shaders with white tint and real textures. Still
+unidentified — do not "fix" it by guessing.
+
 ## Importing a new character pack (the two bugs that always bite)
 
 1. **Mixamo FBX import as `Generic` / `NoAvatar`.** They look fine in the project view and simply never
