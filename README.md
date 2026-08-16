@@ -259,6 +259,12 @@ aspect ratios.
   rendered as Unity's magenta error shader. All 45 affected materials were traced and the pack was
   removed; the abilities were re-pointed at URP-safe effects. Melee therefore reads as an impact burst
   rather than a blade arc. This was a deliberate correctness-over-appearance decision.
+- **A brief flat-pink disc can appear during the Black Mage and Evil Warrior fights.** A cosmetic
+  particle artifact lasting about two seconds. It is *not* a broken asset: a full sweep found no
+  material with a missing or unsupported shader, no renderer with an empty material slot, and no
+  ability pointing at the built-in-render-pipeline projector variants, and a live watcher scanning
+  every renderer each frame through both fights never caught the error shader. Left documented rather
+  than guessed at.
 - **First launch may pause briefly** while shaders warm up.
 - **Text appears as empty boxes**: means TextMeshPro Essentials are not imported.
   *Fix*: **Window ▸ TextMeshPro ▸ Import TMP Essential Resources**. (They are committed here, so this
