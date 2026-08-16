@@ -369,12 +369,18 @@ namespace RPGArena.UI
             btn.onClick.AddListener(() => { GameBootstrap.Instance?.Audio?.PlaySfx("ui_click"); onClick(); });
             if (rule)
             {
-                var banner = Text(rt, "CHANGES THE RULES", new Vector2(0.5f, 0.96f), new Vector2(330, 26), 15, TextAnchor.MiddleCenter);
+                var banner = Text(rt, "CHANGES THE RULES", new Vector2(0.5f, 0.96f), new Vector2(330, 22), 15, TextAnchor.MiddleCenter);
                 banner.color = new Color(1f, 0.78f, 0.25f);
             }
-            var name = Text(rt, boon.displayName, new Vector2(0.5f, 0.85f), new Vector2(330, 50), 26, TextAnchor.MiddleCenter);
+            // Text() sets pivot = anchor, so a box's extent is (anchorY*parentH) - (anchorY*boxH)
+            // upward, NOT centred on the anchor. The old values put the name at 212..262 in card space
+            // and the description's top at 241 -- and since the description is top-aligned, its first
+            // line landed straight on top of the boon's own name. Every boon card in the game was
+            // unreadable this way. Laid out so the three boxes cannot touch:
+            //   banner 267..289 | name 220..264 | description 39..209   (card is 300 tall)
+            var name = Text(rt, boon.displayName, new Vector2(0.5f, 0.86f), new Vector2(330, 44), 26, TextAnchor.MiddleCenter);
             name.color = rule ? new Color(1f, 0.82f, 0.35f) : new Color(1f, 0.9f, 0.5f);
-            Text(rt, boon.description, new Vector2(0.5f, 0.41f), new Vector2(330, 200), 18, TextAnchor.UpperCenter);
+            Text(rt, boon.description, new Vector2(0.5f, 0.30f), new Vector2(330, 170), 18, TextAnchor.UpperCenter);
         }
 
         private void Label(GameObject parent, string text, float anchorY, int size, Color color)
